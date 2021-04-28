@@ -23,7 +23,9 @@ else ()
   endif ()
 endif ()
 
-project("Hello World Sample" LANGUAGES C CXX)
+project("SGX-PSI" LANGUAGES C CXX)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Currently the `OpenEnclave` package depends on `project()`.
 find_package(OpenEnclave CONFIG REQUIRED)
