@@ -1,9 +1,11 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#include <cstdint>
 #include <iostream>
 
 #include "hash.hpp"
+#include "prf.hpp"
 #include "prng.hpp"
 
 int main(int, const char*[])
@@ -14,8 +16,8 @@ int main(int, const char*[])
     HASH<1> h1;
     std::cout << h1(123) << std::endl;
 
-    HASH<2> h2;
-    std::cout << h2(123) << std::endl;
+    PRF<uint32_t> prf;
+    std::cout << prf(123) << std::endl;
 }
 
 #if 0
