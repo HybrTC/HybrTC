@@ -1,21 +1,15 @@
 #pragma once
 
-#include <type_traits>
-
 #include <array>
 
+#include "common/type_check.hpp"
 #include "mbedtls/sha1.h"
 
 template <uint32_t hid, class HT = uint32_t, class VT = uint32_t>
 class HASH
 {
-#define INTEGER_CHECK(t, msg) \
-    static_assert(std::is_integral<t>::value, msg " must be an integer")
-
     INTEGER_CHECK(HT, "hash value");
     INTEGER_CHECK(VT, "input value");
-
-#undef INTEGER_CHECK
 
     struct
     {
