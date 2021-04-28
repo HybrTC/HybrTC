@@ -8,10 +8,12 @@ add_custom_command(
     --search-path ${OE_INCLUDEDIR} --search-path
     ${OE_INCLUDEDIR}/openenclave/edl/sgx)
 
-add_executable(helloworld_host host.c
+add_executable(helloworld_host host.cpp ocall.c
                                ${CMAKE_CURRENT_BINARY_DIR}/helloworld_u.c)
 
 # Needed for the generated file helloworld_u.h
 target_include_directories(helloworld_host PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(helloworld_host PRIVATE ${CMAKE_SOURCE_DIR}/common)
 
-target_link_libraries(helloworld_host openenclave::oehost)
+target_link_libraries(helloworld_host openenclave::oehost
+                      /usr/local/lib/libmbedcrypto.a)
