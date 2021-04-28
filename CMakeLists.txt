@@ -19,7 +19,7 @@ set(OE_CRYPTO_LIB
     mbedtls
     CACHE STRING "Crypto library used by enclaves.")
 
-add_compile_options(-Wall -Wextra -pedantic)
+add_compile_options(-Wall -Wextra)
 
 add_subdirectory(enclave)
 add_subdirectory(host)
