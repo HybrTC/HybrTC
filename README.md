@@ -1,6 +1,6 @@
 # SGX-PSI
 
-# Dev tools
+## Dev tools
 
 - [apt] clang-format-10
 - [apt] clang-tidy-10
