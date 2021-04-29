@@ -3,7 +3,6 @@
 #include <vector>
 
 #include <openenclave/host.h>
-#include <boost/program_options.hpp>
 
 #include "enclave.hpp"
 #include "prng.hpp"
