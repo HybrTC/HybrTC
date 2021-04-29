@@ -10,8 +10,6 @@ enclave {
     };
 
     untrusted {
-        void host_helloworld();
+        // void host_helloworld();
     };
 };
-
-
