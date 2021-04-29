@@ -40,14 +40,7 @@ add_custom_command(
 
 add_custom_target(sign ALL DEPENDS enclave/enclave.signed)
 
-if ((NOT DEFINED ENV{OE_SIMULATION}) OR (NOT $ENV{OE_SIMULATION}))
-  add_custom_target(
-    run
-    DEPENDS helloworld_host sign
-    COMMAND helloworld_host ${CMAKE_BINARY_DIR}/enclave/enclave.signed)
-endif ()
-
 add_custom_target(
-  simulate
+  run
   DEPENDS helloworld_host sign
-  COMMAND helloworld_host ${CMAKE_BINARY_DIR}/enclave/enclave.signed --simulate)
+  COMMAND helloworld_host ${CMAKE_BINARY_DIR}/enclave/enclave.signed)
