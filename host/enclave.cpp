@@ -2,7 +2,7 @@
 
 #include "helloworld_u.h"
 
-Enclave::Enclave(const char* enclave_image_path, bool simulate)
+SPIEnclave::SPIEnclave(const char* enclave_image_path, bool simulate)
 {
     uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     if (simulate)
