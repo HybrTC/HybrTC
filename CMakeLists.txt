@@ -12,7 +12,7 @@ project("SGX-PSI" LANGUAGES C CXX)
 
 # Currently the `OpenEnclave` package depends on `project()`.
 find_package(OpenEnclave CONFIG REQUIRED)
-find_library(LIBMBEDCRYPTO mbedcrypto)
+find_library(LIBMBEDCRYPTO mbedcrypto REQUIRED)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -20,7 +20,7 @@ set(OE_CRYPTO_LIB
     mbedtls
     CACHE STRING "Crypto library used by enclaves.")
 
-add_compile_options(-Wall -Wextra)
+add_compile_options(-Og -Wall -Wextra)
 
 add_subdirectory(enclave)
 add_subdirectory(host)
