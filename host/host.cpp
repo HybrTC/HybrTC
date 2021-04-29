@@ -1,42 +1,103 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#include <time.h>
 #include <cstdint>
 #include <iostream>
+#include <map>
 
+#include "bloom_filter.hpp"
 #include "hash.hpp"
 #include "prng.hpp"
 #include "prp.hpp"
 
 constexpr size_t TEST_SIZE = (1 << 20);
 
-void test_prp(PRP<uint128_t>& prp)
+std::map<uint32_t, uint32_t> random_dataset()
 {
-    HASH<1, uint128_t, uint32_t> h;
+    PRNG<uint32_t> prng;
+
+    std::map<uint32_t, uint32_t> dataset;
+
     for (size_t i = 0; i < TEST_SIZE; i++)
     {
-        h(prp(i));
+        auto k = prng();
+        if (dataset.find(k) == dataset.end())
+        {
+            dataset[k] = 1;
+        }
+        else
+        {
+            dataset[k]++;
+        }
     }
+
+    return dataset;
 }
 
-int main(int, const char*[])
+int test()
 {
-    PRP<uint128_t> prp;
+    // init
+    auto dataset1 = random_dataset();
+    auto dataset2 = random_dataset();
 
-    clock_t t_prp = clock();
-    test_prp(prp);
-    t_prp = clock() - t_prp;
+    PRP prp;
+    BloomFilter<24, 4> filter;
 
-    printf("prp: %lu\n", t_prp);
+    // find intersects
+    std::vector<uint32_t> ground_t;
+    std::vector<uint32_t> ground_f;
 
-    // PRNG<uint32_t> prng;
-    // std::cout << prng() << std::endl;
+    for (auto& [k, v] : dataset2)
+    {
+        if (dataset1.find(k) == dataset1.end())
+        {
+            ground_f.push_back(k);
+        }
+        else
+        {
+            ground_t.push_back(k);
+        }
+    }
 
-    // HASH<1> h1;
-    // std::cout << h1(123) << std::endl;
+    // insert elements to the bloom filter
+    for (auto& [k, v] : dataset1)
+    {
+        filter.insert(prp(k));
+    }
 
-    // PRF<uint32_t> prf;
-    // std::cout << prf(123) << std::endl;
+    // check hits
+    for (auto& k : ground_t)
+    {
+        if (!filter.lookup(prp(k)))
+        {
+            puts("error t");
+        }
+    }
+
+    uint32_t fp = 0;
+    for (auto& k : ground_f)
+    {
+        if (filter.lookup(prp(k)))
+        {
+            fp++;
+        }
+    }
+
+    printf("T: %lu\n", ground_t.size());
+    printf("FP: %u\n", fp);
+    printf("FPR: %lf\n", fp / double(fp + ground_t.size()));
+
+    return 0;
+}
+
+int main()
+{
+    clock_t t = clock();
+    test();
+    t = clock() - t;
+
+    printf("Runtime: %lf s\n", double(t) / CLOCKS_PER_SEC);
 }
 
 #if 0
