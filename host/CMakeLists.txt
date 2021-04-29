@@ -8,7 +8,9 @@ add_custom_command(
     --search-path ${OE_INCLUDEDIR} --search-path
     ${OE_INCLUDEDIR}/openenclave/edl/sgx)
 
-add_executable(helloworld_host host.cpp
+file(GLOB SOURCE_FILES *.cpp)
+
+add_executable(helloworld_host ${SOURCE_FILES}
                                ${CMAKE_CURRENT_BINARY_DIR}/helloworld_u.c)
 
 # Needed for the generated file helloworld_u.h

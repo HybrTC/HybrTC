@@ -1,21 +1,16 @@
-#include <array>
-#include <cstdint>
-#include <ctime>
 #include <iostream>
 #include <map>
+#include <vector>
 
 #include <openenclave/host.h>
 
-#include "bloom_filter.hpp"
-#include "hash.hpp"
 #include "prng.hpp"
-#include "prp.hpp"
 
-#include "helloworld_u.h"
+#include "enclave.hpp"
 
 constexpr size_t TEST_SIZE = (1 << 20);
 
-std::map<uint32_t, uint32_t> random_dataset()
+auto random_dataset() -> std::map<uint32_t, uint32_t>
 {
     PRNG<uint32_t> prng;
 
@@ -37,69 +32,39 @@ std::map<uint32_t, uint32_t> random_dataset()
     return dataset;
 }
 
-bool check_simulate_opt(int* argc, const char* argv[])
+auto main(int argc, const char* argv[]) -> int
 {
-    for (int i = 0; i < *argc; i++)
-    {
-        if (strcmp(argv[i], "--simulate") == 0)
-        {
-            fprintf(stdout, "Running in simulation mode\n");
-            memmove(&argv[i], &argv[i + 1], (*argc - i) * sizeof(char*));
-            (*argc)--;
-            return true;
-        }
-    }
-    return false;
-}
-
-int main(int argc, const char* argv[])
-{
-    oe_result_t result;
-    int ret = 1;
-    oe_enclave_t* enclave = NULL;
-    std::array<uint32_t, 12> arr = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
-
-    uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
-    if (check_simulate_opt(&argc, argv))
-    {
-        flags |= OE_ENCLAVE_FLAG_SIMULATE;
-    }
-
     if (argc != 2)
     {
         fprintf(
             stderr, "Usage: %s enclave_image_path [ --simulate  ]\n", argv[0]);
-        goto exit;
+
+        return EXIT_FAILURE;
     }
 
-    result = oe_create_helloworld_enclave(
-        argv[1], OE_ENCLAVE_TYPE_AUTO, flags, NULL, 0, &enclave);
-    if (result != OE_OK)
+    // check_simulate_opt
+    bool simulate = false;
+    for (int i = 0; i < argc; i++)
     {
-        fprintf(
-            stderr,
-            "oe_create_helloworld_enclave(): result=%u (%s)\n",
-            result,
-            oe_result_str(result));
-        goto exit;
+        if (strcmp(argv[i], "--simulate") == 0)
+        {
+            fprintf(stdout, "Running in simulation mode\n");
+            memmove(&argv[i], &argv[i + 1], (argc - i) * sizeof(char*));
+            argc--;
+            simulate = true;
+        }
     }
 
-    result = enclave_helloworld(enclave, arr.data(), arr.size());
-    if (result != OE_OK)
+    HelloworldEnclave enclave(argv[1], simulate);
+
+    std::vector<uint32_t> arr = {0};
+    const size_t DATA_SIZE = 12;
+    for (size_t i = 0; i < DATA_SIZE; i++)
     {
-        fprintf(
-            stderr,
-            "calling into enclave_helloworld failed: result=%u (%s)\n",
-            result,
-            oe_result_str(result));
-        goto exit;
+        arr.push_back(1);
     }
 
-    ret = 0;
+    enclave.helloworld(arr);
 
-exit:
-    if (enclave)
-        oe_terminate_enclave(enclave);
-
-    return ret;
+    return 0;
 }
