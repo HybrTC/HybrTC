@@ -1,3 +1,4 @@
+#include <array>
 #include <cstdint>
 #include <ctime>
 #include <iostream>
@@ -56,6 +57,7 @@ int main(int argc, const char* argv[])
     oe_result_t result;
     int ret = 1;
     oe_enclave_t* enclave = NULL;
+    std::array<uint32_t, 12> arr = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 
     uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     if (check_simulate_opt(&argc, argv))
@@ -82,7 +84,7 @@ int main(int argc, const char* argv[])
         goto exit;
     }
 
-    result = enclave_helloworld(enclave);
+    result = enclave_helloworld(enclave, arr.data(), arr.size());
     if (result != OE_OK)
     {
         fprintf(

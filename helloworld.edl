@@ -5,8 +5,10 @@ enclave {
     from "openenclave/edl/syscall.edl" import *;
     from "platform.edl" import *;
 
+    include "stdint.h"
+
     trusted {
-        public void enclave_helloworld();
+        public void enclave_helloworld([user_check] const uint32_t* data, size_t length);
     };
 
     untrusted {
