@@ -17,12 +17,11 @@ class BloomFilter
 {
     // bitmap for the filter
     using BT = uint64_t;
-    using HT = uint32_t;
     constexpr static uint32_t BL = sizeof(BT) * 8;
-
     std::array<BT, ((1UL << EE) + BL - 1) / BL> bitmap = {0};
 
     // hash function
+    using HT = uint32_t;
     HASH<HN, HT> hash;
 
     void bound_check(const HT& index) const
@@ -72,7 +71,7 @@ class BloomFilter
         }
     }
 
-    bool lookup(IT key)
+    bool lookup(IT key) const
     {
         const std::array<HT, HN> hashes = hash(key);
 
