@@ -1,30 +1,28 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 
 #include "common/type_check.hpp"
 #include "common/uint128.hpp"
-#include "mbedtls/sha1.h"
+#include "mbedtls/sha512.h"
 
-template <uint32_t hid, class HT = uint128_t, class VT = uint32_t>
+template <unsigned ON, class OT = uint32_t, class IT = uint128_t>
 class HASH
 {
-    INTEGER_CHECK(HT, "hash value");
-    INTEGER_CHECK(VT, "input value");
+    INTEGER_CHECK(IT, "input");
+    INTEGER_CHECK(OT, "output");
 
-    struct
-    {
-        uint32_t id = hid;
-        VT v;
-    } msg;
+    static_assert(ON <= 512 / 8 / sizeof(OT), "too many hashes required");
 
-    std::array<uint8_t, 20> hash;
+    using H = const std::array<OT, ON>;
+
+    std::array<uint8_t, 512 / 8> hash;
 
   public:
-    HT operator()(VT val)
+    H operator()(const IT& val)
     {
-        msg.v = val;
-        mbedtls_sha1_ret((const unsigned char*)&msg, sizeof(msg), &hash[0]);
-        return *reinterpret_cast<const HT*>(hash.data());
+        mbedtls_sha512_ret((const uint8_t*)&val, sizeof(val), &hash[0], 0);
+        return *reinterpret_cast<const H*>(hash.data());
     }
 };
