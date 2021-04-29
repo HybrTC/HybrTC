@@ -17,11 +17,10 @@ class HASH
 
     using H = const std::array<OT, ON>;
 
-    std::array<uint8_t, 512 / 8> hash;
-
   public:
-    H operator()(const IT& val)
+    H operator()(const IT& val) const
     {
+        std::array<uint8_t, 512 / 8> hash;
         mbedtls_sha512_ret((const uint8_t*)&val, sizeof(val), &hash[0], 0);
         return *reinterpret_cast<const H*>(hash.data());
     }
