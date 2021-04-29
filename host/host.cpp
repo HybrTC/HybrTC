@@ -5,19 +5,38 @@
 #include <iostream>
 
 #include "hash.hpp"
-#include "prf.hpp"
 #include "prng.hpp"
+#include "prp.hpp"
+
+constexpr size_t TEST_SIZE = (1 << 20);
+
+void test_prp(PRP<uint128_t>& prp)
+{
+    HASH<1, uint128_t, uint32_t> h;
+    for (size_t i = 0; i < TEST_SIZE; i++)
+    {
+        h(prp(i));
+    }
+}
 
 int main(int, const char*[])
 {
-    PRNG<uint32_t> prng;
-    std::cout << prng() << std::endl;
+    PRP<uint128_t> prp;
 
-    HASH<1> h1;
-    std::cout << h1(123) << std::endl;
+    clock_t t_prp = clock();
+    test_prp(prp);
+    t_prp = clock() - t_prp;
 
-    PRF<uint32_t> prf;
-    std::cout << prf(123) << std::endl;
+    printf("prp: %lu\n", t_prp);
+
+    // PRNG<uint32_t> prng;
+    // std::cout << prng() << std::endl;
+
+    // HASH<1> h1;
+    // std::cout << h1(123) << std::endl;
+
+    // PRF<uint32_t> prf;
+    // std::cout << prf(123) << std::endl;
 }
 
 #if 0

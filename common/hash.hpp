@@ -3,9 +3,10 @@
 #include <array>
 
 #include "common/type_check.hpp"
+#include "common/uint128.hpp"
 #include "mbedtls/sha1.h"
 
-template <uint32_t hid, class HT = uint32_t, class VT = uint32_t>
+template <uint32_t hid, class HT = uint128_t, class VT = uint32_t>
 class HASH
 {
     INTEGER_CHECK(HT, "hash value");
