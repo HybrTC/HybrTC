@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stddef.h>
 #include <array>
 
 #include "common/bit_mask.hpp"
@@ -18,7 +19,8 @@ class BloomFilter
     // bitmap for the filter
     using BT = uint64_t;
     constexpr static uint32_t BL = sizeof(BT) * 8;
-    std::array<BT, ((1UL << EE) + BL - 1) / BL> bitmap = {0};
+    using BITMAP = std::array<BT, ((1UL << EE) + BL - 1) / BL>;
+    BITMAP bitmap = {0};
 
     // hash function
     using HT = uint32_t;
@@ -51,7 +53,7 @@ class BloomFilter
         return bitmap[block_index] &= ~BITMASK[bit_index];
     }
 
-    bool test_bit(const HT& index) const
+    [[nodiscard]] auto test_bit(const HT& index) const -> bool
     {
         bound_check(index);
         uint32_t block_index = index / BL;
@@ -71,7 +73,7 @@ class BloomFilter
         }
     }
 
-    bool lookup(IT key) const
+    auto lookup(IT key) const -> bool
     {
         const std::array<HT, HN> hashes = hash(key);
 
@@ -84,5 +86,15 @@ class BloomFilter
         }
 
         return true;
+    }
+
+    [[nodiscard]] auto size() const -> size_t
+    {
+        return bitmap.size() * sizeof(BT);
+    }
+
+    auto serialize() const -> const BITMAP&
+    {
+        return bitmap;
     }
 };

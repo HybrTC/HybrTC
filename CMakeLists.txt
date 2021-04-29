@@ -22,6 +22,8 @@ set(OE_CRYPTO_LIB
 
 add_compile_options(-O3 -Wall -Wextra)
 
+include_directories(${CMAKE_SOURCE_DIR}/common)
+
 add_subdirectory(enclave)
 add_subdirectory(host)
 

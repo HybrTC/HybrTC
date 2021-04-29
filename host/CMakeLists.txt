@@ -15,6 +15,5 @@ add_executable(helloworld_host ${SOURCE_FILES}
 
 # Needed for the generated file helloworld_u.h
 target_include_directories(helloworld_host PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_include_directories(helloworld_host PRIVATE ${CMAKE_SOURCE_DIR}/common)
 
 target_link_libraries(helloworld_host openenclave::oehost ${LIBMBEDCRYPTO})

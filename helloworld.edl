@@ -8,7 +8,8 @@ enclave {
     include "stdint.h"
 
     trusted {
-        public void enclave_helloworld([user_check] const uint32_t* data, size_t length);
+        public size_t build_bloom_filter([user_check] const uint32_t* data, size_t length);
+        public void get_bloom_filter([out, size=length] uint8_t* data, size_t length);
     };
 
     untrusted {

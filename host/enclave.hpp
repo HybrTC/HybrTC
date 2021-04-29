@@ -27,13 +27,14 @@ class Enclave
     }
 };
 
-class HelloworldEnclave : protected Enclave
+class SPIEnclave : protected Enclave
 {
   public:
-    HelloworldEnclave(const char* enclave_image_path, bool simulate)
+    SPIEnclave(const char* enclave_image_path, bool simulate)
         : Enclave(enclave_image_path, simulate)
     {
     }
 
-    void helloworld(const std::vector<uint32_t>& arr);
+    auto build_bloom_filter(const std::vector<uint32_t>& arr)
+        -> std::vector<uint8_t>;
 };
