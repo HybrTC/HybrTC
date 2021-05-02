@@ -20,6 +20,16 @@ set(OE_CRYPTO_LIB
     mbedtls
     CACHE STRING "Crypto library used by enclaves.")
 
+# Find libgmp static files
+find_file(LIBGMP_A libgmp.a PATHS ${CMAKE_SOURCE_DIR}/3rd-party/gmp/lib
+                                  REQUIRED)
+find_file(LIBGMPXX_A libgmpxx.a PATHS ${CMAKE_SOURCE_DIR}/3rd-party/gmp/lib
+                                      REQUIRED)
+find_file(LIBGMP_H gmp.h PATHS ${CMAKE_SOURCE_DIR}/3rd-party/gmp/include
+                               REQUIRED)
+get_filename_component(LIBGMP_INC ${LIBGMP_H} DIRECTORY)
+
+# Set compilation flags
 add_compile_options(-O3 -Wall -Wextra)
 
 include_directories(${CMAKE_SOURCE_DIR}/common)
