@@ -1,6 +1,5 @@
 #pragma once
 
-#include <stddef.h>
 #include <array>
 
 #include "common/bit_mask.hpp"

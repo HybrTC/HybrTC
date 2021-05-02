@@ -2,35 +2,29 @@
 
 #include <array>
 
+#include "common/mbedtls.hpp"
 #include "common/type_check.hpp"
 #include "common/uint128.hpp"
-#include "mbedtls/aes.h"
 
 template <class IntType = uint128_t>
 class PRP
 {
     INTEGER_CHECK(IntType, "input of PRP");
 
-    std::array<uint8_t, 128 / 8> ibuf = {0};
-    std::array<uint8_t, 128 / 8> obuf = {0};
+    std::array<uint8_t, mbedtls::aes::BLOCK_SIZE> ibuf = {0};
 
-    mbedtls_aes_context aes_ctx;
+    mbedtls::aes aes;
 
   public:
     PRP()
     {
-        std::array<uint8_t, 128 / 8> key = {0};
-        mbedtls_aes_init(&aes_ctx);
-        mbedtls_aes_setkey_enc(&aes_ctx, key.data(), 128);
+        aes.setkey_enc<mbedtls::aes::KEY_LEN_128>({0});
     }
 
-    IntType operator()(IntType input)
+    auto operator()(IntType input) -> IntType
     {
         *reinterpret_cast<IntType*>(ibuf.data()) = input;
-
-        mbedtls_aes_crypt_ecb(
-            &aes_ctx, MBEDTLS_AES_ENCRYPT, ibuf.data(), &obuf[0]);
-
+        auto obuf = aes.crypt_ecb(ibuf, true);
         return *reinterpret_cast<const IntType*>(obuf.data());
     }
 };
