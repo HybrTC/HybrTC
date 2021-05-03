@@ -38,7 +38,6 @@ class CuckooHashing
     HASH<HN, HT> hash;
 
     // forbid copy constructor
-    CuckooHashing(const CuckooHashing& other) = delete;
 
     void evict(uint32_t hash_index, uint32_t bin_index)
     {
@@ -63,11 +62,11 @@ class CuckooHashing
         }
     }
 
-    bool insert_from(
+    auto insert_from(
         const KT& key,
         const VT& value,
         uint32_t hash_index,
-        const HC& hashes)
+        const HC& hashes) -> bool
     {
         if (hash_index >= HN)
         {
@@ -95,6 +94,8 @@ class CuckooHashing
     }
 
   public:
+    CuckooHashing(const CuckooHashing& other) = delete;
+
     CuckooHashing()
     {
 #if 0
@@ -117,7 +118,7 @@ class CuckooHashing
         }
     }
 
-    std::vector<ET> lookup(const KT& key) const
+    auto lookup(const KT& key) const -> std::vector<ET>
     {
         std::vector<ET> result;
 
@@ -147,7 +148,7 @@ class CuckooHashing
         return result;
     }
 
-#if 1
+#if 0
     void inspect() const
     {
         for (uint32_t hi = 0; hi < HN; hi++)

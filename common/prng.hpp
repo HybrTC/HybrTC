@@ -19,7 +19,7 @@ class PRNG
     {
     }
 
-    IntType operator()()
+    auto operator()() -> IntType
     {
         return distrib(gen);
     }
