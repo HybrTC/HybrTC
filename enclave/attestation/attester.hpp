@@ -10,14 +10,14 @@
 
 #include "claims.hpp"
 
-class AttesterContext
+class Attester
 {
     const oe_uuid_t* format_ptr;
 
   public:
-    AttesterContext(const AttesterContext&) = delete;
+    Attester(const Attester&) = delete;
 
-    explicit AttesterContext(const oe_uuid_t* format_id) : format_ptr(format_id)
+    explicit Attester(const oe_uuid_t* format_id) : format_ptr(format_id)
     {
         oe_attester_initialize();
     }
@@ -48,7 +48,7 @@ class AttesterContext
         return evidence;
     }
 
-    ~AttesterContext()
+    ~Attester()
     {
         oe_attester_shutdown();
     }

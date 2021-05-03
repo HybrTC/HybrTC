@@ -47,10 +47,8 @@ struct AttestationContext
 {
     constexpr static oe_uuid_t format_id{OE_FORMAT_UUID_SGX_LOCAL_ATTESTATION};
 
-    std::shared_ptr<AttesterContext> attester =
-        std::make_shared<AttesterContext>(&format_id);
-    std::shared_ptr<VerifierContext> verifier =
-        std::make_shared<VerifierContext>(&format_id);
+    std::shared_ptr<Attester> attester = std::make_shared<Attester>(&format_id);
+    std::shared_ptr<Verifier> verifier = std::make_shared<Verifier>(&format_id);
 
     std::shared_ptr<mbedtls::ctr_drbg> rand_ctx =
         std::make_shared<mbedtls::ctr_drbg>();

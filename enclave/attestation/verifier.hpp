@@ -13,15 +13,15 @@
 #include "claims.hpp"
 #include "log.h"
 
-class VerifierContext
+class Verifier
 {
     const oe_uuid_t* format_ptr;
     std::shared_ptr<std::vector<uint8_t>> format_settings_ptr = nullptr;
 
   public:
-    VerifierContext(const VerifierContext&) = delete;
+    Verifier(const Verifier&) = delete;
 
-    explicit VerifierContext(const oe_uuid_t* format_id) : format_ptr(format_id)
+    explicit Verifier(const oe_uuid_t* format_id) : format_ptr(format_id)
     {
         oe_verifier_initialize();
     }
@@ -67,7 +67,7 @@ class VerifierContext
         return Claims(claims, claims_length);
     }
 
-    ~VerifierContext()
+    ~Verifier()
     {
         oe_verifier_shutdown();
     }
