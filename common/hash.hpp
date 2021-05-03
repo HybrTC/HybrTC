@@ -17,14 +17,17 @@ class HASH
 
     static_assert(ON <= HASH_BYTES / sizeof(OT), "too many hashes required");
 
+    using M = std::array<uint8_t, sizeof(IT)>;
     using H = std::array<OT, ON>;
 
   public:
     auto operator()(const IT& val) const -> H
     {
+        const auto& msg = *reinterpret_cast<const M*>(&val);
+
         std::array<uint8_t, HASH_BYTES> hash;
-        mbedtls_sha512_ret(
-            reinterpret_cast<const uint8_t*>(&val), sizeof(val), &hash[0], 0);
+        mbedtls_sha512_ret(msg.data(), msg.size(), &hash[0], 0);
+
         return *reinterpret_cast<const H*>(hash.data());
     }
 };
