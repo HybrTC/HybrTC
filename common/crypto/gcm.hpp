@@ -5,6 +5,7 @@
 
 #include "crypto/ctr_drbg.hpp"
 #include "internal/resource.hpp"
+#include "log.h"
 
 namespace mbedtls
 {
@@ -35,7 +36,7 @@ class gcm
     auto encrypt(const std::vector<uint8_t>& input, ctr_drbg& ctr_drbg)
         -> std::vector<uint8_t>
     {
-        std::vector<uint8_t> output(input.size() + sizeof(ciphertext));
+        std::vector<uint8_t> output(input.size() + sizeof(ciphertext), 0);
         ciphertext& enc = *reinterpret_cast<ciphertext*>(&output[0]);
 
         mbedtls_ctr_drbg_random(ctr_drbg.get(), enc.iv, IV_LEN);
@@ -70,11 +71,12 @@ class gcm
             0,
             enc.tag,
             TAG_LEN,
-            input.data(),
+            enc.ciphertext,
             &output[0]);
 
         if (result != 0)
         {
+            TRACE_ENCLAVE("mbedtls_gcm_auth_decrypt -> -0x%x", -result);
             output.resize(0);
         }
 

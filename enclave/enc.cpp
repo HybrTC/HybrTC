@@ -22,8 +22,20 @@ constexpr uint32_t BLOOM_FILTER_BIT_POWER_LENGTH = 24;
 
 BloomFilter<BLOOM_FILTER_BIT_POWER_LENGTH, 4> bloom_filter;
 
-void hexdump(const std::vector<uint8_t>& bytes)
+void hexdump(const char* name, const std::vector<uint8_t>& bytes)
 {
+    printf("=== [%s]\t", name);
+    for (auto b : bytes)
+    {
+        printf("%02x", b);
+    }
+    puts("");
+}
+
+template <size_t N>
+void hexdump(const char* name, const std::array<uint8_t, N>& bytes)
+{
+    printf("=== [%s]\t", name);
     for (auto b : bytes)
     {
         printf("%02x", b);
@@ -124,14 +136,13 @@ auto finish_attestation(const uint8_t* data, size_t size) -> bool
     {
         auto secret = ctx->ecdh_ctx->calc_secret(*ctx->rand_ctx);
         std::array<uint8_t, mbedtls::aes::KEY_LEN_256 / mbedtls::BITS_PER_BYTE>
-            session_key;
+            session_key{0};
 
         mbedtls_sha256_ret(secret.data(), secret.size(), &session_key[0], 0);
         crypto_ctx = std::make_shared<aes_gcm_256>(session_key);
+
         return true;
     }
-
-    TRACE_ENCLAVE("failed");
 
     ctx = nullptr;
     return false;

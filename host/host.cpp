@@ -61,21 +61,17 @@ auto main(int argc, const char* argv[]) -> int
     buffer format_setting_a;
     enclave_a.initialize_attestation(pk_a, format_setting_a);
     hexdump("pk_a", pk_a);
-    hexdump("format_setting_a", format_setting_a);
 
     buffer pk_b;
     buffer format_setting_b;
     enclave_b.initialize_attestation(pk_b, format_setting_b);
     hexdump("pk_b", pk_b);
-    hexdump("format_setting_b", format_setting_b);
 
     buffer evidence_a;
     enclave_a.generate_evidence(pk_b, format_setting_b, evidence_a);
-    hexdump("evidence_a", evidence_a);
 
     buffer evidence_b;
     enclave_b.generate_evidence(pk_a, format_setting_a, evidence_b);
-    hexdump("evidence_b", evidence_b);
 
     bool result_a = enclave_a.finish_attestation(evidence_b);
     bool result_b = enclave_b.finish_attestation(evidence_a);
@@ -87,6 +83,18 @@ auto main(int argc, const char* argv[]) -> int
     else
     {
         puts("[-] attestation failed");
+    }
+
+    buffer ciphertext;
+    enclave_a.generate_message(ciphertext);
+    bool r = enclave_b.process_message(ciphertext);
+    if (r)
+    {
+        puts("[+] process_message succeed");
+    }
+    else
+    {
+        puts("[+] process_message failed");
     }
 
     // constexpr size_t TEST_SIZE = (1 << 8);

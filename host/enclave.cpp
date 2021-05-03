@@ -56,12 +56,14 @@ SPIEnclave::SPIEnclave(const char* enclave_image_path, bool simulate)
 
 void SPIEnclave::initialize_attestation(buffer& pk, buffer& format_setting)
 {
-    ::initialize_attestation(
+    oe_result_t result = ::initialize_attestation(
         enclave(),
         &pk.data,
         &pk.size,
         &format_setting.data,
         &format_setting.size);
+
+    CHECK("initialize_attestation", result);
 }
 
 void SPIEnclave::generate_evidence(
@@ -69,7 +71,7 @@ void SPIEnclave::generate_evidence(
     const buffer& format_setting,
     buffer& evidence)
 {
-    ::generate_evidence(
+    oe_result_t result = ::generate_evidence(
         enclave(),
         pk.data,
         pk.size,
@@ -77,24 +79,31 @@ void SPIEnclave::generate_evidence(
         format_setting.size,
         &evidence.data,
         &evidence.size);
+    CHECK("generate_evidence", result);
 }
 
 auto SPIEnclave::finish_attestation(const buffer& evidence) -> bool
 {
     bool ret;
-    ::finish_attestation(enclave(), &ret, evidence.data, evidence.size);
+    oe_result_t result =
+        ::finish_attestation(enclave(), &ret, evidence.data, evidence.size);
+    CHECK("finish_attestation", result);
     return ret;
 }
 
 void SPIEnclave::generate_message(buffer& ciphertext)
 {
-    ::generate_message(enclave(), &ciphertext.data, &ciphertext.size);
+    oe_result_t result =
+        ::generate_message(enclave(), &ciphertext.data, &ciphertext.size);
+    CHECK("generate_message", result);
 }
 
 auto SPIEnclave::process_message(const buffer& ciphertext) -> bool
 {
     bool ret;
-    ::process_message(enclave(), &ret, ciphertext.data, ciphertext.size);
+    oe_result_t result =
+        ::process_message(enclave(), &ret, ciphertext.data, ciphertext.size);
+    CHECK("process_message", result);
     return ret;
 }
 
