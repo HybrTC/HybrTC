@@ -11,6 +11,7 @@
 #include <openenclave/bits/result.h>
 
 #include "claims.hpp"
+#include "log.h"
 
 class VerifierContext
 {
@@ -57,10 +58,9 @@ class VerifierContext
             &claims,
             &claims_length);
 
-        printf("claims_length=%lu\n", claims_length);
-
         if (result != OE_OK)
         {
+            TRACE_ENCLAVE("oe_verify_evidence -> %s", oe_result_str(result));
             return Claims(nullptr, 0);
         }
 

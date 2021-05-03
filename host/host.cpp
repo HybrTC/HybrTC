@@ -27,10 +27,20 @@ auto random_dataset(size_t size) -> std::pair<std::vector<KT>, std::vector<VT>>
     return dataset;
 }
 
+void hexdump(const char* name, const buffer& buf)
+{
+    printf("=== [%s]\t", name);
+
+    for (size_t i = 0; i < buf.size; i++)
+    {
+        printf("%02x", buf.data[i]);
+    }
+
+    puts("");
+}
+
 auto main(int argc, const char* argv[]) -> int
 {
-    constexpr size_t TEST_SIZE = (1 << 8);
-
     if (argc != 2)
     {
         fprintf(stderr, "Usage: %s enclave_image_path\n", argv[0]);
@@ -47,16 +57,50 @@ auto main(int argc, const char* argv[]) -> int
     SPIEnclave enclave_a(argv[1], simulate);
     SPIEnclave enclave_b(argv[1], simulate);
 
-    auto ds1 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
-    auto ds2 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
+    buffer pk_a;
+    buffer format_setting_a;
+    enclave_a.initialize_attestation(pk_a, format_setting_a);
+    hexdump("pk_a", pk_a);
+    hexdump("format_setting_a", format_setting_a);
 
-    puts("[+] enclave_a.helloworld(ds1.first);");
-    auto filtera = enclave_a.build_bloom_filter(ds1.first);
-    printf("filter_size = 0x%lx\n", filtera.size());
+    buffer pk_b;
+    buffer format_setting_b;
+    enclave_b.initialize_attestation(pk_b, format_setting_b);
+    hexdump("pk_b", pk_b);
+    hexdump("format_setting_b", format_setting_b);
 
-    puts("[+] enclave_b.helloworld(ds2.first);");
-    auto filterb = enclave_b.build_bloom_filter(ds2.first);
-    printf("filter_size = 0x%lx\n", filterb.size());
+    buffer evidence_a;
+    enclave_a.generate_evidence(pk_b, format_setting_b, evidence_a);
+    hexdump("evidence_a", evidence_a);
+
+    buffer evidence_b;
+    enclave_b.generate_evidence(pk_a, format_setting_a, evidence_b);
+    hexdump("evidence_b", evidence_b);
+
+    bool result_a = enclave_a.finish_attestation(evidence_b);
+    bool result_b = enclave_b.finish_attestation(evidence_a);
+
+    if (result_a && result_b)
+    {
+        puts("[+] attestation succeed");
+    }
+    else
+    {
+        puts("[-] attestation failed");
+    }
+
+    // constexpr size_t TEST_SIZE = (1 << 8);
+
+    // auto ds1 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
+    // auto ds2 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
+
+    // puts("[+] enclave_a.helloworld(ds1.first);");
+    // auto filtera = enclave_a.build_bloom_filter(ds1.first);
+    // printf("filter_size = 0x%lx\n", filtera.size());
+
+    // puts("[+] enclave_b.helloworld(ds2.first);");
+    // auto filterb = enclave_b.build_bloom_filter(ds2.first);
+    // printf("filter_size = 0x%lx\n", filterb.size());
 
     return 0;
 }

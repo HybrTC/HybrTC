@@ -8,6 +8,29 @@ enclave {
     include "stdint.h"
 
     trusted {
+
+        public void initialize_attestation( [out] uint8_t** pk,
+                                            [out] size_t* pk_len,
+                                            [out] uint8_t** format_setting,
+                                            [out] size_t* format_setting_len);
+
+        public void generate_evidence(      [in, size=pk_len] const uint8_t* pk,
+                                            size_t pk_len,
+                                            [in, size=format_len] const uint8_t* format,
+                                            size_t format_len,
+                                            [out] uint8_t** evidence,
+                                            [out] size_t* evidence_len);
+
+        public bool finish_attestation(     [in, size=size] const uint8_t* data,
+                                            size_t size);
+
+        public void generate_message(       [out] uint8_t** data,
+                                            [out] size_t*  size);
+
+        public bool process_message(        [in, count=size] const uint8_t* data,
+                                            size_t  size);
+
+
         public size_t build_bloom_filter([user_check] const uint32_t* data, size_t length);
         public void get_bloom_filter([out, size=length] uint8_t* data, size_t length);
     };

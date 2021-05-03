@@ -1,8 +1,26 @@
 #pragma once
 
+#include <cstdint>
 #include <vector>
 
 #include <openenclave/host.h>
+
+struct buffer
+{
+    uint8_t* data = nullptr;
+    size_t size = 0;
+
+    buffer() = default;
+    buffer(const buffer&) = delete;
+
+    ~buffer()
+    {
+        if (data != nullptr)
+        {
+            free(data);
+        }
+    }
+};
 
 class SPIEnclave
 {
@@ -23,6 +41,19 @@ class SPIEnclave
             oe_terminate_enclave(enclave_ptr);
         }
     }
+
+    void initialize_attestation(buffer& pk, buffer& format_setting);
+
+    void generate_evidence(
+        const buffer& pk,
+        const buffer& format_setting,
+        buffer& evidence);
+
+    auto finish_attestation(const buffer& evidence) -> bool;
+
+    void generate_message(buffer& ciphertext);
+
+    auto process_message(const buffer& ciphertext) -> bool;
 
     auto build_bloom_filter(const std::vector<uint32_t>& arr)
         -> std::vector<uint8_t>;
