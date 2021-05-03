@@ -33,27 +33,6 @@ SPIEnclave::SPIEnclave(const char* enclave_image_path, bool simulate)
     CHECK("oe_create_helloworld_enclave", result);
 }
 
-// public void initialize_attestation( [out] uint8_t** pk,
-//                                     [out] size_t* pk_len,
-//                                     [out] uint8_t** format_setting,
-//                                     [out] size_t* format_setting_len);
-
-// public void generate_evidence(      [in, size=pk_len] uint8_t* pk,
-//                                     size_t pk_len,
-//                                     [in, size=format_len] uint8_t* format,
-//                                     size_t format_len,
-//                                     [out] uint8_t** evidence,
-//                                     [out] size_t* evidence_len);
-
-// public bool finish_attestation(     [in, size=size] uint8_t* data,
-//                                     size_t size);
-
-// public void generate_message(       [out] uint8_t** data,
-//                                     [out] size_t*  size);
-
-// public bool process_message(        [in, count=size] uint8_t* data,
-//                                     size_t  size);
-
 void SPIEnclave::initialize_attestation(buffer& pk, buffer& format_setting)
 {
     oe_result_t result = ::initialize_attestation(
