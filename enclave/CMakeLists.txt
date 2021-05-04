@@ -10,7 +10,10 @@ add_custom_command(
     --search-path ${OE_INCLUDEDIR} --search-path
     ${OE_INCLUDEDIR}/openenclave/edl/sgx)
 
-add_executable(enclave enc.cpp ${CMAKE_CURRENT_BINARY_DIR}/helloworld_t.c)
+file(GLOB SOURCE_FILES *.cpp)
+
+add_executable(enclave ${SOURCE_FILES}
+                       ${CMAKE_CURRENT_BINARY_DIR}/helloworld_t.c)
 
 target_compile_definitions(enclave PUBLIC OE_API_VERSION=2)
 

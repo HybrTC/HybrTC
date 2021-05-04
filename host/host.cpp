@@ -4,7 +4,9 @@
 
 #include <openenclave/host.h>
 
+#include "crypto/ctr_drbg.hpp"
 #include "enclave.hpp"
+#include "paillier.hpp"
 #include "prng.hpp"
 
 #ifndef SGX_MODE_SIM
@@ -110,6 +112,11 @@ auto main(int argc, const char* argv[]) -> int
     puts("[+] enclave_b.build_bloom_filter(ds2.first);");
     enclave_b.build_bloom_filter(ds2.first, bloom_filter_b);
     printf("filter_size = 0x%lx\n", bloom_filter_b.size);
+
+    mbedtls::ctr_drbg ctr_drbg;
+
+    PSI::Paillier paillier;
+    paillier.keygen(2048, ctr_drbg);
 
     return 0;
 }

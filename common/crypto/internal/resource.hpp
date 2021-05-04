@@ -23,7 +23,14 @@ class resource
         }
     }
 
+    resource(const resource&) = delete;
+
     auto get() -> T*
+    {
+        return &ctx;
+    }
+
+    auto get() const -> const T*
     {
         return &ctx;
     }
