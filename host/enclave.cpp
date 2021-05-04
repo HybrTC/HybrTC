@@ -100,3 +100,21 @@ void SPIEnclave::build_bloom_filter(
         &bloom_filter.size);
     CHECK("build_bloom_filter", result);
 }
+
+void SPIEnclave::match_bloom_filter(
+    const std::vector<uint32_t>& keys,
+    const std::vector<uint32_t>& values,
+    const buffer& bloom_filter,
+    buffer& output)
+{
+    oe_result_t result = ::match_bloom_filter(
+        enclave(),
+        keys.data(),
+        values.data(),
+        keys.size(),
+        bloom_filter.data,
+        bloom_filter.size,
+        &output.data,
+        &output.size);
+    CHECK("match_bloom_filter", result);
+}

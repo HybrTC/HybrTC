@@ -56,6 +56,12 @@ class SPIEnclave
     auto process_message(const buffer& ciphertext) -> bool;
 
     void build_bloom_filter(
-        const std::vector<uint32_t>& arr,
+        const std::vector<uint32_t>& keys,
         buffer& bloom_filter);
+
+    void match_bloom_filter(
+        const std::vector<uint32_t>& keys,
+        const std::vector<uint32_t>& values,
+        const buffer& bloom_filter,
+        buffer& output);
 };

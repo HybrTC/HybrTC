@@ -99,7 +99,7 @@ auto main(int argc, const char* argv[]) -> int
         puts("[+] process_message failed");
     }
 
-    constexpr size_t TEST_SIZE = (1 << 8);
+    constexpr size_t TEST_SIZE = (1 << 20);
     auto ds1 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
     auto ds2 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
 
@@ -108,10 +108,14 @@ auto main(int argc, const char* argv[]) -> int
     enclave_a.build_bloom_filter(ds1.first, bloom_filter_a);
     printf("filter_size = 0x%lx\n", bloom_filter_a.size);
 
-    buffer bloom_filter_b;
-    puts("[+] enclave_b.build_bloom_filter(ds2.first);");
-    enclave_b.build_bloom_filter(ds2.first, bloom_filter_b);
-    printf("filter_size = 0x%lx\n", bloom_filter_b.size);
+    // buffer bloom_filter_b;
+    // puts("[+] enclave_b.build_bloom_filter(ds2.first);");
+    // enclave_b.build_bloom_filter(ds2.first, bloom_filter_b);
+    // printf("filter_size = 0x%lx\n", bloom_filter_b.size);
+    buffer msg;
+    enclave_b.match_bloom_filter(ds2.first, ds2.second, bloom_filter_a, msg);
+
+    hexdump("encrypted data", msg);
 
     mbedtls::ctr_drbg ctr_drbg;
 

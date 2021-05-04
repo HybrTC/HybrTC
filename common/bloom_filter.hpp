@@ -66,7 +66,7 @@ class BloomFilter
         bitmap.resize(FILTER_BYTES, 0);
     }
 
-    explicit BloomFilter(BITMAP&& bitmap) : bitmap(std::move(bitmap))
+    explicit BloomFilter(const BITMAP& bitmap) : bitmap(bitmap)
     {
         if (bitmap.size() < FILTER_BYTES)
         {

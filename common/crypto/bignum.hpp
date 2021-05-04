@@ -41,6 +41,11 @@ class mpi : public internal::
         mbedtls_mpi_copy(get(), Y.get());
     }
 
+    explicit mpi(const mbedtls_mpi_sint& z)
+    {
+        mbedtls_mpi_lset(get(), z);
+    }
+
     static auto gen_prime(size_t nbits, ctr_drbg& ctr_drbg) -> mpi
     {
         int prime_quality =

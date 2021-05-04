@@ -111,6 +111,12 @@ class Paillier
         prvkey.λ = mpi::lcm(P - 1, Q - 1);
     }
 
+    auto encrypt(const uint32_t& plaintext, ctr_drbg& ctr_drbg) const
+        -> std::vector<uint8_t>
+    {
+        return encrypt(mpi(plaintext), ctr_drbg);
+    }
+
     auto encrypt(const mpi& plaintext, ctr_drbg& ctr_drbg) const
         -> std::vector<uint8_t>
     {

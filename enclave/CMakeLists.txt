@@ -22,4 +22,4 @@ target_include_directories(enclave PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries(
   enclave openenclave::oeenclave openenclave::oecrypto${OE_CRYPTO_LIB}
-  openenclave::oelibc openenclave::oelibcxx)
+  openenclave::oelibc openenclave::oelibcxx nlohmann_json::nlohmann_json)

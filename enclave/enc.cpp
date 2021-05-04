@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <mbedtls/sha256.h>
+#include <nlohmann/json.hpp>
 
 #include "attestation/attester.hpp"
 #include "attestation/verifier.hpp"
@@ -13,6 +14,7 @@
 #include "crypto/ecdh.hpp"
 #include "crypto/gcm.hpp"
 #include "log.h"
+#include "paillier.hpp"
 #include "prp.hpp"
 
 #include "helloworld_t.h"
@@ -185,28 +187,34 @@ void match_bloom_filter(
     const uint32_t* data_key,
     const uint32_t* data_val,
     size_t size,
-    const uint32_t* bloom_filter,
+    const uint8_t* bloom_filter,
     size_t bloom_filter_size,
     uint8_t** output,
     size_t* output_size)
 {
     std::vector<uint8_t> input(bloom_filter, bloom_filter + bloom_filter_size);
     BloomFilter<FILTER_POWER_BITS, 4> input_filter(crypto_ctx->decrypt(input));
+    PRP prp;
 
-    std::vector<uint32_t> hits;
+    PSI::Paillier paillier;
+    // TODO(jiamin): pailiar encryption
+    paillier.keygen(2048, *ctr_drbg);
+
+    nlohmann::json hits = nlohmann::json::array();
 
     for (size_t i = 0; i < size; i++)
     {
-        if (input_filter.lookup(data_key[i]))
+        auto key = prp(data_key[i]);
+        if (input_filter.lookup(key))
         {
-            hits.push_back(data_key[i]);
-            hits.push_back(data_val[i]);
+            hits.push_back(nlohmann::json::array(
+                {key, paillier.encrypt(data_val[i], *ctr_drbg)}));
         }
     }
 
-    // TODO(jiamin): pailiar encryption
+    auto enc = crypto_ctx->encrypt(nlohmann::json::to_msgpack(hits), *ctr_drbg);
 
-    *output_size = hits.size();
-    *output = static_cast<uint8_t*>(oe_host_malloc(hits.size()));
-    memcpy(*output, hits.data(), hits.size());
+    *output_size = enc.size();
+    *output = static_cast<uint8_t*>(oe_host_malloc(enc.size()));
+    memcpy(*output, enc.data(), enc.size());
 }

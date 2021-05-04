@@ -20,6 +20,16 @@ set(OE_CRYPTO_LIB
     mbedtls
     CACHE STRING "Crypto library used by enclaves.")
 
+# json
+
+set(JSON_BuildTests
+    OFF
+    CACHE INTERNAL "")
+set(JSON_Install
+    OFF
+    CACHE INTERNAL "")
+add_subdirectory(3rd-party/json)
+
 # Set compilation flags
 add_compile_options(-O3 -Wall -Wextra)
 
