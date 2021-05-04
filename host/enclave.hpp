@@ -63,5 +63,6 @@ class SPIEnclave
         const std::vector<uint32_t>& keys,
         const std::vector<uint32_t>& values,
         const buffer& bloom_filter,
+        const std::vector<uint8_t>& pubkey,
         buffer& output);
 };

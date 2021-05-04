@@ -105,6 +105,7 @@ void SPIEnclave::match_bloom_filter(
     const std::vector<uint32_t>& keys,
     const std::vector<uint32_t>& values,
     const buffer& bloom_filter,
+    const std::vector<uint8_t>& pubkey,
     buffer& output)
 {
     oe_result_t result = ::match_bloom_filter(
@@ -114,6 +115,8 @@ void SPIEnclave::match_bloom_filter(
         keys.size(),
         bloom_filter.data,
         bloom_filter.size,
+        pubkey.data(),
+        pubkey.size(),
         &output.data,
         &output.size);
     CHECK("match_bloom_filter", result);

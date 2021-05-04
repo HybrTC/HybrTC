@@ -103,6 +103,12 @@ auto main(int argc, const char* argv[]) -> int
     auto ds1 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
     auto ds2 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
 
+    mbedtls::ctr_drbg ctr_drbg;
+
+    PSI::Paillier homo_crypto;
+    homo_crypto.keygen(2048, ctr_drbg);
+    auto pubkey = homo_crypto.dump_pubkey();
+
     buffer bloom_filter_a;
     puts("[+] enclave_a.build_bloom_filter(ds1.first);");
     enclave_a.build_bloom_filter(ds1.first, bloom_filter_a);
@@ -113,14 +119,10 @@ auto main(int argc, const char* argv[]) -> int
     // enclave_b.build_bloom_filter(ds2.first, bloom_filter_b);
     // printf("filter_size = 0x%lx\n", bloom_filter_b.size);
     buffer msg;
-    enclave_b.match_bloom_filter(ds2.first, ds2.second, bloom_filter_a, msg);
+    enclave_b.match_bloom_filter(
+        ds2.first, ds2.second, bloom_filter_a, pubkey, msg);
 
     hexdump("encrypted data", msg);
-
-    mbedtls::ctr_drbg ctr_drbg;
-
-    PSI::Paillier paillier;
-    paillier.keygen(2048, ctr_drbg);
 
     return 0;
 }

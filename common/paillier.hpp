@@ -1,9 +1,12 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <vector>
 
 #include "crypto/bignum.hpp"
 #include "crypto/ctr_drbg.hpp"
+#include "log.h"
 
 namespace PSI
 {
@@ -54,9 +57,14 @@ class Paillier
             return buffer;
         }
 
-        void load(const std::vector<uint8_t>& buffer)
+        void load(const uint8_t* pk, size_t pk_size)
         {
-            const _dump& dump = *reinterpret_cast<const _dump*>(buffer.data());
+            const _dump& dump = *reinterpret_cast<const _dump*>(pk);
+            if (pk_size != sizeof(_dump) + dump.n_sz + dump.g_sz)
+            {
+                TRACE_ENCLAVE("load key failed");
+                abort();
+            }
             n.read_binary(dump.data, dump.n_sz);
             g.read_binary(dump.data + dump.n_sz, dump.g_sz);
         }
@@ -109,6 +117,16 @@ class Paillier
         pubkey.complete();
 
         prvkey.λ = mpi::lcm(P - 1, Q - 1);
+    }
+
+    [[nodiscard]] auto dump_pubkey() const -> std::vector<uint8_t>
+    {
+        return pubkey.dump();
+    }
+
+    void load_pubkey(const uint8_t* pk, size_t pk_size)
+    {
+        return pubkey.load(pk, pk_size);
     }
 
     auto encrypt(const uint32_t& plaintext, ctr_drbg& ctr_drbg) const

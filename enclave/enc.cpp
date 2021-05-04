@@ -189,6 +189,8 @@ void match_bloom_filter(
     size_t size,
     const uint8_t* bloom_filter,
     size_t bloom_filter_size,
+    const uint8_t* pubkey,
+    size_t pubkey_size,
     uint8_t** output,
     size_t* output_size)
 {
@@ -197,8 +199,7 @@ void match_bloom_filter(
     PRP prp;
 
     PSI::Paillier paillier;
-    // TODO(jiamin): pailiar encryption
-    paillier.keygen(2048, *ctr_drbg);
+    paillier.load_pubkey(pubkey, pubkey_size);
 
     nlohmann::json hits = nlohmann::json::array();
 
