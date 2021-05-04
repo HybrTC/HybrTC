@@ -1,8 +1,7 @@
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
 #include <vector>
+
 #include "crypto/bignum.hpp"
 #include "crypto/ctr_drbg.hpp"
 
