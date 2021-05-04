@@ -57,6 +57,31 @@ class gcm
         return output;
     }
 
+    template <size_t N>
+    auto encrypt(const std::array<uint8_t, N>& input, ctr_drbg& ctr_drbg)
+        -> std::vector<uint8_t>
+    {
+        std::vector<uint8_t> output(input.size() + sizeof(ciphertext), 0);
+        ciphertext& enc = *reinterpret_cast<ciphertext*>(&output[0]);
+
+        mbedtls_ctr_drbg_random(ctr_drbg.get(), enc.iv, IV_LEN);
+
+        mbedtls_gcm_crypt_and_tag(
+            get(),
+            MBEDTLS_GCM_ENCRYPT,
+            input.size(),
+            enc.iv,
+            IV_LEN,
+            nullptr,
+            0,
+            input.data(),
+            enc.ciphertext,
+            TAG_LEN,
+            enc.tag);
+
+        return output;
+    }
+
     auto decrypt(const std::vector<uint8_t>& input) -> std::vector<uint8_t>
     {
         const ciphertext& enc = *reinterpret_cast<const ciphertext*>(&input[0]);

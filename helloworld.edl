@@ -27,9 +27,10 @@ enclave {
         public bool process_message(        [in, count=size] const uint8_t* data,
                                             size_t  size);
 
-
-        public size_t build_bloom_filter([user_check] const uint32_t* data, size_t length);
-        public void get_bloom_filter([out, size=length] uint8_t* data, size_t length);
+        public void build_bloom_filter(     [user_check] const uint32_t* data,
+                                            size_t length,
+                                            [out] uint8_t** bloom_filter,
+                                            [out] size_t*  bloom_filter_size);
     };
 
     untrusted {

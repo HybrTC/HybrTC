@@ -16,14 +16,12 @@ template <uint8_t EE, uint8_t HN, class IT = uint128_t>
 class BloomFilter
 {
     // bitmap for the filter
-    using BT = uint64_t;
-    constexpr static uint32_t BL = sizeof(BT) * 8;
-    using BITMAP = std::array<BT, ((1UL << EE) + BL - 1) / BL>;
+    using BITMAP = std::array<uint8_t, ((1UL << EE) + 7) / 8>;
     BITMAP bitmap = {0};
 
     // hash function
     using HT = uint32_t;
-    HASH<HN, HT> hash;
+    HASH<HN, HT, IT> hash;
 
     void bound_check(const HT& index) const
     {
@@ -37,8 +35,8 @@ class BloomFilter
     void set_bit(const HT& index)
     {
         bound_check(index);
-        uint32_t block_index = index / BL;
-        uint32_t bit_index = index % BL;
+        uint32_t block_index = index / 8;
+        uint32_t bit_index = index % 8;
 
         bitmap[block_index] |= BITMASK[bit_index];
     }
@@ -46,8 +44,8 @@ class BloomFilter
     void clear_bit(const HT& index)
     {
         bound_check(index);
-        uint32_t block_index = index / BL;
-        uint32_t bit_index = index % BL;
+        uint32_t block_index = index / 8;
+        uint32_t bit_index = index % 8;
 
         return bitmap[block_index] &= ~BITMASK[bit_index];
     }
@@ -55,8 +53,8 @@ class BloomFilter
     [[nodiscard]] auto test_bit(const HT& index) const -> bool
     {
         bound_check(index);
-        uint32_t block_index = index / BL;
-        uint32_t bit_index = index % BL;
+        uint32_t block_index = index / 8;
+        uint32_t bit_index = index % 8;
 
         return bitmap[block_index] & BITMASK[bit_index];
     }
@@ -87,12 +85,7 @@ class BloomFilter
         return true;
     }
 
-    [[nodiscard]] auto size() const -> size_t
-    {
-        return bitmap.size() * sizeof(BT);
-    }
-
-    auto serialize() const -> const BITMAP&
+    auto data() const -> const BITMAP&
     {
         return bitmap;
     }

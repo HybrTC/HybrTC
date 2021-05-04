@@ -4,7 +4,6 @@
 #include <memory>
 #include <vector>
 
-#include <mbedtls/ctr_drbg.h>
 #include <mbedtls/sha256.h>
 
 #include "attestation/attester.hpp"
@@ -17,10 +16,6 @@
 #include "prp.hpp"
 
 #include "helloworld_t.h"
-
-constexpr uint32_t BLOOM_FILTER_BIT_POWER_LENGTH = 24;
-
-BloomFilter<BLOOM_FILTER_BIT_POWER_LENGTH, 4> bloom_filter;
 
 void hexdump(const char* name, const std::vector<uint8_t>& bytes)
 {
@@ -152,7 +147,6 @@ void generate_message(uint8_t** data, size_t* size)
 
     *size = output.size();
     *data = static_cast<uint8_t*>(oe_host_malloc(output.size()));
-
     memcpy(*data, output.data(), output.size());
 }
 
@@ -163,27 +157,24 @@ auto process_message(const uint8_t* data, size_t size) -> bool
     return !output.empty();
 }
 
-auto build_bloom_filter(const uint32_t* data, size_t length) -> size_t
+void build_bloom_filter(
+    const uint32_t* data,
+    size_t length,
+    uint8_t** bloom_filter,
+    size_t* bloom_filter_size)
 {
+    constexpr uint32_t BLOOM_FILTER_BIT_POWER_LENGTH = 24;
+    BloomFilter<BLOOM_FILTER_BIT_POWER_LENGTH, 4> filter;
     PRP prp;
 
     for (size_t i = 0; i < length; i++)
     {
-        bloom_filter.insert(prp(data[i]));
+        filter.insert(prp(data[i]));
     }
 
-    return bloom_filter.size();
-}
+    const auto output = crypto_ctx->encrypt(filter.data(), *ctr_drbg);
 
-void get_bloom_filter(uint8_t* data, size_t length)
-{
-    if (bloom_filter.size() > length)
-    {
-        abort();
-    }
-
-    const auto* src =
-        reinterpret_cast<const uint8_t*>(bloom_filter.serialize().data());
-
-    memcpy(data, src, bloom_filter.size());
+    *bloom_filter_size = output.size();
+    *bloom_filter = static_cast<uint8_t*>(oe_host_malloc(output.size()));
+    memcpy(*bloom_filter, output.data(), output.size());
 }

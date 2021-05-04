@@ -97,18 +97,19 @@ auto main(int argc, const char* argv[]) -> int
         puts("[+] process_message failed");
     }
 
-    // constexpr size_t TEST_SIZE = (1 << 8);
+    constexpr size_t TEST_SIZE = (1 << 8);
+    auto ds1 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
+    auto ds2 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
 
-    // auto ds1 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
-    // auto ds2 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
+    buffer bloom_filter_a;
+    puts("[+] enclave_a.build_bloom_filter(ds1.first);");
+    enclave_a.build_bloom_filter(ds1.first, bloom_filter_a);
+    printf("filter_size = 0x%lx\n", bloom_filter_a.size);
 
-    // puts("[+] enclave_a.helloworld(ds1.first);");
-    // auto filtera = enclave_a.build_bloom_filter(ds1.first);
-    // printf("filter_size = 0x%lx\n", filtera.size());
-
-    // puts("[+] enclave_b.helloworld(ds2.first);");
-    // auto filterb = enclave_b.build_bloom_filter(ds2.first);
-    // printf("filter_size = 0x%lx\n", filterb.size());
+    buffer bloom_filter_b;
+    puts("[+] enclave_b.build_bloom_filter(ds2.first);");
+    enclave_b.build_bloom_filter(ds2.first, bloom_filter_b);
+    printf("filter_size = 0x%lx\n", bloom_filter_b.size);
 
     return 0;
 }

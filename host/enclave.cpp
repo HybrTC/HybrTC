@@ -86,23 +86,17 @@ auto SPIEnclave::process_message(const buffer& ciphertext) -> bool
     return ret;
 }
 
-auto SPIEnclave::build_bloom_filter(const std::vector<uint32_t>& arr)
-    -> std::vector<uint8_t>
+void SPIEnclave::build_bloom_filter(
+    const std::vector<uint32_t>& keys,
+    buffer& bloom_filter)
 {
-    oe_result_t result;
-
     // build
 
-    size_t filter_size = 0;
-    result =
-        ::build_bloom_filter(enclave(), &filter_size, arr.data(), arr.size());
+    oe_result_t result = ::build_bloom_filter(
+        enclave(),
+        keys.data(),
+        keys.size(),
+        &bloom_filter.data,
+        &bloom_filter.size);
     CHECK("build_bloom_filter", result);
-
-    // get
-
-    std::vector<uint8_t> filter(filter_size, 0);
-    result = ::get_bloom_filter(enclave(), &filter[0], filter.size());
-    CHECK("get_bloom_filter", result);
-
-    return filter;
 }
