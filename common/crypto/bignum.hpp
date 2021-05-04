@@ -1,7 +1,8 @@
 #pragma once
 
-#include <cstddef>
-#include <utility>
+#include <string>
+#include <vector>
+
 #include "ctr_drbg.hpp"
 #include "internal/resource.hpp"
 
@@ -15,25 +16,32 @@ class mpi : public internal::
     static auto eval(
         int (*op)(mbedtls_mpi* X, const mbedtls_mpi* A, const mbedtls_mpi* B),
         const mpi& A,
-        const mpi& B) -> mpi&&
+        const mpi& B) -> mpi
     {
         mpi X;
         op(X.get(), A.get(), B.get());
-        return std::move(X);
+        return X;
     }
 
     static auto eval(
         int (*op)(mbedtls_mpi* X, const mbedtls_mpi* A, mbedtls_mpi_sint b),
         const mpi& A,
-        const mbedtls_mpi_sint& B) -> mpi&&
+        const mbedtls_mpi_sint& B) -> mpi
     {
         mpi X;
         op(X.get(), A.get(), B);
-        return std::move(X);
+        return X;
     }
 
   public:
-    static auto gen_prime(size_t nbits, ctr_drbg& ctr_drbg) -> mpi&&
+    mpi() = default;
+
+    mpi(const mpi& Y)
+    {
+        mbedtls_mpi_copy(get(), Y.get());
+    }
+
+    static auto gen_prime(size_t nbits, ctr_drbg& ctr_drbg) -> mpi
     {
         int prime_quality =
             nbits > 1024 ? MBEDTLS_MPI_GEN_PRIME_FLAG_LOW_ERR : 0;
@@ -46,16 +54,16 @@ class mpi : public internal::
             mbedtls_ctr_drbg_random,
             ctr_drbg.get());
 
-        return std::move(X);
+        return X;
     }
 
-    static auto gen_rand(size_t nbytes, ctr_drbg& ctr_drbg) -> mpi&&
+    static auto gen_rand(size_t nbytes, ctr_drbg& ctr_drbg) -> mpi
     {
         mpi X;
         mbedtls_mpi_fill_random(
             X.get(), nbytes, mbedtls_ctr_drbg_random, ctr_drbg.get());
 
-        return std::move(X);
+        return X;
     }
 
     [[nodiscard]] auto s() const -> int
@@ -88,6 +96,18 @@ class mpi : public internal::
         return mbedtls_mpi_write_binary(get(), buf, buflen);
     }
 
+    [[nodiscard]] auto write_string(int radix) const -> std::string
+    {
+        size_t olen = 0;
+        mbedtls_mpi_write_string(get(), radix, nullptr, 0, &olen);
+
+        std::vector<char> buf(olen, 0);
+        mbedtls_mpi_write_string(get(), radix, &buf[0], buf.size(), &olen);
+
+        buf.resize(olen);
+        return std::string(buf.begin(), buf.end());
+    }
+
     auto operator=(const mbedtls_mpi_sint& z) -> mpi&
     {
         mbedtls_mpi_lset(get(), z);
@@ -103,43 +123,43 @@ class mpi : public internal::
         return *this;
     }
 
-    auto operator+(const mpi& B) const -> mpi&&
+    auto operator+(const mpi& B) const -> mpi
     {
         return eval(mbedtls_mpi_add_mpi, *this, B);
     }
 
-    auto operator+(const mbedtls_mpi_sint& B) const -> mpi&&
+    auto operator+(const mbedtls_mpi_sint& B) const -> mpi
     {
         return eval(mbedtls_mpi_add_int, *this, B);
     }
 
-    auto operator-(const mpi& B) const -> mpi&&
+    auto operator-(const mpi& B) const -> mpi
     {
         return eval(mbedtls_mpi_sub_mpi, *this, B);
     }
 
-    auto operator-(const mbedtls_mpi_sint& B) const -> mpi&&
+    auto operator-(const mbedtls_mpi_sint& B) const -> mpi
     {
         return eval(mbedtls_mpi_sub_int, *this, B);
     }
 
-    auto operator*(const mpi& B) const -> mpi&&
+    auto operator*(const mpi& B) const -> mpi
     {
         return eval(mbedtls_mpi_mul_mpi, *this, B);
     }
 
-    auto operator/(const mpi& B) const -> mpi&&
+    auto operator/(const mpi& B) const -> mpi
     {
         mpi Q;
         mbedtls_mpi_div_mpi(Q.get(), nullptr, get(), B.get());
-        return std::move(Q);
+        return Q;
     }
 
-    auto operator%(const mpi& B) const -> mpi&&
+    auto operator%(const mpi& B) const -> mpi
     {
         mpi R;
         mbedtls_mpi_div_mpi(nullptr, R.get(), get(), B.get());
-        return std::move(R);
+        return R;
     }
 
     auto operator>(const mbedtls_mpi_sint& B) const -> bool
@@ -157,24 +177,24 @@ class mpi : public internal::
         return mbedtls_mpi_cmp_int(get(), B) == -1;
     }
 
-    [[nodiscard]] auto exp_mod(const mpi& E, const mpi& N) const -> mpi&&
+    [[nodiscard]] auto exp_mod(const mpi& E, const mpi& N) const -> mpi
     {
         mpi X;
         mbedtls_mpi_exp_mod(X.get(), get(), E.get(), N.get(), nullptr);
-        return std::move(X);
+        return X;
     }
 
-    [[nodiscard]] auto invmod(const mpi& N) const -> mpi&&
+    [[nodiscard]] auto invmod(const mpi& N) const -> mpi
     {
         return eval(mbedtls_mpi_inv_mod, *this, N);
     }
 
-    static auto gcd(const mpi& A, const mpi& B) -> mpi&&
+    static auto gcd(const mpi& A, const mpi& B) -> mpi
     {
         return eval(mbedtls_mpi_gcd, A, B);
     }
 
-    static auto lcm(const mpi& A, const mpi& B) -> mpi&&
+    static auto lcm(const mpi& A, const mpi& B) -> mpi
     {
         return A * B / gcd(A, B);
     }
