@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <vector>
 
 #include "crypto/ctr_drbg.hpp"
@@ -36,32 +35,22 @@ class gcm
     auto encrypt(const std::vector<uint8_t>& input, ctr_drbg& ctr_drbg)
         -> std::vector<uint8_t>
     {
-        std::vector<uint8_t> output(input.size() + sizeof(ciphertext), 0);
-        ciphertext& enc = *reinterpret_cast<ciphertext*>(&output[0]);
-
-        mbedtls_ctr_drbg_random(ctr_drbg.get(), enc.iv, IV_LEN);
-
-        mbedtls_gcm_crypt_and_tag(
-            get(),
-            MBEDTLS_GCM_ENCRYPT,
-            input.size(),
-            enc.iv,
-            IV_LEN,
-            nullptr,
-            0,
-            input.data(),
-            enc.ciphertext,
-            TAG_LEN,
-            enc.tag);
-
-        return output;
+        return encrypt(input.data(), input.size(), ctr_drbg);
     }
 
-    template <size_t N>
-    auto encrypt(const std::array<uint8_t, N>& input, ctr_drbg& ctr_drbg)
+    auto encrypt(const std::vector<uint32_t>& input, ctr_drbg& ctr_drbg)
         -> std::vector<uint8_t>
     {
-        std::vector<uint8_t> output(input.size() + sizeof(ciphertext), 0);
+        return encrypt(
+            reinterpret_cast<const uint8_t*>(input.data()),
+            input.size() * sizeof(uint32_t),
+            ctr_drbg);
+    }
+
+    auto encrypt(const uint8_t* input, size_t input_size, ctr_drbg& ctr_drbg)
+        -> std::vector<uint8_t>
+    {
+        std::vector<uint8_t> output(input_size + sizeof(ciphertext), 0);
         ciphertext& enc = *reinterpret_cast<ciphertext*>(&output[0]);
 
         mbedtls_ctr_drbg_random(ctr_drbg.get(), enc.iv, IV_LEN);
@@ -69,12 +58,12 @@ class gcm
         mbedtls_gcm_crypt_and_tag(
             get(),
             MBEDTLS_GCM_ENCRYPT,
-            input.size(),
+            input_size,
             enc.iv,
             IV_LEN,
             nullptr,
             0,
-            input.data(),
+            input,
             enc.ciphertext,
             TAG_LEN,
             enc.tag);

@@ -2,7 +2,7 @@
 
 #include <array>
 
-constexpr static std::array<uint64_t, 8> BITMASK = {
+constexpr static std::array<uint8_t, 8> BITMASK = {
     1UL << 0,
     1UL << 1,
     1UL << 2,

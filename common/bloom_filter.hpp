@@ -1,6 +1,6 @@
 #pragma once
 
-#include <array>
+#include <vector>
 
 #include "common/bit_mask.hpp"
 #include "hash.hpp"
@@ -16,8 +16,9 @@ template <uint8_t EE, uint8_t HN, class IT = uint128_t>
 class BloomFilter
 {
     // bitmap for the filter
-    using BITMAP = std::array<uint8_t, ((1UL << EE) + 7) / 8>;
-    BITMAP bitmap = {0};
+    constexpr static size_t FILTER_BYTES = ((1UL << EE) + 7) / 8;
+    using BITMAP = std::vector<uint8_t>;
+    BITMAP bitmap;
 
     // hash function
     using HT = uint32_t;
@@ -47,7 +48,7 @@ class BloomFilter
         uint32_t block_index = index / 8;
         uint32_t bit_index = index % 8;
 
-        return bitmap[block_index] &= ~BITMASK[bit_index];
+        bitmap[block_index] &= ~BITMASK[bit_index];
     }
 
     [[nodiscard]] auto test_bit(const HT& index) const -> bool
@@ -56,10 +57,23 @@ class BloomFilter
         uint32_t block_index = index / 8;
         uint32_t bit_index = index % 8;
 
-        return bitmap[block_index] & BITMASK[bit_index];
+        return bool(bitmap[block_index] & BITMASK[bit_index]);
     }
 
   public:
+    BloomFilter()
+    {
+        bitmap.resize(FILTER_BYTES, 0);
+    }
+
+    explicit BloomFilter(BITMAP&& bitmap) : bitmap(std::move(bitmap))
+    {
+        if (bitmap.size() < FILTER_BYTES)
+        {
+            abort();
+        }
+    }
+
     void insert(IT key)
     {
         const std::array<HT, HN> hashes = hash(key);
@@ -85,7 +99,7 @@ class BloomFilter
         return true;
     }
 
-    auto data() const -> const BITMAP&
+    [[nodiscard]] auto data() const -> const BITMAP&
     {
         return bitmap;
     }

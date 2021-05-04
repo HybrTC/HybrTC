@@ -29,8 +29,17 @@ enclave {
 
         public void build_bloom_filter(     [user_check] const uint32_t* data,
                                             size_t length,
-                                            [out] uint8_t** bloom_filter,
-                                            [out] size_t*  bloom_filter_size);
+                                            [out] uint8_t** output,
+                                            [out] size_t*  output_size);
+
+
+        public void match_bloom_filter(     [user_check] const uint32_t* data_key,
+                                            [user_check] const uint32_t* data_val,
+                                            size_t size,
+                                            [user_check] const uint32_t* bloom_filter,
+                                            size_t bloom_filter_size,
+                                            [out] uint8_t** output,
+                                            [out] size_t*  output_size);
     };
 
     untrusted {

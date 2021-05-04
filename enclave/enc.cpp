@@ -17,6 +17,8 @@
 
 #include "helloworld_t.h"
 
+constexpr uint32_t FILTER_POWER_BITS = 24;
+
 void hexdump(const char* name, const std::vector<uint8_t>& bytes)
 {
     printf("=== [%s]\t", name);
@@ -143,7 +145,8 @@ auto finish_attestation(const uint8_t* data, size_t size) -> bool
 
 void generate_message(uint8_t** data, size_t* size)
 {
-    auto output = crypto_ctx->encrypt({1, 2, 3, 4, 5, 6, 7, 8}, *ctr_drbg);
+    std::vector<uint8_t> dummy = {1, 2, 3, 4, 5, 6, 7, 8};
+    auto output = crypto_ctx->encrypt(dummy, *ctr_drbg);
 
     *size = output.size();
     *data = static_cast<uint8_t*>(oe_host_malloc(output.size()));
@@ -160,21 +163,50 @@ auto process_message(const uint8_t* data, size_t size) -> bool
 void build_bloom_filter(
     const uint32_t* data,
     size_t length,
-    uint8_t** bloom_filter,
-    size_t* bloom_filter_size)
+    uint8_t** output,
+    size_t* output_size)
 {
-    constexpr uint32_t BLOOM_FILTER_BIT_POWER_LENGTH = 24;
-    BloomFilter<BLOOM_FILTER_BIT_POWER_LENGTH, 4> filter;
+    BloomFilter<FILTER_POWER_BITS, 4> bloom_filter;
     PRP prp;
 
     for (size_t i = 0; i < length; i++)
     {
-        filter.insert(prp(data[i]));
+        bloom_filter.insert(prp(data[i]));
     }
 
-    const auto output = crypto_ctx->encrypt(filter.data(), *ctr_drbg);
+    const auto enc = crypto_ctx->encrypt(bloom_filter.data(), *ctr_drbg);
 
-    *bloom_filter_size = output.size();
-    *bloom_filter = static_cast<uint8_t*>(oe_host_malloc(output.size()));
-    memcpy(*bloom_filter, output.data(), output.size());
+    *output_size = enc.size();
+    *output = static_cast<uint8_t*>(oe_host_malloc(enc.size()));
+    memcpy(*output, enc.data(), enc.size());
+}
+
+void match_bloom_filter(
+    const uint32_t* data_key,
+    const uint32_t* data_val,
+    size_t size,
+    const uint32_t* bloom_filter,
+    size_t bloom_filter_size,
+    uint8_t** output,
+    size_t* output_size)
+{
+    std::vector<uint8_t> input(bloom_filter, bloom_filter + bloom_filter_size);
+    BloomFilter<FILTER_POWER_BITS, 4> input_filter(crypto_ctx->decrypt(input));
+
+    std::vector<uint32_t> hits;
+
+    for (size_t i = 0; i < size; i++)
+    {
+        if (input_filter.lookup(data_key[i]))
+        {
+            hits.push_back(data_key[i]);
+            hits.push_back(data_val[i]);
+        }
+    }
+
+    // TODO(jiamin): pailiar encryption
+
+    *output_size = hits.size();
+    *output = static_cast<uint8_t*>(oe_host_malloc(hits.size()));
+    memcpy(*output, hits.data(), hits.size());
 }
