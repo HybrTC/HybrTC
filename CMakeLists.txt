@@ -34,6 +34,9 @@ add_subdirectory(3rd-party/json)
 set(ZMQ_BUILD_TESTS
     OFF
     CACHE BOOL "")
+set(BUILD_SHARED
+    OFF
+    CACHE BOOL "")
 set(ENABLE_DRAFTS
     OFF
     CACHE BOOL "")
@@ -56,13 +59,13 @@ add_subdirectory(client)
 
 add_custom_target(
   runs0
-  DEPENDS helloworld_host sign
-  COMMAND helloworld_host 0 ${CMAKE_BINARY_DIR}/server/enclave/enclave.signed)
+  DEPENDS server sign
+  COMMAND server 0 ${CMAKE_BINARY_DIR}/server/enclave/enclave.signed)
 
 add_custom_target(
   runs1
-  DEPENDS helloworld_host sign
-  COMMAND helloworld_host 1 ${CMAKE_BINARY_DIR}/server/enclave/enclave.signed)
+  DEPENDS server sign
+  COMMAND server 1 ${CMAKE_BINARY_DIR}/server/enclave/enclave.signed)
 
 add_custom_target(
   runc

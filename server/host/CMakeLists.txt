@@ -10,11 +10,11 @@ add_custom_command(
 
 file(GLOB SOURCE_FILES *.cpp)
 
-add_executable(helloworld_host ${SOURCE_FILES}
+add_executable(server ${SOURCE_FILES}
                                ${CMAKE_CURRENT_BINARY_DIR}/helloworld_u.c)
 
 # Needed for the generated file helloworld_u.h
-target_include_directories(helloworld_host PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(server PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
-target_link_libraries(helloworld_host openenclave::oehost ${LIBMBEDCRYPTO}
-                      spdlog::spdlog nlohmann_json::nlohmann_json cppzmq)
+target_link_libraries(server openenclave::oehost ${LIBMBEDCRYPTO}
+                      spdlog::spdlog nlohmann_json::nlohmann_json cppzmq-static)
