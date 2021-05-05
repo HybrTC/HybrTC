@@ -116,7 +116,7 @@ class mpi : public internal::
             abort();
         }
         std::array<uint8_t, sizeof(U)> ret;
-        mbedtls_mpi_write_binary_le(get(), &ret[0], 0);
+        mbedtls_mpi_write_binary_le(get(), &ret[0], ret.size());
         return *reinterpret_cast<const U*>(ret.data());
     }
 
