@@ -2,13 +2,14 @@
 #include <cstdlib>
 #include <iostream>
 #include <map>
+#include <string>
 #include <vector>
 
 #include <openenclave/host.h>
 #include <nlohmann/json.hpp>
+#include <zmq.hpp>
 
 #include "common/uint128.hpp"
-#include "crypto/ctr_drbg.hpp"
 #include "enclave.hpp"
 #include "paillier.hpp"
 #include "prng.hpp"
@@ -42,16 +43,11 @@ void hexdump(const char* name, const buffer& buf)
     puts("");
 }
 
-auto main(int argc, const char* argv[]) -> int
+auto psi(const char* image_path, const std::vector<uint8_t>& pubkey)
+    -> std::vector<uint8_t>
 {
-    if (argc != 2)
-    {
-        fprintf(stderr, "Usage: %s enclave_image_path\n", argv[0]);
-        return EXIT_FAILURE;
-    }
-
-    SPIEnclave enclave_a(argv[1], false);
-    SPIEnclave enclave_b(argv[1], false);
+    SPIEnclave enclave_a(image_path, false);
+    SPIEnclave enclave_b(image_path, false);
 
     buffer pk_a;
     buffer format_setting_a;
@@ -86,21 +82,11 @@ auto main(int argc, const char* argv[]) -> int
     auto ds1 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
     auto ds2 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
 
-    mbedtls::ctr_drbg ctr_drbg;
-
-    PSI::Paillier homo_crypto;
-    homo_crypto.keygen(512, ctr_drbg);
-    auto pubkey = homo_crypto.dump_pubkey();
-
     buffer bloom_filter_a;
     puts("[+] enclave_a.build_bloom_filter(ds1.first);");
     enclave_a.build_bloom_filter(ds1.first, bloom_filter_a);
     printf("filter_size = 0x%lx\n", bloom_filter_a.size);
 
-    // buffer bloom_filter_b;
-    // puts("[+] enclave_b.build_bloom_filter(ds2.first);");
-    // enclave_b.build_bloom_filter(ds2.first, bloom_filter_b);
-    // printf("filter_size = 0x%lx\n", bloom_filter_b.size);
     buffer msg;
     enclave_b.match_bloom_filter(
         ds2.first, ds2.second, bloom_filter_a, pubkey, msg);
@@ -108,26 +94,34 @@ auto main(int argc, const char* argv[]) -> int
     buffer result1;
     enclave_a.aggregate(ds1.first, ds1.second, msg, pubkey, result1);
 
-    auto r1 =
-        nlohmann::json::from_msgpack(result1.data, result1.data + result1.size);
+    return std::vector<uint8_t>(result1.data, result1.data + result1.size);
+}
 
-    for (auto pair : r1)
+auto main(int argc, const char* argv[]) -> int
+{
+    if (argc != 2)
     {
-        std::array<uint8_t, sizeof(uint128_t)> key_bin = pair[0];
-        std::vector<uint8_t> val_bin = pair[1];
-
-        const uint128_t& key =
-            *reinterpret_cast<const uint128_t*>(key_bin.data());
-
-        auto dec =
-            homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size()));
-
-        printf(
-            "[>] %016lx%016lx : %s\n",
-            uint64_t(key >> 64),
-            uint64_t(key),
-            dec.write_string(10).c_str());
+        fprintf(stderr, "Usage: %s enclave_image_path\n", argv[0]);
+        return EXIT_FAILURE;
     }
+
+    // initialize the zmq context with a single IO thread
+    zmq::context_t context{1};
+
+    // construct a REP (reply) socket and bind to interface
+    zmq::socket_t socket{context, zmq::socket_type::rep};
+    socket.bind("tcp://*:5555");
+
+    // receive a request from client
+    zmq::message_t request;
+    (void)socket.recv(request, zmq::recv_flags::none);
+
+    const auto* pubkey = reinterpret_cast<const uint8_t*>(request.data());
+    auto ret =
+        psi(argv[1], std::vector<uint8_t>(pubkey, pubkey + request.size()));
+
+    // send the reply to the client
+    socket.send(zmq::buffer(ret), zmq::send_flags::none);
 
     return 0;
 }
