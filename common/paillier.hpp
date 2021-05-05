@@ -24,13 +24,22 @@ class Paillier
 
         auto complete() -> bool
         {
-            if (bits == 0 || !n.get_bit(bits))
+            if (bits == 0 || !n.get_bit(bits - 1))
             {
+                TRACE_ENCLAVE(
+                    "bits = %u ; n.get_bit(bits) = %d",
+                    bits,
+                    n.get_bit(bits - 1));
                 return false;
             }
 
-            g = n + 1;
+            if (g.bitlen() == 0)
+            {
+                g = n + 1;
+            }
+
             n_sq = n * n;
+
             return true;
         }
 
@@ -65,8 +74,11 @@ class Paillier
                 TRACE_ENCLAVE("load key failed");
                 abort();
             }
+
+            bits = dump.nbits;
             n.read_binary(dump.data, dump.n_sz);
             g.read_binary(dump.data + dump.n_sz, dump.g_sz);
+            complete();
         }
     };
 
@@ -138,21 +150,27 @@ class Paillier
     auto encrypt(const mpi& plaintext, ctr_drbg& ctr_drbg) const
         -> std::vector<uint8_t>
     {
-        mpi&& r = mpi::gen_rand(pubkey.bits >> 3, ctr_drbg);
+        if (pubkey.bits == 0)
+        {
+            TRACE_ENCLAVE("pubkey.bits = %u", pubkey.bits);
+            abort();
+        }
 
-        mpi&& c = (pubkey.g.exp_mod(plaintext, pubkey.n_sq) *
-                   r.exp_mod(pubkey.n, pubkey.n_sq)) %
-                  pubkey.n_sq;
+        mpi r = mpi::gen_rand(pubkey.bits >> 3, ctr_drbg);
+
+        mpi c = (pubkey.g.exp_mod(plaintext, pubkey.n_sq) *
+                 r.exp_mod(pubkey.n, pubkey.n_sq)) %
+                pubkey.n_sq;
 
         std::vector<uint8_t> ret(c.size(), 0);
-        c.write_binary(&ret[0], 0);
+        c.write_binary(&ret[0], ret.size());
         return ret;
     }
 
     [[nodiscard]] auto decrypt(const mpi& ciphertext) const
         -> std::vector<uint8_t>
     {
-        mpi&& p =
+        mpi p =
             ((((ciphertext.exp_mod(prvkey.λ, pubkey.n_sq)) - 1) / pubkey.n) *
              prvkey.μ) %
             pubkey.n;

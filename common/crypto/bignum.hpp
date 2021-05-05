@@ -48,16 +48,9 @@ class mpi : public internal::
 
     static auto gen_prime(size_t nbits, ctr_drbg& ctr_drbg) -> mpi
     {
-        int prime_quality =
-            nbits > 1024 ? MBEDTLS_MPI_GEN_PRIME_FLAG_LOW_ERR : 0;
-
         mpi X;
         mbedtls_mpi_gen_prime(
-            X.get(),
-            nbits,
-            prime_quality,
-            mbedtls_ctr_drbg_random,
-            ctr_drbg.get());
+            X.get(), nbits, 0, mbedtls_ctr_drbg_random, ctr_drbg.get());
 
         return X;
     }
