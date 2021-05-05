@@ -73,8 +73,14 @@ class gcm
 
     auto decrypt(const std::vector<uint8_t>& input) -> std::vector<uint8_t>
     {
-        const ciphertext& enc = *reinterpret_cast<const ciphertext*>(&input[0]);
-        std::vector<uint8_t> output(input.size() - sizeof(ciphertext));
+        return decrypt(input.data(), input.size());
+    }
+
+    auto decrypt(const uint8_t* input, size_t input_size)
+        -> std::vector<uint8_t>
+    {
+        const ciphertext& enc = *reinterpret_cast<const ciphertext*>(input);
+        std::vector<uint8_t> output(input_size - sizeof(ciphertext));
 
         int result = mbedtls_gcm_auth_decrypt(
             get(),

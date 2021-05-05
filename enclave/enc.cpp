@@ -157,8 +157,7 @@ void generate_message(uint8_t** data, size_t* size)
 
 auto process_message(const uint8_t* data, size_t size) -> bool
 {
-    std::vector<uint8_t> input(data, data + size);
-    auto output = crypto_ctx->decrypt(input);
+    auto output = crypto_ctx->decrypt(data, size);
     return !output.empty();
 }
 
@@ -194,8 +193,8 @@ void match_bloom_filter(
     uint8_t** output,
     size_t* output_size)
 {
-    std::vector<uint8_t> input(bloom_filter, bloom_filter + bloom_filter_size);
-    BloomFilter<FILTER_POWER_BITS, 4> input_filter(crypto_ctx->decrypt(input));
+    BloomFilter<FILTER_POWER_BITS, 4> input_filter(
+        crypto_ctx->decrypt(bloom_filter, bloom_filter_size));
     PRP prp;
 
     PSI::Paillier paillier;
