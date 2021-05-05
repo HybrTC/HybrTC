@@ -129,6 +129,7 @@ class Paillier
         pubkey.complete();
 
         prvkey.λ = mpi::lcm(P - 1, Q - 1);
+        prvkey.complete(pubkey);
     }
 
     [[nodiscard]] auto dump_pubkey() const -> std::vector<uint8_t>
