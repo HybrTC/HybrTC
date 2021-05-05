@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 
+#include "common/uint128.hpp"
 #include "hash.hpp"
 
 /**
@@ -35,7 +36,7 @@ class CuckooHashing
     // hash functions
     using HT = uint32_t;
     using HC = std::array<HT, HN>;
-    HASH<HN, HT> hash;
+    HASH<HN, HT, KT> hash;
 
     // forbid copy constructor
 

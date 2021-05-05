@@ -1,27 +1,148 @@
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <memory>
 #include <vector>
 
-#include <mbedtls/sha256.h>
 #include <nlohmann/json.hpp>
 
-#include "attestation/attester.hpp"
-#include "attestation/verifier.hpp"
+#include "attestation.hpp"
 #include "bloom_filter.hpp"
 #include "common/types.hpp"
 #include "common/uint128.hpp"
 #include "crypto/ctr_drbg.hpp"
-#include "crypto/ecdh.hpp"
 #include "crypto/gcm.hpp"
 #include "cuckoo_hashing.hpp"
 #include "log.h"
 #include "paillier.hpp"
 #include "prp.hpp"
+#include "utils.hpp"
 
 #include "helloworld_t.h"
+
+using nlohmann::json;
+
+std::vector<std::shared_ptr<VerifierContext>> verifiers;
+std::map<uint32_t, std::shared_ptr<mbedtls::aes_gcm_256>> sessions;
+
+size_t attester_counter = 0;
+std::shared_ptr<mbedtls::ctr_drbg> ctr_drbg;
+
+static void init()
+{
+    if (ctr_drbg == nullptr)
+    {
+        ctr_drbg = std::make_shared<mbedtls::ctr_drbg>();
+    }
+}
+
+/*
+ * output:  vid, this_pk, format_setting
+ */
+void verifier_generate_challenge(uint8_t** obuf, size_t* olen)
+{
+    init();
+
+    /* initialize verifier context */
+    auto ctx = std::make_shared<VerifierContext>();
+    verifiers.push_back(ctx);
+
+    /* set verifier id; generate and dump ephemeral public key */
+    ctx->vid = verifiers.size();
+    ctx->vpk = ctx->ecdh.make_public(*ctr_drbg);
+
+    /* generate output object */
+    json json = json::object(
+        {{"vid", ctx->vid},
+         {"vpk", ctx->vpk},
+         {"format_settings", ctx->core.format_settings()}});
+
+    dump(json::to_msgpack(json), obuf, olen);
+}
+
+/*
+ * input:   vid, peer_pk, format_settings
+ * output:  vid, aid, this_pk, evidence
+ */
+auto attester_generate_response(
+    const uint8_t* ibuf,
+    size_t ilen,
+    uint8_t** obuf,
+    size_t* olen) -> uint32_t
+{
+    init();
+
+    /* initialize attester context */
+    AttesterContext ctx;
+
+    /* set attester id; generate and dump ephemeral public key */
+    ctx.aid = (++attester_counter);
+    ctx.apk = ctx.ecdh.make_public(*ctr_drbg);
+
+    /* deserialize and handle input */
+    auto input = json::from_msgpack(ibuf, ibuf + ilen);
+    ctx.vid = input["vid"].get<uint16_t>();        // set verifier id
+    ctx.vpk = input["vpk"].get<v8>();              // set peer pk
+    v8 format_settings = input["format_settings"]; // load format settings
+
+    /* build claims and generate evidence*/
+    auto evidence = ctx.core.get_evidence(format_settings, build_claims(ctx));
+
+    /* generate output object */
+    json json = json::object(
+        {{"vid", ctx.vid},
+         {"aid", ctx.aid},
+         {"apk", ctx.apk},
+         {"evidence", evidence}});
+
+    dump(json::to_msgpack(json), obuf, olen);
+
+    /* build crypto context */
+    return complete_attestation(ctx);
+}
+
+/*
+ * input:   vid, aid, evidence
+ * output:  attestation_result
+ */
+auto verifier_process_response(const uint8_t* ibuf, size_t ilen) -> uint32_t
+{
+    /* deserialize and handle input */
+    auto input = json::from_msgpack(ibuf, ibuf + ilen);
+
+    auto ctx = verifiers[input["vid"].get<uint16_t>()]; // load verifier context
+    ctx->aid = input["aid"].get<uint16_t>();            // set attester id
+    ctx->apk = input["apk"].get<v8>();                  // set attester pubkey
+    auto evidence = input["evidence"].get<v8>(); // load attestation evidence
+
+    /* verify evidence */
+    auto claims = ctx->core.verify_evidence(evidence).custom_claims_buffer();
+
+    /* compare claims: (1) size (2) compare content in constant time */
+    auto claims_ = build_claims(*ctx);
+    if (claims_.size() != claims.value_size)
+    {
+        return -1;
+    }
+
+    unsigned result = 0;
+    for (size_t i = 0; i < claims_.size() && i < claims.value_size; i++)
+    {
+        result += (claims_[i] ^ claims.value[i]);
+    }
+    if (result != 0)
+    {
+        return -1;
+    }
+
+    /* build crypto context and free verifier context */
+    auto sid = complete_attestation(*ctx);
+    verifiers[ctx->vid] = nullptr;
+
+    return sid;
+}
 
 constexpr uint32_t FILTER_POWER_BITS = 24;
 constexpr uint32_t NUMBER_OF_HASHES = 4;
@@ -31,221 +152,91 @@ using HashTable = CuckooHashing<(1 << 16), (1 << 2), NUMBER_OF_HASHES>;
 
 using KeyBin = a8<sizeof(uint128_t)>;
 
-struct AttestationContext
+std::shared_ptr<PSI::Paillier> homo;
+
+void set_paillier_public_key(uint32_t sid, const uint8_t* ibuf, size_t ilen)
 {
-    constexpr static oe_uuid_t format_id{OE_FORMAT_UUID_SGX_LOCAL_ATTESTATION};
-
-    std::shared_ptr<Attester> attester = std::make_shared<Attester>(&format_id);
-    std::shared_ptr<Verifier> verifier = std::make_shared<Verifier>(&format_id);
-
-    std::shared_ptr<mbedtls::ctr_drbg> rand_ctx =
-        std::make_shared<mbedtls::ctr_drbg>();
-    std::shared_ptr<mbedtls::ecdh> ecdh_ctx =
-        std::make_shared<mbedtls::ecdh>(mbedtls::MBEDTLS_ECP_DP_SECP256R1);
-
-    v8 this_pk;
-    v8 peer_pk;
-};
-
-std::shared_ptr<mbedtls::ctr_drbg> ctr_drbg;
-
-std::shared_ptr<AttestationContext> ctx;
-using aes_gcm_256 =
-    mbedtls::gcm<mbedtls::MBEDTLS_CIPHER_ID_AES, mbedtls::aes::KEY_LEN_256>;
-std::shared_ptr<aes_gcm_256> crypto_ctx;
-
-void initialize_attestation(
-    uint8_t** pk,
-    size_t* pk_len,
-    uint8_t** format_setting,
-    size_t* format_setting_len)
-{
-    if (ctx == nullptr)
-    {
-        ctx = std::make_shared<AttestationContext>();
-    }
-
-    if (ctr_drbg == nullptr)
-    {
-        ctr_drbg = std::make_shared<mbedtls::ctr_drbg>();
-    }
-
-    auto format_setting_vec = ctx->verifier->format_settings();
-    *format_setting_len = format_setting_vec->size();
-    *format_setting =
-        static_cast<uint8_t*>(oe_host_malloc(*format_setting_len));
-    memcpy(
-        *format_setting,
-        format_setting_vec->data(),
-        format_setting_vec->size());
-
-    ctx->this_pk = ctx->ecdh_ctx->make_public(*ctx->rand_ctx);
-    *pk_len = ctx->this_pk.size();
-    *pk = static_cast<uint8_t*>(oe_host_malloc(*pk_len));
-    memcpy(*pk, ctx->this_pk.data(), ctx->this_pk.size());
-}
-
-void generate_evidence(
-    const uint8_t* pk,
-    size_t pk_len,
-    const uint8_t* format,
-    size_t format_len,
-    uint8_t** evidence,
-    size_t* evidence_len)
-{
-    ctx->peer_pk = v8(pk, pk + pk_len);
-    ctx->ecdh_ctx->read_public(ctx->peer_pk);
-
-    v8 claim(pk, pk + pk_len);
-    claim.insert(claim.end(), ctx->this_pk.begin(), ctx->this_pk.end());
-
-    v8 fs(format, format + format_len);
-    auto evidence_vec = ctx->attester->get_evidence(fs, claim);
-
-    *evidence_len = evidence_vec.size();
-    *evidence = static_cast<uint8_t*>(oe_host_malloc(*evidence_len));
-    memcpy(*evidence, evidence_vec.data(), evidence_vec.size());
-}
-
-auto finish_attestation(const uint8_t* data, size_t size) -> bool
-{
-    v8 evidence(data, data + size);
-    auto claim = ctx->verifier->attest_attestation_evidence(evidence)
-                     .custom_claims_buffer();
-
-    const uint8_t* this_pk_ptr = claim.value + 0;
-    const uint8_t* peer_pk_ptr = claim.value + ctx->this_pk.size();
-
-    if (claim.value_size == ctx->this_pk.size() + ctx->peer_pk.size() &&
-        memcmp(this_pk_ptr, ctx->this_pk.data(), ctx->this_pk.size()) == 0 &&
-        memcmp(peer_pk_ptr, ctx->peer_pk.data(), ctx->peer_pk.size()) == 0)
-    {
-        auto secret = ctx->ecdh_ctx->calc_secret(*ctx->rand_ctx);
-        std::array<uint8_t, mbedtls::aes::KEY_LEN_256 / mbedtls::BITS_PER_BYTE>
-            session_key{0};
-
-        mbedtls_sha256_ret(secret.data(), secret.size(), &session_key[0], 0);
-        crypto_ctx = std::make_shared<aes_gcm_256>(session_key);
-
-        return true;
-    }
-
-    ctx = nullptr;
-    return false;
-}
-
-void generate_message(uint8_t** data, size_t* size)
-{
-    v8 dummy = {1, 2, 3, 4, 5, 6, 7, 8};
-    auto output = crypto_ctx->encrypt(dummy, *ctr_drbg);
-
-    *size = output.size();
-    *data = static_cast<uint8_t*>(oe_host_malloc(output.size()));
-    memcpy(*data, output.data(), output.size());
-}
-
-auto process_message(const uint8_t* data, size_t size) -> bool
-{
-    auto output = crypto_ctx->decrypt(data, size);
-    return !output.empty();
+    homo = std::make_shared<PSI::Paillier>();
+    homo->load_pubkey(sessions[sid]->decrypt(ibuf, ilen));
 }
 
 void build_bloom_filter(
-    const uint32_t* data,
-    size_t length,
-    uint8_t** output,
-    size_t* output_size)
+    uint32_t sid,
+    const uint32_t* data_key,
+    size_t data_size,
+    uint8_t** obuf,
+    size_t* olen)
 {
     HashSet bloom_filter;
     PRP prp;
 
-    for (size_t i = 0; i < length; i++)
+    for (size_t i = 0; i < data_size; i++)
     {
-        bloom_filter.insert(prp(data[i]));
+        bloom_filter.insert(prp(data_key[i]));
     }
 
-    const auto enc = crypto_ctx->encrypt(bloom_filter.data(), *ctr_drbg);
-
-    *output_size = enc.size();
-    *output = static_cast<uint8_t*>(oe_host_malloc(enc.size()));
-    memcpy(*output, enc.data(), enc.size());
+    dump_enc(bloom_filter.data(), *sessions[sid], *ctr_drbg, obuf, olen);
 }
 
 void match_bloom_filter(
+    uint32_t sid,
     const uint32_t* data_key,
     const uint32_t* data_val,
-    size_t size,
-    const uint8_t* bloom_filter,
-    size_t bloom_filter_size,
-    const uint8_t* pubkey,
-    size_t pubkey_size,
-    uint8_t** output,
-    size_t* output_size)
+    size_t data_size,
+    const uint8_t* ibuf,
+    size_t ilen,
+    uint8_t** obuf,
+    size_t* olen)
 {
-    HashSet input_filter(crypto_ctx->decrypt(bloom_filter, bloom_filter_size));
+    HashSet bloom_filter(sessions[sid]->decrypt(ibuf, ilen));
     PRP prp;
-
-    PSI::Paillier paillier;
-    paillier.load_pubkey(pubkey, pubkey_size);
 
     nlohmann::json hits = nlohmann::json::array();
 
-    for (size_t i = 0; i < size; i++)
+    for (size_t i = 0; i < data_size; i++)
     {
         uint128_t key = prp(data_key[i]);
-        if (input_filter.lookup(key))
+        if (bloom_filter.lookup(key))
         {
-            auto enc = paillier.encrypt(data_val[i], *ctr_drbg).to_vector();
-            if (enc.empty())
-            {
-                TRACE_ENCLAVE("enc size = %lx", enc.size());
-                abort();
-            }
+            auto enc = homo->encrypt(data_val[i], *ctr_drbg).to_vector();
+            assert(!enc.empty());
 
             hits.push_back(nlohmann::json::array(
                 {*reinterpret_cast<const KeyBin*>(&key), enc}));
         }
     }
 
-    auto enc = crypto_ctx->encrypt(nlohmann::json::to_msgpack(hits), *ctr_drbg);
-
-    *output_size = enc.size();
-    *output = static_cast<uint8_t*>(oe_host_malloc(enc.size()));
-    memcpy(*output, enc.data(), enc.size());
+    dump_enc(json::to_msgpack(hits), *sessions[sid], *ctr_drbg, obuf, olen);
 }
 
 void aggregate(
+    uint32_t peer_sid,
+    uint32_t client_sid,
     const uint32_t* data_key,
     const uint32_t* data_val,
-    size_t size,
-    const uint8_t* peer_data,
-    size_t peer_data_size,
-    const uint8_t* pubkey,
-    size_t pubkey_size,
-    uint8_t** output,
-    size_t* output_size)
+    size_t data_size,
+    const uint8_t* ibuf,
+    size_t ilen,
+    uint8_t** obuf,
+    size_t* olen)
 {
-    // Decryption
+    auto peer = json::from_msgpack(sessions[peer_sid]->decrypt(ibuf, ilen));
 
-    auto dec = crypto_ctx->decrypt(peer_data, peer_data_size);
-    nlohmann::json peer = nlohmann::json::from_msgpack(dec.begin(), dec.end());
-
-    // Build hash table
-
+    /*
+     * build cuckoo hashing table
+     */
     PRP prp;
     HashTable hashing;
 
-    for (size_t i = 0; i < size; i++)
+    for (size_t i = 0; i < data_size; i++)
     {
         hashing.insert(prp(data_key[i]), data_val[i]);
     }
 
-    // Aggregate
-
-    PSI::Paillier paillier;
-    paillier.load_pubkey(pubkey, pubkey_size);
-
-    nlohmann::json output_arr = nlohmann::json::array();
+    /*
+     * aggregate calculation
+     */
+    json result = json::array();
     for (const auto& pair : peer)
     {
         KeyBin key_bin = pair[0];
@@ -259,16 +250,13 @@ void aggregate(
 
         for (auto val : query_result)
         {
-            output_arr.push_back(nlohmann::json::array(
+            result.push_back(json::array(
                 {pair[0],
-                 paillier.add(peer_val, paillier.encrypt(val, *ctr_drbg))
+                 homo->add(peer_val, homo->encrypt(val, *ctr_drbg))
                      .to_vector()}));
         }
     }
 
-    auto enc = nlohmann::json::to_msgpack(output_arr);
-
-    *output_size = enc.size();
-    *output = static_cast<uint8_t*>(oe_host_malloc(enc.size()));
-    memcpy(*output, enc.data(), enc.size());
+    dump_enc(
+        json::to_msgpack(result), *sessions[client_sid], *ctr_drbg, obuf, olen);
 }

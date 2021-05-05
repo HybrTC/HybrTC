@@ -1,23 +1,20 @@
 #pragma once
 
-#include <array>
-#include <cstdint>
-
 #include "common/type_check.hpp"
-#include "common/uint128.hpp"
-#include "mbedtls/sha512.h"
+#include "common/types.hpp"
+#include "crypto/sha512.hpp"
 
-template <unsigned ON, class OT = uint32_t, class IT = uint128_t>
+template <unsigned ON, class OT, class IT>
 class HASH
 {
     INTEGER_CHECK(IT, "input");
     INTEGER_CHECK(OT, "output");
 
-    constexpr static unsigned HASH_BYTES = 512 / 8;
+    constexpr static size_t HASH_BYTES = 512 / 8;
 
     static_assert(ON <= HASH_BYTES / sizeof(OT), "too many hashes required");
 
-    using M = std::array<uint8_t, sizeof(IT)>;
+    using M = a8<sizeof(IT)>;
     using H = std::array<OT, ON>;
 
   public:
@@ -25,8 +22,9 @@ class HASH
     {
         const auto& msg = *reinterpret_cast<const M*>(&val);
 
-        std::array<uint8_t, HASH_BYTES> hash;
-        mbedtls_sha512_ret(msg.data(), msg.size(), &hash[0], 0);
+        mbedtls::sha512 sha;
+        sha.update(msg);
+        a8<HASH_BYTES> hash = sha.finish();
 
         return *reinterpret_cast<const H*>(hash.data());
     }

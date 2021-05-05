@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "common/bit_mask.hpp"
+#include "common/uint128.hpp"
 #include "hash.hpp"
 
 /**

@@ -1,7 +1,9 @@
 #pragma once
 
+#include <type_traits>
 #include <vector>
 
+#include "common/types.hpp"
 #include "crypto/aes.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "internal/resource.hpp"
@@ -15,12 +17,10 @@ namespace mbedtls
 template <mbedtls_cipher_id_t cipher, uint32_t keybits>
 class gcm
     : public internal::
-          resource<mbedtls_gcm_context, &mbedtls_gcm_init, &mbedtls_gcm_free>
+          resource<mbedtls_gcm_context, mbedtls_gcm_init, mbedtls_gcm_free>
 {
-  public:
     constexpr static size_t IV_LEN = 12;
     constexpr static size_t TAG_LEN = 12;
-    constexpr static size_t KEY_BYTES = keybits / BITS_PER_BYTE;
 
     struct ciphertext
     {
@@ -29,30 +29,29 @@ class gcm
         uint8_t ciphertext[];
     };
 
+  public:
+    constexpr static size_t KEY_BYTES = keybits / BITS_PER_BYTE;
+
     explicit gcm(const std::array<uint8_t, KEY_BYTES>& key)
     {
         mbedtls_gcm_setkey(get(), cipher, key.data(), keybits);
     }
 
-    auto encrypt(const std::vector<uint8_t>& input, ctr_drbg& ctr_drbg) const
-        -> std::vector<uint8_t>
+    auto encrypt(const v8& input, ctr_drbg& ctr_drbg) -> v8
     {
         return encrypt(input.data(), input.size(), ctr_drbg);
     }
 
-    auto encrypt(const std::vector<uint32_t>& input, ctr_drbg& ctr_drbg) const
-        -> std::vector<uint8_t>
+    auto encrypt(const std::vector<uint32_t>& input, ctr_drbg& ctr_drbg) -> v8
     {
         return encrypt(
-            reinterpret_cast<const uint8_t*>(input.data()),
-            input.size() * sizeof(uint32_t),
-            ctr_drbg);
+            u8p(input.data()), input.size() * sizeof(uint32_t), ctr_drbg);
     }
 
     auto encrypt(const uint8_t* input, size_t input_size, ctr_drbg& ctr_drbg)
-        const -> std::vector<uint8_t>
+        -> v8
     {
-        std::vector<uint8_t> output(input_size + sizeof(ciphertext), 0);
+        v8 output(input_size + sizeof(ciphertext), 0);
         ciphertext& enc = *reinterpret_cast<ciphertext*>(&output[0]);
 
         mbedtls_ctr_drbg_random(ctr_drbg.get(), enc.iv, IV_LEN);
@@ -73,17 +72,15 @@ class gcm
         return output;
     }
 
-    [[nodiscard]] auto decrypt(const std::vector<uint8_t>& input) const
-        -> std::vector<uint8_t>
+    [[nodiscard]] auto decrypt(const v8& input) -> v8
     {
         return decrypt(input.data(), input.size());
     }
 
-    auto decrypt(const uint8_t* input, size_t input_size) const
-        -> std::vector<uint8_t>
+    auto decrypt(const uint8_t* input, size_t input_size) -> v8
     {
         const ciphertext& enc = *reinterpret_cast<const ciphertext*>(input);
-        std::vector<uint8_t> output(input_size - sizeof(ciphertext));
+        v8 output(input_size - sizeof(ciphertext));
 
         int result = mbedtls_gcm_auth_decrypt(
             get(),
@@ -107,6 +104,6 @@ class gcm
     }
 };
 
-using aes_gcm_256 = mbedtls::gcm<MBEDTLS_CIPHER_ID_AES, aes::KEY_LEN_256>;
+using aes_gcm_256 = gcm<MBEDTLS_CIPHER_ID_AES, aes::KEY_LEN_256>;
 
 } // namespace mbedtls

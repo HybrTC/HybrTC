@@ -9,6 +9,7 @@
 #include <openenclave/attestation/sgx/evidence.h>
 
 #include "claims.hpp"
+#include "common/types.hpp"
 
 class Attester
 {
@@ -22,9 +23,9 @@ class Attester
         oe_attester_initialize();
     }
 
-    auto get_evidence(
-        const std::vector<uint8_t>& format_settings,
-        const std::vector<uint8_t>& custom_claims) -> std::vector<uint8_t>
+    template <size_t N>
+    auto get_evidence(const v8& format_settings, const a8<N>& custom_claims)
+        -> v8
     {
         uint8_t* evidence_buf = nullptr;
         size_t evidence_size;
@@ -41,8 +42,7 @@ class Attester
             nullptr,
             nullptr);
 
-        std::vector<uint8_t> evidence(
-            evidence_buf, evidence_buf + evidence_size);
+        v8 evidence(evidence_buf, evidence_buf + evidence_size);
         oe_free_evidence(evidence_buf);
 
         return evidence;

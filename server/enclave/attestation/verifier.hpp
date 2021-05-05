@@ -11,12 +11,12 @@
 #include <openenclave/bits/result.h>
 
 #include "claims.hpp"
+#include "common/types.hpp"
 #include "log.h"
 
 class Verifier
 {
     const oe_uuid_t* format_ptr;
-    std::shared_ptr<std::vector<uint8_t>> format_settings_ptr = nullptr;
 
   public:
     Verifier(const Verifier&) = delete;
@@ -26,23 +26,21 @@ class Verifier
         oe_verifier_initialize();
     }
 
-    auto format_settings() -> std::shared_ptr<std::vector<uint8_t>>
+    auto format_settings() -> v8
     {
-        if (format_settings_ptr == nullptr)
-        {
-            uint8_t* format_settings = nullptr;
-            size_t format_settings_size = 0;
-            oe_verifier_get_format_settings(
-                format_ptr, &format_settings, &format_settings_size);
-            format_settings_ptr = std::make_shared<std::vector<uint8_t>>(
-                format_settings, format_settings + format_settings_size);
-            oe_verifier_free_format_settings(format_settings);
-        }
-        return format_settings_ptr;
+        uint8_t* buffer = nullptr;
+        size_t size = 0;
+
+        oe_verifier_get_format_settings(format_ptr, &buffer, &size);
+
+        v8 format_settings(buffer, buffer + size);
+
+        oe_verifier_free_format_settings(buffer);
+
+        return format_settings;
     }
 
-    auto attest_attestation_evidence(const std::vector<uint8_t>& evidence)
-        -> Claims
+    auto verify_evidence(const v8& evidence) -> Claims
     {
         oe_claim_t* claims = nullptr;
         size_t claims_length = 0;
