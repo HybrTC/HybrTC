@@ -32,13 +32,13 @@ class gcm
         mbedtls_gcm_setkey(get(), cipher, key.data(), keybits);
     }
 
-    auto encrypt(const std::vector<uint8_t>& input, ctr_drbg& ctr_drbg)
+    auto encrypt(const std::vector<uint8_t>& input, ctr_drbg& ctr_drbg) const
         -> std::vector<uint8_t>
     {
         return encrypt(input.data(), input.size(), ctr_drbg);
     }
 
-    auto encrypt(const std::vector<uint32_t>& input, ctr_drbg& ctr_drbg)
+    auto encrypt(const std::vector<uint32_t>& input, ctr_drbg& ctr_drbg) const
         -> std::vector<uint8_t>
     {
         return encrypt(
@@ -48,7 +48,7 @@ class gcm
     }
 
     auto encrypt(const uint8_t* input, size_t input_size, ctr_drbg& ctr_drbg)
-        -> std::vector<uint8_t>
+        const -> std::vector<uint8_t>
     {
         std::vector<uint8_t> output(input_size + sizeof(ciphertext), 0);
         ciphertext& enc = *reinterpret_cast<ciphertext*>(&output[0]);
@@ -71,12 +71,13 @@ class gcm
         return output;
     }
 
-    auto decrypt(const std::vector<uint8_t>& input) -> std::vector<uint8_t>
+    [[nodiscard]] auto decrypt(const std::vector<uint8_t>& input) const
+        -> std::vector<uint8_t>
     {
         return decrypt(input.data(), input.size());
     }
 
-    auto decrypt(const uint8_t* input, size_t input_size)
+    auto decrypt(const uint8_t* input, size_t input_size) const
         -> std::vector<uint8_t>
     {
         const ciphertext& enc = *reinterpret_cast<const ciphertext*>(input);
