@@ -7,6 +7,7 @@
 
 #include <openenclave/host.h>
 #include <nlohmann/json.hpp>
+#include <spdlog.hpp>
 #include <zmq.hpp>
 
 #include "common/types.hpp"
@@ -15,6 +16,8 @@
 #include "paillier.hpp"
 #include "prng.hpp"
 #include "prp.hpp"
+
+#define LOGGER "consolse"
 
 template <class KT, class VT>
 auto random_dataset(size_t size) -> std::pair<std::vector<KT>, std::vector<VT>>
@@ -34,18 +37,14 @@ auto random_dataset(size_t size) -> std::pair<std::vector<KT>, std::vector<VT>>
 
 void hexdump(const char* name, const buffer& buf)
 {
-    printf("=== [%s]\t", name);
-
-    for (size_t i = 0; i < buf.size; i++)
-    {
-        printf("%02x", buf.data[i]);
-    }
-
-    puts("");
+    auto log = spdlog::get(LOGGER);
+    log->debug("{}: {}", name, spdlog::to_hex(buf.data, buf.data + buf.size));
 }
 
 auto psi(const char* image_path, const v8& pubkey) -> v8
 {
+    auto log = spdlog::get(LOGGER);
+
     SPIEnclave enclave_a(image_path, false);
     SPIEnclave enclave_b(image_path, false);
 
@@ -70,11 +69,11 @@ auto psi(const char* image_path, const v8& pubkey) -> v8
 
     if (result_a && result_b)
     {
-        puts("[+] attestation succeed");
+        log->info("attestation succeed");
     }
     else
     {
-        puts("[-] attestation failed");
+        log->warn("attestation failed");
         exit(EXIT_FAILURE);
     }
 
@@ -83,9 +82,11 @@ auto psi(const char* image_path, const v8& pubkey) -> v8
     auto ds2 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
 
     buffer bloom_filter_a;
-    puts("[+] enclave_a.build_bloom_filter(ds1.first);");
     enclave_a.build_bloom_filter(ds1.first, bloom_filter_a);
-    printf("filter_size = 0x%lx\n", bloom_filter_a.size);
+
+    log->debug(
+        "enclave_a.build_bloom_filter(ds1.first) => filter_size = {:x}",
+        bloom_filter_a.size);
 
     buffer msg;
     enclave_b.match_bloom_filter(
@@ -99,11 +100,20 @@ auto psi(const char* image_path, const v8& pubkey) -> v8
 
 auto main(int argc, const char* argv[]) -> int
 {
-    if (argc != 2)
+    auto log = spdlog::stdout_color_mt(LOGGER);
+    log->set_level(spdlog::level::debug);
+
+    if (argc != 3)
     {
-        fprintf(stderr, "Usage: %s enclave_image_path\n", argv[0]);
+        fprintf(
+            stderr,
+            "Usage: %s  <enclave_id:0/1> <enclave_image_path>\n",
+            argv[0]);
         return EXIT_FAILURE;
     }
+
+    const int server_id = std::stoi(argv[1], nullptr, 0);
+    const char* enclave_image_path = argv[2];
 
     // initialize the zmq context with a single IO thread
     zmq::context_t context{1};
@@ -117,7 +127,7 @@ auto main(int argc, const char* argv[]) -> int
     (void)socket.recv(request, zmq::recv_flags::none);
 
     const auto* pubkey = u8p(request.data());
-    auto ret = psi(argv[1], v8(pubkey, pubkey + request.size()));
+    auto ret = psi(enclave_image_path, v8(pubkey, pubkey + request.size()));
 
     // send the reply to the client
     socket.send(zmq::buffer(ret), zmq::send_flags::none);

@@ -18,6 +18,9 @@ add_compile_options(-O3 -Wall -Wextra)
 find_package(OpenEnclave CONFIG REQUIRED)
 find_library(LIBMBEDCRYPTO mbedcrypto REQUIRED)
 
+# spdlog
+add_subdirectory(3rd-party/spdlog)
+
 # json
 set(JSON_BuildTests
     OFF
@@ -27,26 +30,22 @@ set(JSON_Install
     CACHE INTERNAL "")
 add_subdirectory(3rd-party/json)
 
+# zeromq
 set(ZMQ_BUILD_TESTS
     OFF
     CACHE BOOL "")
-
 set(ENABLE_DRAFTS
     OFF
     CACHE BOOL "")
-
 set(ENABLE_CURVE
     OFF
     CACHE BOOL "")
-
 set(WITH_PERF_TOOL
     OFF
     CACHE BOOL "")
-
 set(CPPZMQ_BUILD_TESTS
     OFF
     CACHE BOOL "")
-
 add_subdirectory(3rd-party/libzmq)
 add_subdirectory(3rd-party/cppzmq)
 
@@ -56,11 +55,16 @@ add_subdirectory(server)
 add_subdirectory(client)
 
 add_custom_target(
-  run
+  runs0
   DEPENDS helloworld_host sign
-  COMMAND helloworld_host ${CMAKE_BINARY_DIR}/server/enclave/enclave.signed)
+  COMMAND helloworld_host 0 ${CMAKE_BINARY_DIR}/server/enclave/enclave.signed)
 
 add_custom_target(
-  runclient
+  runs1
+  DEPENDS helloworld_host sign
+  COMMAND helloworld_host 1 ${CMAKE_BINARY_DIR}/server/enclave/enclave.signed)
+
+add_custom_target(
+  runc
   DEPENDS client
   COMMAND client)

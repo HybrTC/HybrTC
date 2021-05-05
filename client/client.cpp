@@ -4,6 +4,7 @@
 
 #include <openenclave/host.h>
 #include <nlohmann/json.hpp>
+#include <spdlog.hpp>
 #include <zmq.hpp>
 
 #include "common/uint128.hpp"
@@ -12,6 +13,9 @@
 
 auto main(int argc, const char* argv[]) -> int
 {
+    auto log = spdlog::stdout_color_mt("console");
+    log->set_level(spdlog::level::debug);
+
     OE_UNUSED(argc);
     OE_UNUSED(argv);
 
@@ -28,6 +32,7 @@ auto main(int argc, const char* argv[]) -> int
     zmq::socket_t socket{context, zmq::socket_type::req};
     socket.connect("tcp://localhost:5555");
 
+    log->debug("public key: {}", spdlog::to_hex(pubkey));
     socket.send(zmq::buffer(pubkey), zmq::send_flags::none);
 
     // wait for reply from server
@@ -42,18 +47,11 @@ auto main(int argc, const char* argv[]) -> int
     {
         std::array<uint8_t, sizeof(uint128_t)> key_bin = pair[0];
         std::vector<uint8_t> val_bin = pair[1];
-
-        const uint128_t& key =
-            *reinterpret_cast<const uint128_t*>(key_bin.data());
-
         auto dec =
-            homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size()));
+            homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size()))
+                .to_unsigned<uint64_t>();
 
-        printf(
-            "[>] %016lx%016lx : %s\n",
-            uint64_t(key >> 64),
-            uint64_t(key),
-            dec.write_string(10).c_str());
+        log->info("{:sn} {:016x}", spdlog::to_hex(key_bin), dec);
     }
 
     return 0;
