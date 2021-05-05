@@ -65,4 +65,11 @@ class SPIEnclave
         const buffer& bloom_filter,
         const std::vector<uint8_t>& pubkey,
         buffer& output);
+
+    void aggregate(
+        const std::vector<uint32_t>& keys,
+        const std::vector<uint32_t>& values,
+        const buffer& peer_data,
+        const std::vector<uint8_t>& pubkey,
+        buffer& output);
 };

@@ -121,3 +121,24 @@ void SPIEnclave::match_bloom_filter(
         &output.size);
     CHECK("match_bloom_filter", result);
 }
+
+void SPIEnclave::aggregate(
+    const std::vector<uint32_t>& keys,
+    const std::vector<uint32_t>& values,
+    const buffer& peer_data,
+    const std::vector<uint8_t>& pubkey,
+    buffer& output)
+{
+    oe_result_t result = ::aggregate(
+        enclave(),
+        keys.data(),
+        values.data(),
+        keys.size(),
+        peer_data.data,
+        peer_data.size,
+        pubkey.data(),
+        pubkey.size(),
+        &output.data,
+        &output.size);
+    CHECK("aggregate", result);
+}

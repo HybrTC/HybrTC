@@ -1,4 +1,5 @@
 #include <array>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <memory>
@@ -10,9 +11,11 @@
 #include "attestation/attester.hpp"
 #include "attestation/verifier.hpp"
 #include "bloom_filter.hpp"
+#include "common/uint128.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "crypto/ecdh.hpp"
 #include "crypto/gcm.hpp"
+#include "cuckoo_hashing.hpp"
 #include "log.h"
 #include "paillier.hpp"
 #include "prp.hpp"
@@ -20,6 +23,10 @@
 #include "helloworld_t.h"
 
 constexpr uint32_t FILTER_POWER_BITS = 24;
+constexpr uint32_t NUMBER_OF_HASHES = 4;
+
+using HashSet = BloomFilter<FILTER_POWER_BITS, NUMBER_OF_HASHES>;
+using HashTable = CuckooHashing<(1 << 16), (1 << 2), NUMBER_OF_HASHES>;
 
 void hexdump(const char* name, const std::vector<uint8_t>& bytes)
 {
@@ -167,7 +174,7 @@ void build_bloom_filter(
     uint8_t** output,
     size_t* output_size)
 {
-    BloomFilter<FILTER_POWER_BITS, 4> bloom_filter;
+    HashSet bloom_filter;
     PRP prp;
 
     for (size_t i = 0; i < length; i++)
@@ -193,8 +200,7 @@ void match_bloom_filter(
     uint8_t** output,
     size_t* output_size)
 {
-    BloomFilter<FILTER_POWER_BITS, 4> input_filter(
-        crypto_ctx->decrypt(bloom_filter, bloom_filter_size));
+    HashSet input_filter(crypto_ctx->decrypt(bloom_filter, bloom_filter_size));
     PRP prp;
 
     PSI::Paillier paillier;
@@ -204,11 +210,13 @@ void match_bloom_filter(
 
     for (size_t i = 0; i < size; i++)
     {
-        auto key = prp(data_key[i]);
+        uint128_t key = prp(data_key[i]);
         if (input_filter.lookup(key))
         {
+            const auto& key_bin = *reinterpret_cast<
+                const std::array<uint8_t, sizeof(uint128_t)>*>(&key);
             hits.push_back(nlohmann::json::array(
-                {key, paillier.encrypt(data_val[i], *ctr_drbg)}));
+                {key_bin, paillier.encrypt(data_val[i], *ctr_drbg)}));
         }
     }
 
@@ -217,4 +225,43 @@ void match_bloom_filter(
     *output_size = enc.size();
     *output = static_cast<uint8_t*>(oe_host_malloc(enc.size()));
     memcpy(*output, enc.data(), enc.size());
+}
+
+void aggregate(
+    const uint32_t* data_key,
+    const uint32_t* data_val,
+    size_t size,
+    const uint8_t* peer_data,
+    size_t peer_data_size,
+    const uint8_t* pubkey,
+    size_t pubkey_size,
+    uint8_t** output,
+    size_t* output_size)
+{
+    auto dec = crypto_ctx->decrypt(peer_data, peer_data_size);
+    nlohmann::json peer = nlohmann::json::from_msgpack(dec.begin(), dec.end());
+
+    PRP prp;
+    HashTable hashing;
+
+    for (size_t i = 0; i < size; i++)
+    {
+        hashing.insert(prp(data_key[i]), data_val[i]);
+    }
+
+    *output = nullptr;
+    *output_size = 0;
+
+    for (const auto& pair : peer)
+    {
+        std::array<uint8_t, sizeof(uint128_t)> key_bin = pair[0];
+        const uint128_t& key =
+            *reinterpret_cast<const uint128_t*>(key_bin.data());
+
+        auto result = hashing.lookup(key);
+        if (!result.empty())
+        {
+            TRACE_ENCLAVE("hit");
+        }
+    }
 }

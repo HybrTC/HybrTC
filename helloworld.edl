@@ -42,6 +42,16 @@ enclave {
                                             size_t pubkey_size,
                                             [out] uint8_t** output,
                                             [out] size_t*  output_size);
+
+        public void aggregate(              [user_check] const uint32_t* data_key,
+                                            [user_check] const uint32_t* data_val,
+                                            size_t size,
+                                            [user_check] const uint8_t* peer_data,
+                                            size_t peer_data_size,
+                                            [in, size=pubkey_size] const uint8_t* pubkey,
+                                            size_t pubkey_size,
+                                            [out] uint8_t** output,
+                                            [out] size_t*  output_size);
     };
 
     untrusted {

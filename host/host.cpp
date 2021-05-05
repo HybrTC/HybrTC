@@ -122,7 +122,10 @@ auto main(int argc, const char* argv[]) -> int
     enclave_b.match_bloom_filter(
         ds2.first, ds2.second, bloom_filter_a, pubkey, msg);
 
-    hexdump("encrypted data", msg);
+    buffer result1;
+    enclave_a.aggregate(ds1.first, ds1.second, msg, pubkey, result1);
+
+    // hexdump("encrypted data", msg);
 
     return 0;
 }
