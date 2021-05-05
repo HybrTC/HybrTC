@@ -6,52 +6,51 @@ enclave {
 
     trusted {
 
-        public void initialize_attestation( [out] uint8_t** pk,
-                                            [out] size_t* pk_len,
-                                            [out] uint8_t** format_setting,
-                                            [out] size_t* format_setting_len);
+        public void verifier_generate_challenge(    [out] uint8_t** obuf,
+                                                    [out] size_t* olen);
 
-        public void generate_evidence(      [in, size=pk_len] const uint8_t* pk,
-                                            size_t pk_len,
-                                            [in, size=format_len] const uint8_t* format,
-                                            size_t format_len,
-                                            [out] uint8_t** evidence,
-                                            [out] size_t* evidence_len);
+        public uint32_t attester_generate_response( [in, size=ilen] const uint8_t* ibuf,
+                                                    size_t ilen,
+                                                    [out] uint8_t** obuf,
+                                                    [out] size_t* olen);
 
-        public bool finish_attestation(     [in, size=size] const uint8_t* data,
-                                            size_t size);
-
-        public void generate_message(       [out] uint8_t** data,
-                                            [out] size_t*  size);
-
-        public bool process_message(        [in, count=size] const uint8_t* data,
-                                            size_t  size);
-
-        public void build_bloom_filter(     [user_check] const uint32_t* data,
-                                            size_t length,
-                                            [out] uint8_t** output,
-                                            [out] size_t*  output_size);
+        public uint32_t verifier_process_response(  [in, size=ilen] const uint8_t* ibuf,
+                                                    size_t ilen);
 
 
-        public void match_bloom_filter(     [user_check] const uint32_t* data_key,
+        public void set_paillier_public_key(        uint32_t sid,
+                                                    [in, size=ilen] const uint8_t* ibuf,
+                                                    size_t ilen);
+
+
+
+        public void build_bloom_filter(     uint32_t sid,
+                                            [user_check] const uint32_t* data_key,
+                                            size_t data_size,
+                                            [out] uint8_t** obuf,
+                                            [out] size_t* olen);
+
+        public void match_bloom_filter(     uint32_t sid,
+                                            [user_check] const uint32_t* data_key,
                                             [user_check] const uint32_t* data_val,
-                                            size_t size,
-                                            [user_check] const uint8_t* bloom_filter,
-                                            size_t bloom_filter_size,
-                                            [in, size=pubkey_size] const uint8_t* pubkey,
-                                            size_t pubkey_size,
-                                            [out] uint8_t** output,
-                                            [out] size_t*  output_size);
+                                            size_t data_size,
+                                            [user_check] const uint8_t* ibuf,
+                                            size_t ilen,
+                                            [out] uint8_t** obuf,
+                                            [out] size_t* olen);
 
-        public void aggregate(              [user_check] const uint32_t* data_key,
+
+
+
+        public void aggregate(              uint32_t peer_sid,
+                                            uint32_t client_sid,
+                                            [user_check] const uint32_t* data_key,
                                             [user_check] const uint32_t* data_val,
-                                            size_t size,
-                                            [user_check] const uint8_t* peer_data,
-                                            size_t peer_data_size,
-                                            [in, size=pubkey_size] const uint8_t* pubkey,
-                                            size_t pubkey_size,
-                                            [out] uint8_t** output,
-                                            [out] size_t*  output_size);
+                                            size_t data_size,
+                                            [user_check] const uint8_t* ibuf,
+                                            size_t ilen,
+                                            [out] uint8_t** obuf,
+                                            [out] size_t* olen);
     };
 
     untrusted {

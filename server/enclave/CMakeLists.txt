@@ -4,11 +4,9 @@
 # Use the edger8r to generate C bindings from the EDL file.
 add_custom_command(
   OUTPUT helloworld_t.h helloworld_t.c helloworld_args.h
-  DEPENDS ${CMAKE_SOURCE_DIR}/helloworld.edl
-  COMMAND
-    openenclave::oeedger8r --trusted ${CMAKE_SOURCE_DIR}/helloworld.edl
-    --search-path ${OE_INCLUDEDIR} --search-path
-    ${OE_INCLUDEDIR}/openenclave/edl/sgx)
+  DEPENDS ${ENCLAVE_EDL}
+  COMMAND openenclave::oeedger8r --trusted ${ENCLAVE_EDL} --search-path
+          ${OE_INCLUDEDIR} --search-path ${OE_INCLUDEDIR}/openenclave/edl/sgx)
 
 file(GLOB SOURCE_FILES *.cpp)
 

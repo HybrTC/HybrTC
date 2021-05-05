@@ -7,6 +7,11 @@ find_file(
   NAMES helloworld.conf
   PATHS enclave REQUIRED)
 
+find_file(
+  ENCLAVE_EDL
+  NAMES helloworld.edl
+  PATHS . REQUIRED)
+
 add_subdirectory(enclave)
 add_subdirectory(host)
 
