@@ -141,14 +141,12 @@ class Paillier
         return pubkey.load(pk, pk_size);
     }
 
-    auto encrypt(const uint32_t& plaintext, ctr_drbg& ctr_drbg) const
-        -> std::vector<uint8_t>
+    auto encrypt(const uint32_t& plaintext, ctr_drbg& ctr_drbg) const -> mpi
     {
         return encrypt(mpi(plaintext), ctr_drbg);
     }
 
-    auto encrypt(const mpi& plaintext, ctr_drbg& ctr_drbg) const
-        -> std::vector<uint8_t>
+    auto encrypt(const mpi& plaintext, ctr_drbg& ctr_drbg) const -> mpi
     {
         if (pubkey.bits == 0)
         {
@@ -158,26 +156,21 @@ class Paillier
 
         mpi r = mpi::gen_rand(pubkey.bits >> 3, ctr_drbg);
 
-        mpi c = (pubkey.g.exp_mod(plaintext, pubkey.n_sq) *
-                 r.exp_mod(pubkey.n, pubkey.n_sq)) %
-                pubkey.n_sq;
-
-        std::vector<uint8_t> ret(c.size(), 0);
-        c.write_binary(&ret[0], ret.size());
-        return ret;
+        return (pubkey.g.exp_mod(plaintext, pubkey.n_sq) *
+                r.exp_mod(pubkey.n, pubkey.n_sq)) %
+               pubkey.n_sq;
     }
 
-    [[nodiscard]] auto decrypt(const mpi& ciphertext) const
-        -> std::vector<uint8_t>
+    [[nodiscard]] auto decrypt(const mpi& ciphertext) const -> mpi
     {
-        mpi p =
-            ((((ciphertext.exp_mod(prvkey.λ, pubkey.n_sq)) - 1) / pubkey.n) *
-             prvkey.μ) %
-            pubkey.n;
+        return ((((ciphertext.exp_mod(prvkey.λ, pubkey.n_sq)) - 1) / pubkey.n) *
+                prvkey.μ) %
+               pubkey.n;
+    }
 
-        std::vector<uint8_t> ret(p.size(), 0);
-        p.write_binary(&ret[0], 0);
-        return ret;
+    [[nodiscard]] auto add(const mpi& A, const mpi& B) const -> mpi
+    {
+        return (A * B) % pubkey.n_sq;
     }
 };
 } // namespace PSI

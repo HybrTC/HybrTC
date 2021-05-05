@@ -5,6 +5,7 @@
 
 #include "ctr_drbg.hpp"
 #include "internal/resource.hpp"
+#include "log.h"
 
 namespace mbedtls
 {
@@ -44,6 +45,11 @@ class mpi : public internal::
     explicit mpi(const mbedtls_mpi_sint& z)
     {
         mbedtls_mpi_lset(get(), z);
+    }
+
+    mpi(const uint8_t* buf, size_t buflen)
+    {
+        read_binary(buf, buflen);
     }
 
     static auto gen_prime(size_t nbits, ctr_drbg& ctr_drbg) -> mpi
@@ -92,6 +98,26 @@ class mpi : public internal::
     auto write_binary(uint8_t* buf, size_t buflen) const -> int
     {
         return mbedtls_mpi_write_binary(get(), buf, buflen);
+    }
+
+    [[nodiscard]] auto to_vector() const -> std::vector<uint8_t>
+    {
+        std::vector<uint8_t> ret(size(), 0);
+        write_binary(&ret[0], ret.size());
+        return ret;
+    }
+
+    template <class U>
+    [[nodiscard]] auto to_unsigned() const -> U
+    {
+        if (size() > sizeof(U))
+        {
+            TRACE_ENCLAVE("size = %lu", size());
+            abort();
+        }
+        std::array<uint8_t, sizeof(U)> ret;
+        mbedtls_mpi_write_binary_le(get(), &ret[0], 0);
+        return *reinterpret_cast<const U*>(ret.data());
     }
 
     [[nodiscard]] auto write_string(int radix) const -> std::string
