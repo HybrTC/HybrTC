@@ -28,6 +28,8 @@ constexpr uint32_t NUMBER_OF_HASHES = 4;
 using HashSet = BloomFilter<FILTER_POWER_BITS, NUMBER_OF_HASHES>;
 using HashTable = CuckooHashing<(1 << 16), (1 << 2), NUMBER_OF_HASHES>;
 
+using KeyBin = std::array<uint8_t, sizeof(uint128_t)>;
+
 void hexdump(const char* name, const std::vector<uint8_t>& bytes)
 {
     printf("=== [%s]\t", name);
@@ -213,10 +215,15 @@ void match_bloom_filter(
         uint128_t key = prp(data_key[i]);
         if (input_filter.lookup(key))
         {
-            const auto& key_bin = *reinterpret_cast<
-                const std::array<uint8_t, sizeof(uint128_t)>*>(&key);
+            auto enc = paillier.encrypt(data_val[i], *ctr_drbg).to_vector();
+            if (enc.empty())
+            {
+                TRACE_ENCLAVE("enc size = %lx", enc.size());
+                abort();
+            }
+
             hits.push_back(nlohmann::json::array(
-                {key_bin, paillier.encrypt(data_val[i], *ctr_drbg)}));
+                {*reinterpret_cast<const KeyBin*>(&key), enc}));
         }
     }
 
@@ -238,8 +245,12 @@ void aggregate(
     uint8_t** output,
     size_t* output_size)
 {
+    // Decryption
+
     auto dec = crypto_ctx->decrypt(peer_data, peer_data_size);
     nlohmann::json peer = nlohmann::json::from_msgpack(dec.begin(), dec.end());
+
+    // Build hash table
 
     PRP prp;
     HashTable hashing;
@@ -249,19 +260,35 @@ void aggregate(
         hashing.insert(prp(data_key[i]), data_val[i]);
     }
 
-    *output = nullptr;
-    *output_size = 0;
+    // Aggregate
 
+    PSI::Paillier paillier;
+    paillier.load_pubkey(pubkey, pubkey_size);
+
+    nlohmann::json output_arr = nlohmann::json::array();
     for (const auto& pair : peer)
     {
-        std::array<uint8_t, sizeof(uint128_t)> key_bin = pair[0];
+        KeyBin key_bin = pair[0];
+        std::vector<uint8_t> val_bin = pair[1];
+
         const uint128_t& key =
             *reinterpret_cast<const uint128_t*>(key_bin.data());
+        mbedtls::mpi peer_val(val_bin.data(), val_bin.size());
 
-        auto result = hashing.lookup(key);
-        if (!result.empty())
+        auto query_result = hashing.lookup(key);
+
+        for (auto val : query_result)
         {
-            TRACE_ENCLAVE("hit");
+            output_arr.push_back(nlohmann::json::array(
+                {pair[0],
+                 paillier.add(peer_val, paillier.encrypt(val, *ctr_drbg))
+                     .to_vector()}));
         }
     }
+
+    auto enc = nlohmann::json::to_msgpack(output_arr);
+
+    *output_size = enc.size();
+    *output = static_cast<uint8_t*>(oe_host_malloc(enc.size()));
+    memcpy(*output, enc.data(), enc.size());
 }

@@ -1,13 +1,18 @@
+#include <cstdint>
+#include <cstdlib>
 #include <iostream>
 #include <map>
 #include <vector>
 
 #include <openenclave/host.h>
+#include <nlohmann/json.hpp>
 
+#include "common/uint128.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "enclave.hpp"
 #include "paillier.hpp"
 #include "prng.hpp"
+#include "prp.hpp"
 
 #ifndef SGX_MODE_SIM
 #define SGX_MODE_HW
@@ -85,18 +90,7 @@ auto main(int argc, const char* argv[]) -> int
     else
     {
         puts("[-] attestation failed");
-    }
-
-    buffer ciphertext;
-    enclave_a.generate_message(ciphertext);
-    bool r = enclave_b.process_message(ciphertext);
-    if (r)
-    {
-        puts("[+] process_message succeed");
-    }
-    else
-    {
-        puts("[+] process_message failed");
+        exit(EXIT_FAILURE);
     }
 
     constexpr size_t TEST_SIZE = (1 << 20);
@@ -106,7 +100,7 @@ auto main(int argc, const char* argv[]) -> int
     mbedtls::ctr_drbg ctr_drbg;
 
     PSI::Paillier homo_crypto;
-    homo_crypto.keygen(2048, ctr_drbg);
+    homo_crypto.keygen(512, ctr_drbg);
     auto pubkey = homo_crypto.dump_pubkey();
 
     buffer bloom_filter_a;
@@ -125,7 +119,26 @@ auto main(int argc, const char* argv[]) -> int
     buffer result1;
     enclave_a.aggregate(ds1.first, ds1.second, msg, pubkey, result1);
 
-    // hexdump("encrypted data", msg);
+    auto r1 =
+        nlohmann::json::from_msgpack(result1.data, result1.data + result1.size);
+
+    for (auto pair : r1)
+    {
+        std::array<uint8_t, sizeof(uint128_t)> key_bin = pair[0];
+        std::vector<uint8_t> val_bin = pair[1];
+
+        const uint128_t& key =
+            *reinterpret_cast<const uint128_t*>(key_bin.data());
+
+        auto dec =
+            homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size()));
+
+        printf(
+            "[>] %016lx%016lx : %s\n",
+            uint64_t(key >> 64),
+            uint64_t(key),
+            dec.write_string(10).c_str());
+    }
 
     return 0;
 }

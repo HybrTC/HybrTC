@@ -16,4 +16,5 @@ add_executable(helloworld_host ${SOURCE_FILES}
 # Needed for the generated file helloworld_u.h
 target_include_directories(helloworld_host PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
-target_link_libraries(helloworld_host openenclave::oehost ${LIBMBEDCRYPTO})
+target_link_libraries(helloworld_host openenclave::oehost ${LIBMBEDCRYPTO}
+                      nlohmann_json::nlohmann_json)
