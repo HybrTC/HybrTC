@@ -27,6 +27,29 @@ set(JSON_Install
     CACHE INTERNAL "")
 add_subdirectory(3rd-party/json)
 
+set(ZMQ_BUILD_TESTS
+    OFF
+    CACHE BOOL "")
+
+set(ENABLE_DRAFTS
+    OFF
+    CACHE BOOL "")
+
+set(ENABLE_CURVE
+    OFF
+    CACHE BOOL "")
+
+set(WITH_PERF_TOOL
+    OFF
+    CACHE BOOL "")
+
+set(CPPZMQ_BUILD_TESTS
+    OFF
+    CACHE BOOL "")
+
+add_subdirectory(3rd-party/libzmq)
+add_subdirectory(3rd-party/cppzmq)
+
 include_directories(${CMAKE_SOURCE_DIR}/common)
 
 add_subdirectory(server)
