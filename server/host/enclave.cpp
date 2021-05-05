@@ -86,9 +86,7 @@ auto SPIEnclave::process_message(const buffer& ciphertext) -> bool
     return ret;
 }
 
-void SPIEnclave::build_bloom_filter(
-    const std::vector<uint32_t>& keys,
-    buffer& bloom_filter)
+void SPIEnclave::build_bloom_filter(const v32& keys, buffer& bloom_filter)
 {
     // build
 
@@ -102,10 +100,10 @@ void SPIEnclave::build_bloom_filter(
 }
 
 void SPIEnclave::match_bloom_filter(
-    const std::vector<uint32_t>& keys,
-    const std::vector<uint32_t>& values,
+    const v32& keys,
+    const v32& values,
     const buffer& bloom_filter,
-    const std::vector<uint8_t>& pubkey,
+    const v8& pubkey,
     buffer& output)
 {
     oe_result_t result = ::match_bloom_filter(
@@ -123,10 +121,10 @@ void SPIEnclave::match_bloom_filter(
 }
 
 void SPIEnclave::aggregate(
-    const std::vector<uint32_t>& keys,
-    const std::vector<uint32_t>& values,
+    const v32& keys,
+    const v32& values,
     const buffer& peer_data,
-    const std::vector<uint8_t>& pubkey,
+    const v8& pubkey,
     buffer& output)
 {
     oe_result_t result = ::aggregate(

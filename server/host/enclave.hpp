@@ -5,6 +5,8 @@
 
 #include <openenclave/host.h>
 
+#include "common/types.hpp"
+
 struct buffer
 {
     uint8_t* data = nullptr;
@@ -55,21 +57,19 @@ class SPIEnclave
 
     auto process_message(const buffer& ciphertext) -> bool;
 
-    void build_bloom_filter(
-        const std::vector<uint32_t>& keys,
-        buffer& bloom_filter);
+    void build_bloom_filter(const v32& keys, buffer& bloom_filter);
 
     void match_bloom_filter(
-        const std::vector<uint32_t>& keys,
-        const std::vector<uint32_t>& values,
+        const v32& keys,
+        const v32& values,
         const buffer& bloom_filter,
-        const std::vector<uint8_t>& pubkey,
+        const v8& pubkey,
         buffer& output);
 
     void aggregate(
-        const std::vector<uint32_t>& keys,
-        const std::vector<uint32_t>& values,
+        const v32& keys,
+        const v32& values,
         const buffer& peer_data,
-        const std::vector<uint8_t>& pubkey,
+        const v8& pubkey,
         buffer& output);
 };

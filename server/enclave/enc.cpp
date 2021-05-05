@@ -11,6 +11,7 @@
 #include "attestation/attester.hpp"
 #include "attestation/verifier.hpp"
 #include "bloom_filter.hpp"
+#include "common/types.hpp"
 #include "common/uint128.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "crypto/ecdh.hpp"
@@ -28,9 +29,9 @@ constexpr uint32_t NUMBER_OF_HASHES = 4;
 using HashSet = BloomFilter<FILTER_POWER_BITS, NUMBER_OF_HASHES>;
 using HashTable = CuckooHashing<(1 << 16), (1 << 2), NUMBER_OF_HASHES>;
 
-using KeyBin = std::array<uint8_t, sizeof(uint128_t)>;
+using KeyBin = a8<sizeof(uint128_t)>;
 
-void hexdump(const char* name, const std::vector<uint8_t>& bytes)
+void hexdump(const char* name, const v8& bytes)
 {
     printf("=== [%s]\t", name);
     for (auto b : bytes)
@@ -41,7 +42,7 @@ void hexdump(const char* name, const std::vector<uint8_t>& bytes)
 }
 
 template <size_t N>
-void hexdump(const char* name, const std::array<uint8_t, N>& bytes)
+void hexdump(const char* name, const a8<N>& bytes)
 {
     printf("=== [%s]\t", name);
     for (auto b : bytes)
@@ -63,8 +64,8 @@ struct AttestationContext
     std::shared_ptr<mbedtls::ecdh> ecdh_ctx =
         std::make_shared<mbedtls::ecdh>(mbedtls::MBEDTLS_ECP_DP_SECP256R1);
 
-    std::vector<uint8_t> this_pk;
-    std::vector<uint8_t> peer_pk;
+    v8 this_pk;
+    v8 peer_pk;
 };
 
 std::shared_ptr<mbedtls::ctr_drbg> ctr_drbg;
@@ -113,13 +114,13 @@ void generate_evidence(
     uint8_t** evidence,
     size_t* evidence_len)
 {
-    ctx->peer_pk = std::vector<uint8_t>(pk, pk + pk_len);
+    ctx->peer_pk = v8(pk, pk + pk_len);
     ctx->ecdh_ctx->read_public(ctx->peer_pk);
 
-    std::vector<uint8_t> claim(pk, pk + pk_len);
+    v8 claim(pk, pk + pk_len);
     claim.insert(claim.end(), ctx->this_pk.begin(), ctx->this_pk.end());
 
-    std::vector<uint8_t> fs(format, format + format_len);
+    v8 fs(format, format + format_len);
     auto evidence_vec = ctx->attester->get_evidence(fs, claim);
 
     *evidence_len = evidence_vec.size();
@@ -129,7 +130,7 @@ void generate_evidence(
 
 auto finish_attestation(const uint8_t* data, size_t size) -> bool
 {
-    std::vector<uint8_t> evidence(data, data + size);
+    v8 evidence(data, data + size);
     auto claim = ctx->verifier->attest_attestation_evidence(evidence)
                      .custom_claims_buffer();
 
@@ -156,7 +157,7 @@ auto finish_attestation(const uint8_t* data, size_t size) -> bool
 
 void generate_message(uint8_t** data, size_t* size)
 {
-    std::vector<uint8_t> dummy = {1, 2, 3, 4, 5, 6, 7, 8};
+    v8 dummy = {1, 2, 3, 4, 5, 6, 7, 8};
     auto output = crypto_ctx->encrypt(dummy, *ctr_drbg);
 
     *size = output.size();
@@ -269,7 +270,7 @@ void aggregate(
     for (const auto& pair : peer)
     {
         KeyBin key_bin = pair[0];
-        std::vector<uint8_t> val_bin = pair[1];
+        v8 val_bin = pair[1];
 
         const uint128_t& key =
             *reinterpret_cast<const uint128_t*>(key_bin.data());

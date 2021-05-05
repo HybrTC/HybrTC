@@ -9,6 +9,7 @@
 #include <nlohmann/json.hpp>
 #include <zmq.hpp>
 
+#include "common/types.hpp"
 #include "common/uint128.hpp"
 #include "enclave.hpp"
 #include "paillier.hpp"
@@ -43,8 +44,7 @@ void hexdump(const char* name, const buffer& buf)
     puts("");
 }
 
-auto psi(const char* image_path, const std::vector<uint8_t>& pubkey)
-    -> std::vector<uint8_t>
+auto psi(const char* image_path, const v8& pubkey) -> v8
 {
     SPIEnclave enclave_a(image_path, false);
     SPIEnclave enclave_b(image_path, false);
@@ -94,7 +94,7 @@ auto psi(const char* image_path, const std::vector<uint8_t>& pubkey)
     buffer result1;
     enclave_a.aggregate(ds1.first, ds1.second, msg, pubkey, result1);
 
-    return std::vector<uint8_t>(result1.data, result1.data + result1.size);
+    return v8(result1.data, result1.data + result1.size);
 }
 
 auto main(int argc, const char* argv[]) -> int
@@ -116,9 +116,8 @@ auto main(int argc, const char* argv[]) -> int
     zmq::message_t request;
     (void)socket.recv(request, zmq::recv_flags::none);
 
-    const auto* pubkey = reinterpret_cast<const uint8_t*>(request.data());
-    auto ret =
-        psi(argv[1], std::vector<uint8_t>(pubkey, pubkey + request.size()));
+    const auto* pubkey = u8p(request.data());
+    auto ret = psi(argv[1], v8(pubkey, pubkey + request.size()));
 
     // send the reply to the client
     socket.send(zmq::buffer(ret), zmq::send_flags::none);
