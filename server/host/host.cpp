@@ -14,10 +14,6 @@
 #include "prng.hpp"
 #include "prp.hpp"
 
-#ifndef SGX_MODE_SIM
-#define SGX_MODE_HW
-#endif
-
 template <class KT, class VT>
 auto random_dataset(size_t size) -> std::pair<std::vector<KT>, std::vector<VT>>
 {
@@ -54,15 +50,8 @@ auto main(int argc, const char* argv[]) -> int
         return EXIT_FAILURE;
     }
 
-    bool simulate =
-#ifdef SGX_MODE_SIM
-        true;
-#else
-        false;
-#endif
-
-    SPIEnclave enclave_a(argv[1], simulate);
-    SPIEnclave enclave_b(argv[1], simulate);
+    SPIEnclave enclave_a(argv[1], false);
+    SPIEnclave enclave_b(argv[1], false);
 
     buffer pk_a;
     buffer format_setting_a;
