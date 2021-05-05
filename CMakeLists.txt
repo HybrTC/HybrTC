@@ -57,17 +57,23 @@ include_directories(${CMAKE_SOURCE_DIR}/common)
 add_subdirectory(server)
 add_subdirectory(client)
 
+set(SERVER_PORT1 5555)
+set(SERVER_PORT2 6666)
+
 add_custom_target(
   runs0
   DEPENDS server sign
-  COMMAND server 0 ${CMAKE_BINARY_DIR}/server/enclave/enclave.signed)
+  COMMAND server 1 ${SERVER_PORT1} tcp://localhost:${SERVER_PORT2}
+          ${CMAKE_BINARY_DIR}/server/enclave/enclave.signed)
 
 add_custom_target(
   runs1
   DEPENDS server sign
-  COMMAND server 1 ${CMAKE_BINARY_DIR}/server/enclave/enclave.signed)
+  COMMAND server 0 ${SERVER_PORT2} tcp://localhost:${SERVER_PORT1}
+          ${CMAKE_BINARY_DIR}/server/enclave/enclave.signed)
 
 add_custom_target(
   runc
   DEPENDS client
-  COMMAND client)
+  COMMAND client tcp://localhost:${SERVER_PORT1}
+          tcp://localhost:${SERVER_PORT2})

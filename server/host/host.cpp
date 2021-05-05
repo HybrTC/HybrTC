@@ -1,8 +1,10 @@
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <map>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <openenclave/host.h>
@@ -18,6 +20,7 @@
 #include "prp.hpp"
 
 #define LOGGER "consolse"
+constexpr size_t TEST_SIZE = (1 << 20);
 
 template <class KT, class VT>
 auto random_dataset(size_t size) -> std::pair<std::vector<KT>, std::vector<VT>>
@@ -77,7 +80,6 @@ auto psi(const char* image_path, const v8& pubkey) -> v8
         exit(EXIT_FAILURE);
     }
 
-    constexpr size_t TEST_SIZE = (1 << 20);
     auto ds1 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
     auto ds2 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
 
@@ -98,22 +100,44 @@ auto psi(const char* image_path, const v8& pubkey) -> v8
     return v8(result1.data, result1.data + result1.size);
 }
 
+class PSIContext
+{
+    SPIEnclave enclave;
+    v32 data_keys;
+    v32 data_vals;
+
+  public:
+    explicit PSIContext(const char* enclave_image_path)
+        : enclave(enclave_image_path, false)
+    {
+        PRNG<uint32_t> prng;
+        data_keys.push_back(prng());
+        data_vals.push_back(prng());
+    }
+};
+
 auto main(int argc, const char* argv[]) -> int
 {
     auto log = spdlog::stdout_color_mt(LOGGER);
     log->set_level(spdlog::level::debug);
 
-    if (argc != 3)
+    if (argc != 5)
     {
         fprintf(
             stderr,
-            "Usage: %s  <enclave_id:0/1> <enclave_image_path>\n",
+            "Usage: %s <server_id> <this_port> <peer_endpoint> "
+            "<enclave_image_path>\n",
             argv[0]);
         return EXIT_FAILURE;
     }
 
     const int server_id = std::stoi(argv[1], nullptr, 0);
-    const char* enclave_image_path = argv[2];
+    const int this_port = std::stoi(argv[2], nullptr, 0);
+    const char* peer_endpoint = argv[3];
+
+    log->info(
+        "server_id={} this={} peer={}", server_id, this_port, peer_endpoint);
+    const char* enclave_image_path = argv[3];
 
     // initialize the zmq context with a single IO thread
     zmq::context_t context{1};

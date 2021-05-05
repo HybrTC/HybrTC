@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <cstdlib>
 #include <iostream>
 #include <string>
 
@@ -16,8 +17,14 @@ auto main(int argc, const char* argv[]) -> int
     auto log = spdlog::stdout_color_mt("console");
     log->set_level(spdlog::level::debug);
 
-    OE_UNUSED(argc);
-    OE_UNUSED(argv);
+    if (argc != 3)
+    {
+        fprintf(stderr, "Usage: %s <endpoint1> <endpoint2>\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    const std::array<std::string, 2> endpoint = {argv[1], argv[2]};
+    log->info("server endpoint: {} {}", endpoint[0], endpoint[1]);
 
     mbedtls::ctr_drbg ctr_drbg;
 
