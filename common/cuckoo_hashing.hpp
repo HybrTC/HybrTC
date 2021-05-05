@@ -118,9 +118,9 @@ class CuckooHashing
         }
     }
 
-    auto lookup(const KT& key) const -> std::vector<ET>
+    auto lookup(const KT& key) const -> std::vector<VT>
     {
-        std::vector<ET> result;
+        std::vector<VT> result;
 
         const std::array<HT, HN> hashes = hash(key);
         for (uint32_t hi = 0; hi < HN; hi++)
@@ -132,7 +132,7 @@ class CuckooHashing
             {
                 if (e.first == key)
                 {
-                    result.push_back(e);
+                    result.push_back(e.second);
                 }
             }
         }
@@ -141,7 +141,7 @@ class CuckooHashing
         {
             if (e.first == key)
             {
-                result.push_back(e);
+                result.push_back(e.second);
             }
         }
 
