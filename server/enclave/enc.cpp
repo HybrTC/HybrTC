@@ -31,27 +31,6 @@ using HashTable = CuckooHashing<(1 << 16), (1 << 2), NUMBER_OF_HASHES>;
 
 using KeyBin = a8<sizeof(uint128_t)>;
 
-void hexdump(const char* name, const v8& bytes)
-{
-    printf("=== [%s]\t", name);
-    for (auto b : bytes)
-    {
-        printf("%02x", b);
-    }
-    puts("");
-}
-
-template <size_t N>
-void hexdump(const char* name, const a8<N>& bytes)
-{
-    printf("=== [%s]\t", name);
-    for (auto b : bytes)
-    {
-        printf("%02x", b);
-    }
-    puts("");
-}
-
 struct AttestationContext
 {
     constexpr static oe_uuid_t format_id{OE_FORMAT_UUID_SGX_LOCAL_ATTESTATION};
