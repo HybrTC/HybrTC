@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "crypto/aes.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "internal/resource.hpp"
 #include "log.h"
@@ -16,8 +17,10 @@ class gcm
     : public internal::
           resource<mbedtls_gcm_context, &mbedtls_gcm_init, &mbedtls_gcm_free>
 {
+  public:
     constexpr static size_t IV_LEN = 12;
     constexpr static size_t TAG_LEN = 12;
+    constexpr static size_t KEY_BYTES = keybits / BITS_PER_BYTE;
 
     struct ciphertext
     {
@@ -26,8 +29,7 @@ class gcm
         uint8_t ciphertext[];
     };
 
-  public:
-    explicit gcm(const std::array<uint8_t, keybits / BITS_PER_BYTE>& key)
+    explicit gcm(const std::array<uint8_t, KEY_BYTES>& key)
     {
         mbedtls_gcm_setkey(get(), cipher, key.data(), keybits);
     }
@@ -104,5 +106,7 @@ class gcm
         return output;
     }
 };
+
+using aes_gcm_256 = mbedtls::gcm<MBEDTLS_CIPHER_ID_AES, aes::KEY_LEN_256>;
 
 } // namespace mbedtls

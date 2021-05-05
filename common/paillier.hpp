@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "common/types.hpp"
 #include "crypto/bignum.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "log.h"
@@ -51,9 +52,9 @@ class Paillier
             uint8_t data[];
         };
 
-        [[nodiscard]] auto dump() const -> std::vector<uint8_t>
+        [[nodiscard]] auto dump() const -> v8
         {
-            std::vector<uint8_t> buffer(sizeof(_dump) + n.size() + g.size(), 0);
+            v8 buffer(sizeof(_dump) + n.size() + g.size(), 0);
             _dump& dump = *reinterpret_cast<_dump*>(&buffer[0]);
 
             dump.nbits = bits;
@@ -132,9 +133,14 @@ class Paillier
         prvkey.complete(pubkey);
     }
 
-    [[nodiscard]] auto dump_pubkey() const -> std::vector<uint8_t>
+    [[nodiscard]] auto dump_pubkey() const -> v8
     {
         return pubkey.dump();
+    }
+
+    void load_pubkey(const v8& pk)
+    {
+        return pubkey.load(pk.data(), pk.size());
     }
 
     void load_pubkey(const uint8_t* pk, size_t pk_size)
