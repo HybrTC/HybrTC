@@ -13,24 +13,26 @@
 
 using nlohmann::json;
 
-#define LOGGER "consolse"
-
 static auto attestation_servant(zmq::socket_t& server, PSIContext& context)
     -> uint32_t
 {
     json request = recv(server);
+    SPDLOG_DEBUG("handle_attestation_req: request received");
     assert(request["type"].get<MessageType>() == AttestationRequest);
     auto payload = request["payload"].get<v8>();
 
     json response = context.handle_attestation_req(payload);
     assert(response["type"].get<MessageType>() == AttestationResponse);
     send(server, response);
+    SPDLOG_DEBUG("handle_attestation_req: response sent");
 
     return response["sid"].get<uint32_t>();
 }
 
 void client_servant(int port, zmq::context_t* io, PSIContext* context)
 {
+    SPDLOG_DEBUG("starting {} at port {}", __FUNCTION__, port);
+
     /* construct a router socket and bind to interface */
     zmq::socket_t server = listen(*io, port);
 
@@ -39,6 +41,7 @@ void client_servant(int port, zmq::context_t* io, PSIContext* context)
 
     /* compute query */
     json request = recv(server);
+    SPDLOG_DEBUG("handle_query_request: request received");
     assert(request["type"].get<MessageType>() == QueryRequest);
     auto sid = request["sid"].get<uint32_t>();
     auto payload = request["payload"].get<v8>();
@@ -46,10 +49,13 @@ void client_servant(int port, zmq::context_t* io, PSIContext* context)
     json response = context->handle_query_request(sid, payload);
     assert(response["type"].get<MessageType>() == QueryResponse);
     send(server, response);
+    SPDLOG_DEBUG("handle_query_request: response sent");
 }
 
 void peer_servant(int port, zmq::context_t* io, PSIContext* context)
 {
+    SPDLOG_DEBUG("starting {} at port {}", __FUNCTION__, port);
+
     /* construct a router socket and bind to interface */
     zmq::socket_t server = listen(*io, port);
 
@@ -59,6 +65,7 @@ void peer_servant(int port, zmq::context_t* io, PSIContext* context)
     /* compute query */
     {
         json request = recv(server);
+        SPDLOG_DEBUG("handle_compute_req: request received");
         assert(request["type"].get<MessageType>() == ComputeRequest);
         auto sid = request["sid"].get<uint32_t>();
         auto payload = request["payload"].get<v8>();
@@ -66,6 +73,7 @@ void peer_servant(int port, zmq::context_t* io, PSIContext* context)
         json response = context->handle_compute_req(sid, payload);
         assert(response["type"].get<MessageType>() == ComputeResponse);
         send(server, response);
+        SPDLOG_DEBUG("handle_compute_req: response sent");
     }
 }
 
@@ -74,6 +82,8 @@ void peer_client(
     zmq::context_t* io,
     PSIContext* context)
 {
+    SPDLOG_DEBUG("starting {} to {}", __FUNCTION__, peer_endpoint);
+
     // construct a request socket and connect to interface
     zmq::socket_t client = connect(*io, peer_endpoint);
 
@@ -82,6 +92,7 @@ void peer_client(
         json request = context->prepare_attestation_req();
         assert(request["type"].get<MessageType>() == AttestationRequest);
         send(client, request);
+        SPDLOG_DEBUG("prepare_attestation_req: request sent");
 
         json response = recv(client);
         SPDLOG_DEBUG("process_attestation_resp: response received");
@@ -92,9 +103,11 @@ void peer_client(
     }
 
     /* build and send bloom filter */
+    SPDLOG_DEBUG("prepare_compute_req");
     json request = context->prepare_compute_req();
     assert(request["type"].get<MessageType>() == ComputeRequest);
     send(client, request);
+    SPDLOG_DEBUG("prepare_compute_req: request sent");
 
     /* get match result and aggregate */
     json response = recv(client);
@@ -107,9 +120,6 @@ void peer_client(
 
 auto main(int argc, const char* argv[]) -> int
 {
-    auto log = spdlog::stdout_color_mt(LOGGER);
-    log->set_level(spdlog::level::debug);
-
     if (argc != 6)
     {
         fprintf(
@@ -126,14 +136,21 @@ auto main(int argc, const char* argv[]) -> int
     const char* peer_endpoint = argv[4];
     const char* enclave_image_path = argv[5];
 
+    const std::string pattern = fmt::format(
+        "%^[%Y-%m-%d %H:%M:%S.%e] [%L] [s{}] [%t] %s:%# -%$ %v", server_id);
+    // spdlog::set_name(logger_name);
+    spdlog::set_level(spdlog::level::debug);
+    spdlog::set_pattern(pattern);
+
     if (server_id != 0 && server_id != 1)
     {
-        log->error("unexpected server id {}: it can only be 0 or 1", server_id);
+        SPDLOG_ERROR(
+            "unexpected server id {}: it can only be 0 or 1", server_id);
         exit(EXIT_FAILURE);
     }
     else
     {
-        log->info(
+        SPDLOG_INFO(
             "server_id={} port={}/{} peer_endpoint={}",
             server_id,
             client_port,
@@ -157,18 +174,20 @@ auto main(int argc, const char* argv[]) -> int
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     /* start client */
-    auto c_peer = std::async(
-        std::launch::async, peer_client, peer_endpoint, &context, &psi);
+    // auto c_peer = std::async(
+    //     std::launch::async, peer_client, peer_endpoint, &context, &psi);
+
+    peer_client(peer_endpoint, &context, &psi);
 
     /* finish everything */
     s_peer.wait();
-    log->info("Server for peer closed");
+    SPDLOG_INFO("Server for peer closed");
 
-    c_peer.wait();
-    log->info("Client for peer closed");
+    // c_peer.wait();
+    // SPDLOG_INFO("Client for peer closed");
 
     s_client.wait();
-    log->info("Server for client closed");
+    SPDLOG_INFO("Server for client closed");
 
     return 0;
 }
