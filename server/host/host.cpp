@@ -1,8 +1,13 @@
+#include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <future>
 #include <iostream>
 #include <map>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -18,143 +23,194 @@
 #include "paillier.hpp"
 #include "prng.hpp"
 #include "prp.hpp"
+#include "psi_context.hpp"
+#include "spdlog/fmt/bundled/core.h"
+
+using nlohmann::json;
 
 #define LOGGER "consolse"
-constexpr size_t TEST_SIZE = (1 << 20);
 
-template <class KT, class VT>
-auto random_dataset(size_t size) -> std::pair<std::vector<KT>, std::vector<VT>>
+static auto listen(zmq::context_t& io, int port) -> zmq::socket_t
 {
-    PRNG<uint32_t> prng;
-
-    std::pair<std::vector<KT>, std::vector<VT>> dataset;
-
-    for (size_t i = 0; i < size; i++)
-    {
-        dataset.first.push_back(prng());
-        dataset.second.push_back(prng());
-    }
-
-    return dataset;
+    zmq::socket_t socket(io, zmq::socket_type::rep);
+    socket.bind(fmt::format("tcp://*:{}", port));
+    return socket;
 }
 
-void hexdump(const char* name, const buffer& buf)
+static auto connect(zmq::context_t& io, const char* endpoint) -> zmq::socket_t
 {
-    auto log = spdlog::get(LOGGER);
-    log->debug("{}: {}", name, spdlog::to_hex(buf.data, buf.data + buf.size));
+    zmq::socket_t socket(io, zmq::socket_type::req);
+    socket.connect(endpoint);
+    return socket;
 }
 
-auto psi(const char* image_path, const v8& pubkey) -> v8
+static auto recv(zmq::socket_t& socket) -> json
 {
-    auto log = spdlog::get(LOGGER);
+    // receive a message
+    zmq::message_t msg;
+    (void)socket.recv(msg, zmq::recv_flags::none);
 
-    SPIEnclave enclave_a(image_path, false);
-    SPIEnclave enclave_b(image_path, false);
-
-    buffer pk_a;
-    buffer format_setting_a;
-    enclave_a.initialize_attestation(pk_a, format_setting_a);
-    hexdump("pk_a", pk_a);
-
-    buffer pk_b;
-    buffer format_setting_b;
-    enclave_b.initialize_attestation(pk_b, format_setting_b);
-    hexdump("pk_b", pk_b);
-
-    buffer evidence_a;
-    enclave_a.generate_evidence(pk_b, format_setting_b, evidence_a);
-
-    buffer evidence_b;
-    enclave_b.generate_evidence(pk_a, format_setting_a, evidence_b);
-
-    bool result_a = enclave_a.finish_attestation(evidence_b);
-    bool result_b = enclave_b.finish_attestation(evidence_a);
-
-    if (result_a && result_b)
-    {
-        log->info("attestation succeed");
-    }
-    else
-    {
-        log->warn("attestation failed");
-        exit(EXIT_FAILURE);
-    }
-
-    auto ds1 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
-    auto ds2 = random_dataset<uint32_t, uint32_t>(TEST_SIZE);
-
-    buffer bloom_filter_a;
-    enclave_a.build_bloom_filter(ds1.first, bloom_filter_a);
-
-    log->debug(
-        "enclave_a.build_bloom_filter(ds1.first) => filter_size = {:x}",
-        bloom_filter_a.size);
-
-    buffer msg;
-    enclave_b.match_bloom_filter(
-        ds2.first, ds2.second, bloom_filter_a, pubkey, msg);
-
-    buffer result1;
-    enclave_a.aggregate(ds1.first, ds1.second, msg, pubkey, result1);
-
-    return v8(result1.data, result1.data + result1.size);
+    // deserialize the message
+    return json::from_msgpack(u8p(msg.data()), u8p(msg.data()) + msg.size());
 }
 
-class PSIContext
+static void send(zmq::socket_t& socket, const json& object)
 {
-    SPIEnclave enclave;
-    v32 data_keys;
-    v32 data_vals;
+    (void)socket.send(zmq::buffer(json::to_msgpack(object)));
+}
 
-  public:
-    explicit PSIContext(const char* enclave_image_path)
-        : enclave(enclave_image_path, false)
+static auto attestation_servant(zmq::socket_t& server, PSIContext& context)
+    -> uint32_t
+{
+    json request = recv(server);
+    assert(request["type"].get<MessageType>() == AttestationRequest);
+    auto payload = request["payload"].get<v8>();
+
+    json response = context.handle_attestation_req(payload);
+    assert(response["type"].get<MessageType>() == AttestationResponse);
+    send(server, response);
+
+    return response["sid"].get<uint32_t>();
+}
+
+void client_servant(int port, zmq::context_t* io, PSIContext* context)
+{
+    /* construct a router socket and bind to interface */
+    zmq::socket_t server = listen(*io, port);
+
+    /* attestation */
+    context->set_client_sid(attestation_servant(server, *context));
+
+    /* compute query */
+    json request = recv(server);
+    assert(request["type"].get<MessageType>() == QueryRequest);
+    auto sid = request["sid"].get<uint32_t>();
+    auto payload = request["payload"].get<v8>();
+
+    json response = context->handle_query_request(sid, payload);
+    assert(response["type"].get<MessageType>() == QueryResponse);
+    send(server, response);
+}
+
+void peer_servant(int port, zmq::context_t* io, PSIContext* context)
+{
+    /* construct a router socket and bind to interface */
+    zmq::socket_t server = listen(*io, port);
+
+    /* attestation */
+    context->set_peer_isid(attestation_servant(server, *context));
+
+    /* compute query */
     {
-        PRNG<uint32_t> prng;
-        data_keys.push_back(prng());
-        data_vals.push_back(prng());
+        json request = recv(server);
+        assert(request["type"].get<MessageType>() == ComputeRequest);
+        auto sid = request["sid"].get<uint32_t>();
+        auto payload = request["payload"].get<v8>();
+
+        json response = context->handle_query_request(sid, payload);
+        assert(response["type"].get<MessageType>() == ComputeResponse);
+        send(server, response);
     }
-};
+}
+
+void peer_client(
+    const char* peer_endpoint,
+    zmq::context_t* io,
+    PSIContext* context)
+{
+    // construct a request socket and connect to interface
+    zmq::socket_t client = connect(*io, peer_endpoint);
+
+    /* attestation */
+    {
+        json request = context->prepare_attestation_req();
+        assert(request["type"].get<MessageType>() == AttestationRequest);
+        send(client, request);
+
+        json response = recv(client);
+        assert(request["type"].get<MessageType>() == AttestationResponse);
+        auto sid = request["sid"].get<uint32_t>();
+        auto payload = request["payload"].get<v8>();
+        context->set_peer_osid(context->process_attestation_resp(sid, payload));
+    }
+
+    /* build and send bloom filter */
+    json request = context->prepare_compute_req();
+    assert(request["type"].get<MessageType>() == ComputeRequest);
+    send(client, request);
+
+    /* get match result and aggregate */
+    json response = recv(client);
+    assert(request["type"].get<MessageType>() == ComputeResponse);
+    auto sid = request["sid"].get<uint32_t>();
+    auto payload = request["payload"].get<v8>();
+    context->process_compute_resp(sid, payload);
+}
 
 auto main(int argc, const char* argv[]) -> int
 {
     auto log = spdlog::stdout_color_mt(LOGGER);
     log->set_level(spdlog::level::debug);
 
-    if (argc != 5)
+    if (argc != 6)
     {
         fprintf(
             stderr,
-            "Usage: %s <server_id> <this_port> <peer_endpoint> "
+            "Usage: %s <server_id> <client_port> <peer_port> <peer_endpoint> "
             "<enclave_image_path>\n",
             argv[0]);
         return EXIT_FAILURE;
     }
 
     const int server_id = std::stoi(argv[1], nullptr, 0);
-    const int this_port = std::stoi(argv[2], nullptr, 0);
-    const char* peer_endpoint = argv[3];
+    const int client_port = std::stoi(argv[2], nullptr, 0);
+    const int peer_port = std::stoi(argv[3], nullptr, 0);
+    const char* peer_endpoint = argv[4];
+    const char* enclave_image_path = argv[5];
 
-    log->info(
-        "server_id={} this={} peer={}", server_id, this_port, peer_endpoint);
-    const char* enclave_image_path = argv[3];
+    if (server_id != 0 && server_id != 1)
+    {
+        log->error("unexpected server id {}: it can only be 0 or 1", server_id);
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        log->info(
+            "server_id={} port={}/{} peer_endpoint={}",
+            server_id,
+            client_port,
+            peer_port,
+            peer_endpoint);
+    }
 
-    // initialize the zmq context with a single IO thread
-    zmq::context_t context{1};
+    /* initialize the zmq context with 2 IO thread */
+    zmq::context_t context(1);
 
-    // construct a REP (reply) socket and bind to interface
-    zmq::socket_t socket{context, zmq::socket_type::rep};
-    socket.bind("tcp://*:5555");
+    /* initialize PSI context */
+    PSIContext psi(enclave_image_path, bool(server_id));
 
-    // receive a request from client
-    zmq::message_t request;
-    (void)socket.recv(request, zmq::recv_flags::none);
+    /* start server */
+    auto s_peer =
+        std::async(std::launch::async, peer_servant, peer_port, &context, &psi);
+    auto s_client = std::async(
+        std::launch::async, client_servant, client_port, &context, &psi);
 
-    const auto* pubkey = u8p(request.data());
-    auto ret = psi(enclave_image_path, v8(pubkey, pubkey + request.size()));
+    /* wait for the server starting up */
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    // send the reply to the client
-    socket.send(zmq::buffer(ret), zmq::send_flags::none);
+    /* start client */
+    auto c_peer = std::async(
+        std::launch::async, peer_client, peer_endpoint, &context, &psi);
+
+    /* finish everything */
+    s_peer.wait();
+    log->info("Server for peer closed");
+
+    c_peer.wait();
+    log->info("Client for peer closed");
+
+    s_client.wait();
+    log->info("Server for client closed");
 
     return 0;
 }

@@ -1,4 +1,5 @@
 #include "enclave.hpp"
+#include <cstdint>
 
 #include "helloworld_u.h"
 
@@ -33,65 +34,62 @@ SPIEnclave::SPIEnclave(const char* enclave_image_path, bool simulate)
     CHECK("oe_create_helloworld_enclave", result);
 }
 
-void SPIEnclave::initialize_attestation(buffer& pk, buffer& format_setting)
+void SPIEnclave::verifier_generate_challenge(buffer& output)
 {
-    oe_result_t result = ::initialize_attestation(
+    oe_result_t result =
+        ::verifier_generate_challenge(enclave(), &output.data, &output.size);
+
+    CHECK("verifier_generate_challenge", result);
+}
+
+auto SPIEnclave::attester_generate_response(const v8& input, buffer& output)
+    -> uint32_t
+{
+    uint32_t sid;
+
+    oe_result_t result = ::attester_generate_response(
         enclave(),
-        &pk.data,
-        &pk.size,
-        &format_setting.data,
-        &format_setting.size);
-
-    CHECK("initialize_attestation", result);
+        &sid,
+        input.data(),
+        input.size(),
+        &output.data,
+        &output.size);
+    CHECK("attester_generate_response", result);
+    return sid;
 }
 
-void SPIEnclave::generate_evidence(
-    const buffer& pk,
-    const buffer& format_setting,
-    buffer& evidence)
+auto SPIEnclave::verifier_process_response(const v8& input) -> uint32_t
 {
-    oe_result_t result = ::generate_evidence(
-        enclave(),
-        pk.data,
-        pk.size,
-        format_setting.data,
-        format_setting.size,
-        &evidence.data,
-        &evidence.size);
-    CHECK("generate_evidence", result);
+    uint32_t sid;
+    oe_result_t result = ::verifier_process_response(
+        enclave(), &sid, input.data(), input.size());
+    CHECK("verifier_process_response", result);
+    return sid;
 }
 
-auto SPIEnclave::finish_attestation(const buffer& evidence) -> bool
-{
-    bool ret;
-    oe_result_t result =
-        ::finish_attestation(enclave(), &ret, evidence.data, evidence.size);
-    CHECK("finish_attestation", result);
-    return ret;
-}
+// oe_result_t set_paillier_public_key(
+//     oe_enclave_t* enclave,
+//     uint32_t sid,
+//     const uint8_t* ibuf,
+//     size_t ilen);
 
-void SPIEnclave::generate_message(buffer& ciphertext)
+void SPIEnclave::set_paillier_public_key(uint32_t sid, const v8& input)
 {
     oe_result_t result =
-        ::generate_message(enclave(), &ciphertext.data, &ciphertext.size);
-    CHECK("generate_message", result);
+        ::set_paillier_public_key(enclave(), sid, input.data(), input.size());
+    CHECK("set_paillier_public_key", result);
 }
 
-auto SPIEnclave::process_message(const buffer& ciphertext) -> bool
-{
-    bool ret;
-    oe_result_t result =
-        ::process_message(enclave(), &ret, ciphertext.data, ciphertext.size);
-    CHECK("process_message", result);
-    return ret;
-}
-
-void SPIEnclave::build_bloom_filter(const v32& keys, buffer& bloom_filter)
+void SPIEnclave::build_bloom_filter(
+    uint32_t sid,
+    const v32& keys,
+    buffer& bloom_filter)
 {
     // build
 
     oe_result_t result = ::build_bloom_filter(
         enclave(),
+        sid,
         keys.data(),
         keys.size(),
         &bloom_filter.data,
@@ -100,42 +98,42 @@ void SPIEnclave::build_bloom_filter(const v32& keys, buffer& bloom_filter)
 }
 
 void SPIEnclave::match_bloom_filter(
+    uint32_t sid,
     const v32& keys,
     const v32& values,
-    const buffer& bloom_filter,
-    const v8& pubkey,
+    const v8& input,
     buffer& output)
 {
     oe_result_t result = ::match_bloom_filter(
         enclave(),
+        sid,
         keys.data(),
         values.data(),
         keys.size(),
-        bloom_filter.data,
-        bloom_filter.size,
-        pubkey.data(),
-        pubkey.size(),
+        input.data(),
+        input.size(),
         &output.data,
         &output.size);
     CHECK("match_bloom_filter", result);
 }
 
 void SPIEnclave::aggregate(
+    uint32_t peer_sid,
+    uint32_t client_sid,
     const v32& keys,
     const v32& values,
-    const buffer& peer_data,
-    const v8& pubkey,
+    const v8& input,
     buffer& output)
 {
     oe_result_t result = ::aggregate(
         enclave(),
+        peer_sid,
+        client_sid,
         keys.data(),
         values.data(),
         keys.size(),
-        peer_data.data,
-        peer_data.size,
-        pubkey.data(),
-        pubkey.size(),
+        input.data(),
+        input.size(),
         &output.data,
         &output.size);
     CHECK("aggregate", result);

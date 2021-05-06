@@ -44,32 +44,32 @@ class SPIEnclave
         }
     }
 
-    void initialize_attestation(buffer& pk, buffer& format_setting);
+    void verifier_generate_challenge(buffer& output);
 
-    void generate_evidence(
-        const buffer& pk,
-        const buffer& format_setting,
-        buffer& evidence);
+    auto attester_generate_response(const v8& input, buffer& output)
+        -> uint32_t;
 
-    auto finish_attestation(const buffer& evidence) -> bool;
+    auto verifier_process_response(const v8& input) -> uint32_t;
 
-    void generate_message(buffer& ciphertext);
+    void set_paillier_public_key(uint32_t sid, const v8& input);
 
-    auto process_message(const buffer& ciphertext) -> bool;
-
-    void build_bloom_filter(const v32& keys, buffer& bloom_filter);
+    void build_bloom_filter(
+        uint32_t sid,
+        const v32& keys,
+        buffer& bloom_filter);
 
     void match_bloom_filter(
+        uint32_t sid,
         const v32& keys,
         const v32& values,
-        const buffer& bloom_filter,
-        const v8& pubkey,
+        const v8& input,
         buffer& output);
 
     void aggregate(
+        uint32_t peer_sid,
+        uint32_t client_sid,
         const v32& keys,
         const v32& values,
-        const buffer& peer_data,
-        const v8& pubkey,
+        const v8& input,
         buffer& output);
 };
