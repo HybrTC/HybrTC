@@ -43,11 +43,11 @@ void verifier_generate_challenge(uint8_t** obuf, size_t* olen)
 
     /* initialize verifier context */
     auto ctx = std::make_shared<VerifierContext>();
-    verifiers.push_back(ctx);
 
     /* set verifier id; generate and dump ephemeral public key */
     ctx->vid = verifiers.size();
     ctx->vpk = ctx->ecdh.make_public(*ctr_drbg);
+    verifiers.push_back(ctx);
 
     /* generate output object */
     json json = json::object(
@@ -74,7 +74,7 @@ auto attester_generate_response(
     AttesterContext ctx;
 
     /* set attester id; generate and dump ephemeral public key */
-    ctx.aid = (++attester_counter);
+    ctx.aid = (attester_counter++);
     ctx.apk = ctx.ecdh.make_public(*ctr_drbg);
 
     /* deserialize and handle input */
