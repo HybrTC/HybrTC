@@ -1,8 +1,9 @@
 #pragma once
 
-#include <openenclave/enclave.h>
-
+#ifndef __OUTSIDE_ENCLAVE__
 #include "attestation/attester.hpp"
+#endif
+
 #include "attestation/verifier.hpp"
 #include "common/types.hpp"
 #include "crypto/ecdh.hpp"
@@ -50,10 +51,12 @@ struct AttestationContext
     }
 };
 
+#ifndef __OUTSIDE_ENCLAVE__
 struct AttesterContext : public AttestationContext
 {
     Attester core = Attester(&format_id);
 };
+#endif
 
 struct VerifierContext : public AttestationContext
 {

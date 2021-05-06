@@ -63,7 +63,7 @@ void peer_servant(int port, zmq::context_t* io, PSIContext* context)
         auto sid = request["sid"].get<uint32_t>();
         auto payload = request["payload"].get<v8>();
 
-        json response = context->handle_query_request(sid, payload);
+        json response = context->handle_compute_req(sid, payload);
         assert(response["type"].get<MessageType>() == ComputeResponse);
         send(server, response);
     }
