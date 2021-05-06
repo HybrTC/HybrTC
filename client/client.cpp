@@ -97,10 +97,10 @@ auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk)
         send(client, request);
 
         json response = recv(client);
-        assert(request["type"].get<MessageType>() == AttestationResponse);
-        auto payload = request["payload"].get<v8>();
+        assert(response["type"].get<MessageType>() == AttestationResponse);
+        auto payload = response["payload"].get<v8>();
         sid = verifier_process_response(vctx, payload);
-        assert(sid == request["sid"].get<uint32_t>());
+        assert(sid == response["sid"].get<uint32_t>());
     }
 
     auto crypto = sessions[sid];
@@ -115,9 +115,9 @@ auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk)
 
     /* get match result and aggregate */
     json response = recv(client);
-    assert(request["type"].get<MessageType>() == QueryResponse);
-    assert(sid == request["sid"].get<uint32_t>());
-    auto result = crypto->decrypt(request["payload"].get<v8>());
+    assert(response["type"].get<MessageType>() == QueryResponse);
+    assert(sid == response["sid"].get<uint32_t>());
+    auto result = crypto->decrypt(response["payload"].get<v8>());
 
     return json::from_msgpack(result);
 }
