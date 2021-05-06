@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <vector>
 
+#include "common/types.hpp"
 #include "ctr_drbg.hpp"
 #include "internal/resource.hpp"
 
@@ -22,9 +23,9 @@ class ecdh
         mbedtls_ecdh_setup(get(), grp_id);
     }
 
-    auto make_public(ctr_drbg& ctr_drbg) -> std::vector<uint8_t>
+    auto make_public(ctr_drbg& ctr_drbg) -> v8
     {
-        std::vector<uint8_t> buf(MBEDTLS_ECP_MAX_BYTES, 0);
+        v8 buf(MBEDTLS_ECP_MAX_BYTES, 0);
         size_t len;
 
         mbedtls_ecdh_make_public(
@@ -39,14 +40,14 @@ class ecdh
         return buf;
     }
 
-    void read_public(const std::vector<uint8_t>& buf)
+    void read_public(const v8& buf)
     {
         mbedtls_ecdh_read_public(get(), buf.data(), buf.size());
     }
 
-    auto calc_secret(ctr_drbg& ctr_drbg) -> std::vector<uint8_t>
+    auto calc_secret(ctr_drbg& ctr_drbg) -> v8
     {
-        std::vector<uint8_t> buf(MBEDTLS_ECP_MAX_BYTES, 0);
+        v8 buf(MBEDTLS_ECP_MAX_BYTES, 0);
         size_t len;
 
         mbedtls_ecdh_calc_secret(
