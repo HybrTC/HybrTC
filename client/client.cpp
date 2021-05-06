@@ -114,7 +114,7 @@ auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk)
 
     /* set public key */
     json request = {
-        {"sid", -1},
+        {"sid", sid},
         {"type", QueryRequest},
         {"payload", crypto->encrypt(pk, *ctr_drbg)}};
     assert(request["type"].get<MessageType>() == QueryRequest);
