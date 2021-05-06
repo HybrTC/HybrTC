@@ -88,7 +88,7 @@ auto attester_generate_response(
     v8 format_settings = input["format_settings"]; // load format settings
 
     /* build claims and generate evidence*/
-    auto evidence = ctx.core.get_evidence(format_settings, build_claims(ctx));
+    auto evidence = ctx.core.get_evidence(format_settings, ctx.build_claims());
 
     /* generate output object */
     json json = json::object(
@@ -100,7 +100,7 @@ auto attester_generate_response(
     dump(json::to_msgpack(json), obuf, olen);
 
     /* build crypto context */
-    return complete_attestation(ctx);
+    return ctx.complete_attestation();
 }
 
 /*
@@ -121,7 +121,7 @@ auto verifier_process_response(const uint8_t* ibuf, size_t ilen) -> uint32_t
     auto claims = ctx->core.verify_evidence(evidence).custom_claims_buffer();
 
     /* compare claims: (1) size (2) compare content in constant time */
-    auto claims_ = build_claims(*ctx);
+    auto claims_ = ctx->build_claims();
     if (claims_.size() != claims.value_size)
     {
         return -1;
@@ -138,7 +138,7 @@ auto verifier_process_response(const uint8_t* ibuf, size_t ilen) -> uint32_t
     }
 
     /* build crypto context and free verifier context */
-    auto sid = complete_attestation(*ctx);
+    auto sid = ctx->complete_attestation();
     verifiers[ctx->vid] = nullptr;
 
     return sid;

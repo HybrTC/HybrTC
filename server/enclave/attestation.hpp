@@ -23,6 +23,31 @@ struct AttestationContext
 
     v8 vpk; // verifier's pk
     v8 apk; // attester's pk
+
+    [[nodiscard]] auto build_claims() const
+    {
+        mbedtls::sha256 hash;
+        hash.update(vid);
+        hash.update(vpk);
+        hash.update(aid);
+        hash.update(apk);
+        return hash.finish();
+    }
+
+    auto complete_attestation()
+    {
+        mbedtls::sha256 hash;
+        hash.update(vid);
+        hash.update(aid);
+        hash.update(ecdh.calc_secret(*ctr_drbg));
+        auto session_key = hash.finish();
+
+        auto crypto_ctx = std::make_shared<mbedtls::aes_gcm_256>(session_key);
+        uint32_t sid = (vid << (sizeof(uint16_t) << 3)) | aid;
+
+        sessions.insert({sid, crypto_ctx});
+        return sid;
+    }
 };
 
 struct AttesterContext : public AttestationContext
@@ -34,28 +59,3 @@ struct VerifierContext : public AttestationContext
 {
     Verifier core = Verifier(&format_id);
 };
-
-static auto build_claims(const AttestationContext& ctx)
-{
-    mbedtls::sha256 hash;
-    hash.update(ctx.vid);
-    hash.update(ctx.vpk);
-    hash.update(ctx.aid);
-    hash.update(ctx.apk);
-    return hash.finish();
-}
-
-static auto complete_attestation(AttestationContext& ctx)
-{
-    mbedtls::sha256 hash;
-    hash.update(ctx.vid);
-    hash.update(ctx.aid);
-    hash.update(ctx.ecdh.calc_secret(*ctr_drbg));
-    auto session_key = hash.finish();
-
-    auto crypto_ctx = std::make_shared<mbedtls::aes_gcm_256>(session_key);
-    uint32_t sid = (ctx.vid << (sizeof(uint16_t) << 3)) | ctx.aid;
-
-    sessions.insert({sid, crypto_ctx});
-    return sid;
-}
