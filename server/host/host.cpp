@@ -84,9 +84,10 @@ void peer_client(
         send(client, request);
 
         json response = recv(client);
-        assert(request["type"].get<MessageType>() == AttestationResponse);
-        auto sid = request["sid"].get<uint32_t>();
-        auto payload = request["payload"].get<v8>();
+        SPDLOG_DEBUG("process_attestation_resp: response received");
+        assert(response["type"].get<MessageType>() == AttestationResponse);
+        auto sid = response["sid"].get<uint32_t>();
+        auto payload = response["payload"].get<v8>();
         context->set_peer_osid(context->process_attestation_resp(sid, payload));
     }
 
@@ -97,9 +98,10 @@ void peer_client(
 
     /* get match result and aggregate */
     json response = recv(client);
-    assert(request["type"].get<MessageType>() == ComputeResponse);
-    auto sid = request["sid"].get<uint32_t>();
-    auto payload = request["payload"].get<v8>();
+    SPDLOG_DEBUG("process_compute_resp: response received");
+    assert(response["type"].get<MessageType>() == ComputeResponse);
+    auto sid = response["sid"].get<uint32_t>();
+    auto payload = response["payload"].get<v8>();
     context->process_compute_resp(sid, payload);
 }
 
