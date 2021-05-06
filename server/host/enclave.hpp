@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <mutex>
 #include <vector>
 
 #include <openenclave/host.h>
@@ -27,6 +28,7 @@ struct buffer
 class SPIEnclave
 {
     oe_enclave_t* enclave_ptr = nullptr;
+    std::mutex lock;
 
     auto enclave() -> oe_enclave_t*
     {
