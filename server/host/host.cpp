@@ -1,30 +1,14 @@
 #include <chrono>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <cstdlib>
 #include <future>
-#include <iostream>
-#include <map>
-#include <memory>
-#include <mutex>
 #include <string>
 #include <thread>
-#include <vector>
 
-#include <openenclave/host.h>
 #include <nlohmann/json.hpp>
 #include <spdlog.hpp>
 #include <zmq.hpp>
 
 #include "common/types.hpp"
-#include "common/uint128.hpp"
-#include "enclave.hpp"
-#include "paillier.hpp"
-#include "prng.hpp"
-#include "prp.hpp"
 #include "psi_context.hpp"
-#include "spdlog/fmt/bundled/core.h"
 #include "zmq_utils.hpp"
 
 using nlohmann::json;
