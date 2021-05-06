@@ -140,7 +140,7 @@ auto main(int argc, const char* argv[]) -> int
     ctr_drbg = std::make_shared<mbedtls::ctr_drbg>();
 
     PSI::Paillier homo_crypto;
-    homo_crypto.keygen(512, ctr_drbg);
+    homo_crypto.keygen(512, *ctr_drbg);
     auto pubkey = homo_crypto.dump_pubkey();
 
     // initialize the zmq context with a single IO thread
