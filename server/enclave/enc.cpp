@@ -83,6 +83,9 @@ auto attester_generate_response(
     ctx.vpk = input["vpk"].get<v8>();              // set peer pk
     v8 format_settings = input["format_settings"]; // load format settings
 
+    /* set vpk in ecdh context */
+    ctx.ecdh.read_public(ctx.vpk);
+
     /* build claims and generate evidence*/
     auto evidence = ctx.core.get_evidence(format_settings, ctx.build_claims());
 
@@ -112,6 +115,9 @@ auto verifier_process_response(const uint8_t* ibuf, size_t ilen) -> uint32_t
     ctx->aid = input["aid"].get<uint16_t>();            // set attester id
     ctx->apk = input["apk"].get<v8>();                  // set attester pubkey
     auto evidence = input["evidence"].get<v8>(); // load attestation evidence
+
+    /* set vpk in ecdh context */
+    ctx->ecdh.read_public(ctx->apk);
 
     /* verify evidence */
     auto claims = ctx->core.verify_evidence(evidence).custom_claims_buffer();
