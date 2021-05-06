@@ -25,39 +25,11 @@
 #include "prp.hpp"
 #include "psi_context.hpp"
 #include "spdlog/fmt/bundled/core.h"
+#include "zmq_utils.hpp"
 
 using nlohmann::json;
 
 #define LOGGER "consolse"
-
-static auto listen(zmq::context_t& io, int port) -> zmq::socket_t
-{
-    zmq::socket_t socket(io, zmq::socket_type::rep);
-    socket.bind(fmt::format("tcp://*:{}", port));
-    return socket;
-}
-
-static auto connect(zmq::context_t& io, const char* endpoint) -> zmq::socket_t
-{
-    zmq::socket_t socket(io, zmq::socket_type::req);
-    socket.connect(endpoint);
-    return socket;
-}
-
-static auto recv(zmq::socket_t& socket) -> json
-{
-    // receive a message
-    zmq::message_t msg;
-    (void)socket.recv(msg, zmq::recv_flags::none);
-
-    // deserialize the message
-    return json::from_msgpack(u8p(msg.data()), u8p(msg.data()) + msg.size());
-}
-
-static void send(zmq::socket_t& socket, const json& object)
-{
-    (void)socket.send(zmq::buffer(json::to_msgpack(object)));
-}
 
 static auto attestation_servant(zmq::socket_t& server, PSIContext& context)
     -> uint32_t
