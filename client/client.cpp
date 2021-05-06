@@ -5,7 +5,6 @@
 #include <string>
 #include <thread>
 
-#include <openenclave/host.h>
 #include <nlohmann/json.hpp>
 #include <spdlog.hpp>
 #include <zmq.hpp>
@@ -29,6 +28,7 @@ std::map<uint32_t, std::shared_ptr<mbedtls::aes_gcm_256>> sessions;
  */
 auto verifier_generate_challenge(VerifierContext& ctx, int vid) -> v8
 {
+    SPDLOG_DEBUG(__PRETTY_FUNCTION__);
     /* set verifier id; generate and dump ephemeral public key */
     ctx.vid = vid;
     ctx.vpk = ctx.ecdh.make_public(*ctr_drbg);
@@ -48,6 +48,7 @@ auto verifier_generate_challenge(VerifierContext& ctx, int vid) -> v8
  */
 auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
 {
+    SPDLOG_DEBUG(__PRETTY_FUNCTION__);
     /* deserialize and handle input */
     auto input = json::from_msgpack(ibuf);
 
@@ -55,6 +56,10 @@ auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
     ctx.apk = input["apk"].get<v8>();            // set attester pubkey
     auto evidence = input["evidence"].get<v8>(); // load attestation evidence
 
+    /* set vpk in ecdh context */
+    ctx.ecdh.read_public(ctx.apk);
+
+#if 0
     /* verify evidence */
     auto claims = ctx.core.verify_evidence(evidence).custom_claims_buffer();
 
@@ -74,6 +79,7 @@ auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
     {
         return -1;
     }
+#endif
 
     /* build crypto context and free verifier context */
     return ctx.complete_attestation();
@@ -82,6 +88,7 @@ auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
 auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk)
     -> json
 {
+    SPDLOG_DEBUG(__PRETTY_FUNCTION__);
     // construct a request socket and connect to interface
     zmq::socket_t client = connect(*io, server_addr);
     VerifierContext vctx;
@@ -124,8 +131,8 @@ auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk)
 
 auto main(int argc, const char* argv[]) -> int
 {
-    auto log = spdlog::stdout_color_mt("client");
-    log->set_level(spdlog::level::debug);
+    spdlog::set_level(spdlog::level::trace);
+    spdlog::set_pattern("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [c] [%t] %s:%# -%$ %v");
 
     if (argc != 3)
     {
@@ -134,7 +141,7 @@ auto main(int argc, const char* argv[]) -> int
     }
 
     const std::array<const char*, 2> endpoint = {argv[1], argv[2]};
-    log->info("server endpoint: {} {}", endpoint[0], endpoint[1]);
+    SPDLOG_INFO("server endpoint: {} {}", endpoint[0], endpoint[1]);
 
     /* prepare public key */
     ctr_drbg = std::make_shared<mbedtls::ctr_drbg>();
