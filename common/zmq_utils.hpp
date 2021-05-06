@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nlohmann/json.hpp>
+#include <spdlog.hpp>
 #include <zmq.hpp>
 
 #include "common/types.hpp"
@@ -26,11 +27,15 @@ static auto recv(zmq::socket_t& socket) -> nlohmann::json
     (void)socket.recv(msg, zmq::recv_flags::none);
 
     // deserialize the message
-    return nlohmann::json::from_msgpack(
+    auto object = nlohmann::json::from_msgpack(
         u8p(msg.data()), u8p(msg.data()) + msg.size());
+
+    SPDLOG_TRACE("recv = {}", object.dump());
+    return object;
 }
 
 static void send(zmq::socket_t& socket, const nlohmann::json& object)
 {
+    SPDLOG_TRACE("sent = {}", object.dump());
     (void)socket.send(zmq::buffer(nlohmann::json::to_msgpack(object)));
 }

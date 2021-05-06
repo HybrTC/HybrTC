@@ -5,11 +5,13 @@
 #include <mutex>
 
 #include <nlohmann/json.hpp>
+#include <spdlog.hpp>
 
 #include "common/types.hpp"
 #include "enclave.hpp"
 #include "message_types.hpp"
 #include "prng.hpp"
+#include "spdlog/spdlog.h"
 
 constexpr size_t TEST_SIZE = (1 << 20);
 
@@ -67,7 +69,10 @@ class PSIContext
             }
         }
 
+        SPDLOG_DEBUG("Locking client_ctx.lock");
         client_ctx.lock.lock();
+
+        SPDLOG_DEBUG("Locking peer_ctx.lock");
         peer_ctx.lock.lock();
     }
 
@@ -134,9 +139,11 @@ class PSIContext
         enclave.set_paillier_public_key(sid, payload);
 
         /* client sid and public key are set, ready for peer to use */
+        SPDLOG_DEBUG("Unlocking client_ctx.lock");
         client_ctx.lock.unlock();
 
         /* waiting for peer to return the result */
+        SPDLOG_DEBUG("Locking peer_ctx.lock");
         peer_ctx.lock.lock();
 
         /* build and return query result */
@@ -163,6 +170,7 @@ class PSIContext
     auto handle_compute_req(uint32_t sid, const v8& payload) -> nlohmann::json
     {
         /* wait for client public key to be set */
+        SPDLOG_DEBUG("Locking client_ctx.lock");
         client_ctx.lock.lock();
 
         assert(sid == peer_ctx.isid);
@@ -197,6 +205,7 @@ class PSIContext
         /*
          * result prepared, ready for client to take
          */
+        SPDLOG_DEBUG("Unlocking peer_ctx.lock");
         peer_ctx.lock.unlock();
     }
 };
