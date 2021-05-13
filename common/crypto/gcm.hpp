@@ -17,14 +17,14 @@ class gcm
     : public internal::
           resource<mbedtls_gcm_context, mbedtls_gcm_init, mbedtls_gcm_free>
 {
-    constexpr static size_t IV_LEN = 12;
+    constexpr static size_t IV_LEN = 16;
     constexpr static size_t TAG_LEN = 12;
 
     struct ciphertext
     {
         uint32_t id;
-        uint8_t iv[IV_LEN];
         uint8_t tag[TAG_LEN];
+        uint8_t iv[IV_LEN];
         uint8_t ciphertext[];
     };
 
