@@ -7,6 +7,7 @@
 #include <nlohmann/json.hpp>
 
 #include "common/types.hpp"
+#include "config.hpp"
 #include "enclave.hpp"
 #include "message_types.hpp"
 #include "prng.hpp"
@@ -44,17 +45,18 @@ class PSIContext
     explicit PSIContext(const char* enclave_image_path, bool half)
         : enclave(enclave_image_path, false), half(half)
     {
+        /* generate random dataset */
         PRNG<uint32_t> prng;
 
         if (half)
         {
-            for (size_t i = 0; i < TEST_SIZE / 2; i++)
+            for (size_t i = 0; i < PSI_DATA_SET_SIZE / 2; i++)
             {
                 data_keys.push_back(prng());
                 data_vals.push_back(prng());
             }
 
-            for (size_t i = TEST_SIZE / 2; i < TEST_SIZE; i++)
+            for (size_t i = PSI_DATA_SET_SIZE / 2; i < PSI_DATA_SET_SIZE; i++)
             {
                 left_keys.push_back(prng());
                 left_vals.push_back(prng());
@@ -62,18 +64,16 @@ class PSIContext
         }
         else
         {
-            for (size_t i = 0; i < TEST_SIZE; i++)
+            for (size_t i = 0; i < PSI_DATA_SET_SIZE; i++)
             {
                 data_keys.push_back(prng());
                 data_vals.push_back(prng());
             }
         }
 
-        SPDLOG_DEBUG("Locking client_ctx.lock");
+        /* initialize locks */
         client_ctx.lock_build.lock();
         client_ctx.lock_match.lock();
-
-        SPDLOG_DEBUG("Locking peer_ctx.lock");
         peer_ctx.lock.lock();
     }
 
