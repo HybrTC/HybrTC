@@ -5,8 +5,8 @@
 
 #include "common/types.hpp"
 #include "psi_context.hpp"
-#include "spdlog.hpp"
-#include "zmq_utils.hpp"
+#include "utils/spdlog.hpp"
+#include "utils/zmq.hpp"
 
 using std::stoi;
 using std::string;

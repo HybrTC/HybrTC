@@ -5,15 +5,15 @@
 #include <nlohmann/json.hpp>
 
 #include "attestation.hpp"
-#include "bloom_filter.hpp"
 #include "common/types.hpp"
 #include "common/uint128.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "crypto/gcm.hpp"
-#include "cuckoo_hashing.hpp"
 #include "log.h"
 #include "paillier.hpp"
-#include "prp.hpp"
+#include "psi/bloom_filter.hpp"
+#include "psi/cuckoo_hashing.hpp"
+#include "psi/prp.hpp"
 #include "session.hpp"
 #include "utils.hpp"
 

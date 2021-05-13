@@ -1,8 +1,9 @@
 #include <cstdint>
 
 #include "enclave.hpp"
+#include "utils/spdlog.hpp"
+
 #include "helloworld_u.h"
-#include "spdlog.hpp"
 
 #define CHECK(f, result)                              \
     if ((result) != OE_OK)                            \

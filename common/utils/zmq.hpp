@@ -1,10 +1,10 @@
 #pragma once
 
 #include <nlohmann/json.hpp>
-#include <spdlog.hpp>
 #include <zmq.hpp>
 
 #include "common/types.hpp"
+#include "spdlog.hpp"
 
 static auto listen(zmq::context_t& io, int port) -> zmq::socket_t
 {

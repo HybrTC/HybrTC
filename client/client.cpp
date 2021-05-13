@@ -6,8 +6,6 @@
 #include <thread>
 
 #include <nlohmann/json.hpp>
-#include <spdlog.hpp>
-#include <zmq.hpp>
 
 #define __OUTSIDE_ENCLAVE__
 
@@ -17,7 +15,8 @@
 #include "message_types.hpp"
 #include "paillier.hpp"
 #include "session.hpp"
-#include "zmq_utils.hpp"
+#include "utils/spdlog.hpp"
+#include "utils/zmq.hpp"
 
 using nlohmann::json;
 

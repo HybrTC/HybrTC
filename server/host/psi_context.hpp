@@ -5,13 +5,12 @@
 #include <mutex>
 
 #include <nlohmann/json.hpp>
-#include <spdlog.hpp>
 
 #include "common/types.hpp"
 #include "enclave.hpp"
 #include "message_types.hpp"
 #include "prng.hpp"
-#include "spdlog/spdlog.h"
+#include "utils/spdlog.hpp"
 
 constexpr size_t TEST_SIZE = (1 << 20);
 
