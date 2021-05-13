@@ -3,6 +3,7 @@
 
 #include "common/types.hpp"
 #include "common/uint128.hpp"
+#include "config.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "crypto/gcm.hpp"
 #include "paillier.hpp"
@@ -185,6 +186,8 @@ void set_client_query(
 
     half_data = half;
     local_data = melbourne_shuffle(data_key, data_val, data_size);
+
+#ifndef PSI_SELECT_ONLY
     if (half)
     {
         size_t mid = local_data.size() / 2;
@@ -197,6 +200,29 @@ void set_client_query(
 
         local_data.resize(mid);
     }
+#endif
+}
+
+void get_select_result(u32 sid, u8** obuf, size_t* olen)
+{
+#ifdef PSI_SELECT_ONLY
+    PRP prp;
+
+    auto result = json::array();
+    for (auto& [k, v] : local_data)
+    {
+        uint128_t key = prp(k);
+        auto enc = homo->encrypt(v, *rand_ctx).to_vector();
+        assert(!enc.empty());
+
+        result.push_back(
+            json::array({*reinterpret_cast<const PRP::binary*>(&key), enc}));
+    }
+
+    dump_enc(json::to_msgpack(result), *sessions[sid], obuf, olen);
+#else
+    abort();
+#endif
 }
 
 void build_bloom_filter(u32 sid, u8** obuf, size_t* olen)

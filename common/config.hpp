@@ -17,6 +17,8 @@
 #endif
 #endif
 
+#define PSI_SELECT_ONLY
+
 /* define aggregate policy */
 #ifndef PSI_SELECT_ONLY
 #ifndef PSI_JOIN_COUNT
@@ -24,6 +26,7 @@
 #endif
 #endif
 
+/* define melbourne shuffle parameter */
 #ifndef PSI_MELBOURNE_P
 #define PSI_MELBOURNE_P 3
 #endif

@@ -124,9 +124,17 @@ class PSIContext
         client_ctx.lock_build.unlock();
         client_ctx.lock_match.unlock();
 
+        // peer_ctx.result
+
+#ifdef PSI_SELECT_ONLY
+        buffer output;
+        enclave.get_select_result(client_ctx.sid, output);
+        peer_ctx.result = v8(output.data, output.data + output.size);
+#else
         /* waiting for peer to return the result */
         SPDLOG_DEBUG("Locking peer_ctx.lock");
         peer_ctx.lock.lock();
+#endif
 
         /* build and return query result */
         return {
@@ -139,6 +147,7 @@ class PSIContext
      * peer routines
      */
 
+#ifndef PSI_SELECT_ONLY
     auto prepare_compute_req() -> nlohmann::json
     {
         /* wait for client public key to be set */
@@ -183,4 +192,5 @@ class PSIContext
         SPDLOG_DEBUG("Unlocking peer_ctx.lock");
         peer_ctx.lock.unlock();
     }
+#endif
 };

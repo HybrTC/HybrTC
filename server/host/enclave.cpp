@@ -95,6 +95,14 @@ void SPIEnclave::set_client_query(
     CHECK("set_client_query", result);
     lock.unlock();
 }
+void SPIEnclave::get_select_result(uint32_t sid, buffer& obuf)
+{
+    lock.lock();
+    oe_result_t result =
+        ::get_select_result(enclave(), sid, &obuf.data, &obuf.size);
+    CHECK("get_select_result", result);
+    lock.unlock();
+}
 
 void SPIEnclave::build_bloom_filter(uint32_t sid, buffer& bloom_filter)
 {

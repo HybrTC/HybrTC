@@ -51,6 +51,7 @@ void client_servant(int port, context_t* io, PSIContext* context)
     SPDLOG_DEBUG("handle_query_request: response sent");
 }
 
+#ifndef PSI_SELECT_ONLY
 void peer_servant(int port, context_t* io, PSIContext* context)
 {
     SPDLOG_DEBUG("starting {} at port {}", __FUNCTION__, port);
@@ -113,6 +114,7 @@ void peer_client(const char* peer_endpoint, context_t* io, PSIContext* context)
     auto payload = response["payload"].get<v8>();
     context->process_compute_resp(sid, payload);
 }
+#endif
 
 auto main(int argc, const char* argv[]) -> int
 {
@@ -161,10 +163,12 @@ auto main(int argc, const char* argv[]) -> int
     PSIContext psi(enclave_image_path, bool(server_id));
 
     /* start server */
-    auto s_peer =
-        std::async(std::launch::async, peer_servant, peer_port, &context, &psi);
     auto s_client = std::async(
         std::launch::async, client_servant, client_port, &context, &psi);
+
+#ifndef PSI_SELECT_ONLY
+    auto s_peer =
+        std::async(std::launch::async, peer_servant, peer_port, &context, &psi);
 
     /* wait for the server starting up */
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -175,6 +179,7 @@ auto main(int argc, const char* argv[]) -> int
     /* finish everything */
     s_peer.wait();
     SPDLOG_INFO("Server for peer closed");
+#endif
 
     s_client.wait();
     SPDLOG_INFO("Server for client closed");

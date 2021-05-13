@@ -60,6 +60,8 @@ class SPIEnclave
         const v32& keys,
         const v32& values);
 
+    void get_select_result(uint32_t sid, buffer& obuf);
+
     void build_bloom_filter(uint32_t sid, buffer& bloom_filter);
 
     void match_bloom_filter(uint32_t sid, const v8& input, buffer& output);

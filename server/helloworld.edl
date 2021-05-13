@@ -26,7 +26,9 @@ enclave {
                                             [user_check] const uint32_t* data_val,
                                             size_t data_size);
 
-
+        public void get_select_result(     uint32_t sid,
+                                            [out] uint8_t** obuf,
+                                            [out] size_t* olen);
 
         public void build_bloom_filter(     uint32_t sid,
                                             [out] uint8_t** obuf,
@@ -37,9 +39,6 @@ enclave {
                                             size_t ilen,
                                             [out] uint8_t** obuf,
                                             [out] size_t* olen);
-
-
-
 
         public void aggregate(              uint32_t peer_sid,
                                             uint32_t client_sid,
