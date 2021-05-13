@@ -17,8 +17,10 @@ class gcm
     : public internal::
           resource<mbedtls_gcm_context, mbedtls_gcm_init, mbedtls_gcm_free>
 {
+  public:
     constexpr static size_t IV_LEN = 16;
     constexpr static size_t TAG_LEN = 12;
+    constexpr static size_t KEY_BYTES = keybits / BITS_PER_BYTE;
 
     struct ciphertext
     {
@@ -27,9 +29,6 @@ class gcm
         uint8_t iv[IV_LEN];
         uint8_t ciphertext[];
     };
-
-  public:
-    constexpr static size_t KEY_BYTES = keybits / BITS_PER_BYTE;
 
     explicit gcm(const std::array<uint8_t, KEY_BYTES>& key)
     {
