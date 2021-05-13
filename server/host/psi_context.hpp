@@ -27,7 +27,8 @@ class PSIContext
     struct
     {
         uint32_t sid;
-        std::mutex lock;
+        std::mutex lock_build;
+        std::mutex lock_match;
     } client_ctx;
 
     struct
@@ -70,7 +71,8 @@ class PSIContext
         }
 
         SPDLOG_DEBUG("Locking client_ctx.lock");
-        client_ctx.lock.lock();
+        client_ctx.lock_build.lock();
+        client_ctx.lock_match.lock();
 
         SPDLOG_DEBUG("Locking peer_ctx.lock");
         peer_ctx.lock.lock();
@@ -140,7 +142,8 @@ class PSIContext
 
         /* client sid and public key are set, ready for peer to use */
         SPDLOG_DEBUG("Unlocking client_ctx.lock");
-        client_ctx.lock.unlock();
+        client_ctx.lock_build.unlock();
+        client_ctx.lock_match.unlock();
 
         /* waiting for peer to return the result */
         SPDLOG_DEBUG("Locking peer_ctx.lock");
@@ -159,6 +162,9 @@ class PSIContext
 
     auto prepare_compute_req() -> nlohmann::json
     {
+        /* wait for client public key to be set */
+        SPDLOG_DEBUG("Locking client_ctx.lock_build");
+        client_ctx.lock_build.lock();
         buffer request;
         enclave.build_bloom_filter(peer_ctx.osid, data_keys, request);
         return {
@@ -170,8 +176,8 @@ class PSIContext
     auto handle_compute_req(uint32_t sid, const v8& payload) -> nlohmann::json
     {
         /* wait for client public key to be set */
-        SPDLOG_DEBUG("Locking client_ctx.lock");
-        client_ctx.lock.lock();
+        SPDLOG_DEBUG("Locking client_ctx.lock_match");
+        client_ctx.lock_match.lock();
 
         assert(sid == peer_ctx.isid);
 
