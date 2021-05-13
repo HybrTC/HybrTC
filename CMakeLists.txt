@@ -56,7 +56,6 @@ include_directories(${CMAKE_SOURCE_DIR}/common)
 
 add_subdirectory(server)
 add_subdirectory(client)
-
 add_subdirectory(tests)
 
 add_custom_target(
