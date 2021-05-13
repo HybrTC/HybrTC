@@ -2,7 +2,6 @@
 
 #include <vector>
 
-#include "common/bit_mask.hpp"
 #include "common/uint128.hpp"
 #include "hash.hpp"
 
@@ -16,6 +15,16 @@
 template <uint8_t EE, uint8_t HN, class IT = uint128_t>
 class BloomFilter
 {
+    constexpr static std::array<uint8_t, 8> BITMASK = {
+        1UL << 0,
+        1UL << 1,
+        1UL << 2,
+        1UL << 3,
+        1UL << 4,
+        1UL << 5,
+        1UL << 6,
+        1UL << 7};
+
     // bitmap for the filter
     constexpr static size_t FILTER_BYTES = ((1UL << EE) + 7) / 8;
     using BITMAP = std::vector<uint8_t>;
