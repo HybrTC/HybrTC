@@ -22,8 +22,6 @@ using nlohmann::json;
 
 std::vector<std::shared_ptr<VerifierContext>> verifiers;
 std::map<uint32_t, std::shared_ptr<mbedtls::aes_gcm_256>> sessions;
-
-size_t attester_counter = 0;
 std::shared_ptr<mbedtls::ctr_drbg> ctr_drbg;
 
 static void init()
@@ -74,7 +72,7 @@ auto attester_generate_response(
     AttesterContext ctx;
 
     /* set attester id; generate and dump ephemeral public key */
-    ctx.aid = (attester_counter++);
+    mbedtls_ctr_drbg_random(ctr_drbg.get(), u8p(&ctx.aid), sizeof(ctx.aid));
     ctx.apk = ctx.ecdh.make_public(*ctr_drbg);
 
     /* deserialize and handle input */
