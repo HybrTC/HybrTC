@@ -5,20 +5,23 @@
 #include <cstdint>
 #include <vector>
 
+using u8 = std::uint8_t;
+using u32 = std::uint32_t;
+
 template <class T>
-auto u8p(T* ptr) -> uint8_t*
+auto u8p(T* ptr) -> u8*
 {
-    return reinterpret_cast<uint8_t*>(ptr);
+    return reinterpret_cast<u8*>(ptr);
 }
 
 template <class T>
-auto u8p(const T* ptr) -> const uint8_t*
+auto u8p(const T* ptr) -> const u8*
 {
-    return reinterpret_cast<const uint8_t*>(ptr);
+    return reinterpret_cast<const u8*>(ptr);
 }
 
 template <size_t N>
-using a8 = std::array<uint8_t, N>;
+using a8 = std::array<u8, N>;
 
-using v8 = std::vector<uint8_t>;
-using v32 = std::vector<uint32_t>;
+using v8 = std::vector<u8>;
+using v32 = std::vector<u32>;

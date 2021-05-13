@@ -19,10 +19,11 @@
 
 #include "helloworld_t.h"
 
+using mbedtls::mpi;
 using nlohmann::json;
 
 std::vector<std::shared_ptr<VerifierContext>> verifiers;
-std::map<uint32_t, std::shared_ptr<PSI::Session>> sessions;
+std::map<u32, std::shared_ptr<PSI::Session>> sessions;
 std::shared_ptr<mbedtls::ctr_drbg> ctr_drbg;
 
 static void init()
@@ -36,7 +37,7 @@ static void init()
 /*
  * output:  vid, this_pk, format_setting
  */
-void verifier_generate_challenge(uint8_t** obuf, size_t* olen)
+void verifier_generate_challenge(u8** obuf, size_t* olen)
 {
     init();
 
@@ -49,7 +50,7 @@ void verifier_generate_challenge(uint8_t** obuf, size_t* olen)
     verifiers.push_back(ctx);
 
     /* generate output object */
-    json json = json::object(
+    auto json = json::object(
         {{"vid", ctx->vid},
          {"vpk", ctx->vpk},
          {"format_settings", ctx->core.format_settings()}});
@@ -62,10 +63,10 @@ void verifier_generate_challenge(uint8_t** obuf, size_t* olen)
  * output:  vid, aid, this_pk, evidence
  */
 auto attester_generate_response(
-    const uint8_t* ibuf,
+    const u8* ibuf,
     size_t ilen,
-    uint8_t** obuf,
-    size_t* olen) -> uint32_t
+    u8** obuf,
+    size_t* olen) -> u32
 {
     init();
 
@@ -78,18 +79,18 @@ auto attester_generate_response(
 
     /* deserialize and handle input */
     auto input = json::from_msgpack(ibuf, ibuf + ilen);
-    ctx.vid = input["vid"].get<uint16_t>();        // set verifier id
-    ctx.vpk = input["vpk"].get<v8>();              // set peer pk
-    v8 format_settings = input["format_settings"]; // load format settings
+    ctx.vid = input["vid"].get<uint16_t>();       // set verifier id
+    ctx.vpk = input["vpk"].get<v8>();             // set peer pk
+    auto fs = input["format_settings"].get<v8>(); // load format settings
 
     /* set vpk in ecdh context */
     ctx.ecdh.read_public(ctx.vpk);
 
     /* build claims and generate evidence*/
-    auto evidence = ctx.core.get_evidence(format_settings, ctx.build_claims());
+    auto evidence = ctx.core.get_evidence(fs, ctx.build_claims());
 
     /* generate output object */
-    json json = json::object(
+    auto json = json::object(
         {{"vid", ctx.vid},
          {"aid", ctx.aid},
          {"apk", ctx.apk},
@@ -105,7 +106,7 @@ auto attester_generate_response(
  * input:   vid, aid, evidence
  * output:  attestation_result
  */
-auto verifier_process_response(const uint8_t* ibuf, size_t ilen) -> uint32_t
+auto verifier_process_response(const u8* ibuf, size_t ilen) -> u32
 {
     /* deserialize and handle input */
     auto input = json::from_msgpack(ibuf, ibuf + ilen);
@@ -145,8 +146,8 @@ auto verifier_process_response(const uint8_t* ibuf, size_t ilen) -> uint32_t
     return sid;
 }
 
-constexpr uint32_t FILTER_POWER_BITS = 24;
-constexpr uint32_t NUMBER_OF_HASHES = 4;
+constexpr u32 FILTER_POWER_BITS = 24;
+constexpr u32 NUMBER_OF_HASHES = 4;
 
 using HashSet = BloomFilter<FILTER_POWER_BITS, NUMBER_OF_HASHES>;
 using HashTable = CuckooHashing<(1 << 16), (1 << 2), NUMBER_OF_HASHES>;
@@ -155,17 +156,17 @@ using KeyBin = a8<sizeof(uint128_t)>;
 
 std::shared_ptr<PSI::Paillier> homo;
 
-void set_paillier_public_key(uint32_t sid, const uint8_t* ibuf, size_t ilen)
+void set_paillier_public_key(u32 sid, const u8* ibuf, size_t ilen)
 {
     homo = std::make_shared<PSI::Paillier>();
     homo->load_pubkey(sessions[sid]->decrypt(ibuf, ilen));
 }
 
 void build_bloom_filter(
-    uint32_t sid,
-    const uint32_t* data_key,
+    u32 sid,
+    const u32* data_key,
     size_t data_size,
-    uint8_t** obuf,
+    u8** obuf,
     size_t* olen)
 {
     HashSet bloom_filter;
@@ -180,19 +181,19 @@ void build_bloom_filter(
 }
 
 void match_bloom_filter(
-    uint32_t sid,
-    const uint32_t* data_key,
-    const uint32_t* data_val,
+    u32 sid,
+    const u32* data_key,
+    const u32* data_val,
     size_t data_size,
-    const uint8_t* ibuf,
+    const u8* ibuf,
     size_t ilen,
-    uint8_t** obuf,
+    u8** obuf,
     size_t* olen)
 {
     HashSet bloom_filter(sessions[sid]->decrypt(ibuf, ilen));
     PRP prp;
 
-    nlohmann::json hits = nlohmann::json::array();
+    auto hits = json::array();
 
     for (size_t i = 0; i < data_size; i++)
     {
@@ -202,8 +203,8 @@ void match_bloom_filter(
             auto enc = homo->encrypt(data_val[i], *ctr_drbg).to_vector();
             assert(!enc.empty());
 
-            hits.push_back(nlohmann::json::array(
-                {*reinterpret_cast<const KeyBin*>(&key), enc}));
+            hits.push_back(
+                json::array({*reinterpret_cast<const KeyBin*>(&key), enc}));
         }
     }
 
@@ -211,14 +212,14 @@ void match_bloom_filter(
 }
 
 void aggregate(
-    uint32_t peer_sid,
-    uint32_t client_sid,
-    const uint32_t* data_key,
-    const uint32_t* data_val,
+    u32 peer_sid,
+    u32 client_sid,
+    const u32* data_key,
+    const u32* data_val,
     size_t data_size,
-    const uint8_t* ibuf,
+    const u8* ibuf,
     size_t ilen,
-    uint8_t** obuf,
+    u8** obuf,
     size_t* olen)
 {
     auto peer = json::from_msgpack(sessions[peer_sid]->decrypt(ibuf, ilen));
@@ -237,7 +238,7 @@ void aggregate(
     /*
      * aggregate calculation
      */
-    json result = json::array();
+    auto result = json::array();
     for (const auto& pair : peer)
     {
         KeyBin key_bin = pair[0];
@@ -245,7 +246,7 @@ void aggregate(
 
         const uint128_t& key =
             *reinterpret_cast<const uint128_t*>(key_bin.data());
-        mbedtls::mpi peer_val(val_bin.data(), val_bin.size());
+        mpi peer_val(val_bin.data(), val_bin.size());
 
         auto query_result = hashing.lookup(key);
 

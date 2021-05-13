@@ -3,117 +3,113 @@
 #include <string>
 #include <thread>
 
-#include <nlohmann/json.hpp>
-#include <spdlog.hpp>
-#include <zmq.hpp>
-
 #include "common/types.hpp"
 #include "psi_context.hpp"
+#include "spdlog.hpp"
 #include "zmq_utils.hpp"
 
-using nlohmann::json;
+using std::stoi;
+using std::string;
+using zmq::context_t;
+using zmq::socket_t;
 
-static auto attestation_servant(zmq::socket_t& server, PSIContext& context)
-    -> uint32_t
+static auto attestation_servant(socket_t& server, PSIContext& context) -> u32
 {
-    json request = recv(server);
+    auto request = recv(server);
     SPDLOG_DEBUG("handle_attestation_req: request received");
     assert(request["type"].get<MessageType>() == AttestationRequest);
     auto payload = request["payload"].get<v8>();
 
-    json response = context.handle_attestation_req(payload);
+    auto response = context.handle_attestation_req(payload);
     assert(response["type"].get<MessageType>() == AttestationResponse);
     send(server, response);
     SPDLOG_DEBUG("handle_attestation_req: response sent");
 
-    return response["sid"].get<uint32_t>();
+    return response["sid"].get<u32>();
 }
 
-void client_servant(int port, zmq::context_t* io, PSIContext* context)
+void client_servant(int port, context_t* io, PSIContext* context)
 {
     SPDLOG_DEBUG("starting {} at port {}", __FUNCTION__, port);
 
     /* construct a router socket and bind to interface */
-    zmq::socket_t server = listen(*io, port);
+    socket_t server = listen(*io, port);
 
     /* attestation */
     context->set_client_sid(attestation_servant(server, *context));
 
     /* compute query */
-    json request = recv(server);
+    auto request = recv(server);
     SPDLOG_DEBUG("handle_query_request: request received");
     assert(request["type"].get<MessageType>() == QueryRequest);
-    auto sid = request["sid"].get<uint32_t>();
+    auto sid = request["sid"].get<u32>();
     auto payload = request["payload"].get<v8>();
 
-    json response = context->handle_query_request(sid, payload);
+    auto response = context->handle_query_request(sid, payload);
     assert(response["type"].get<MessageType>() == QueryResponse);
     send(server, response);
     SPDLOG_DEBUG("handle_query_request: response sent");
 }
 
-void peer_servant(int port, zmq::context_t* io, PSIContext* context)
+void peer_servant(int port, context_t* io, PSIContext* context)
 {
     SPDLOG_DEBUG("starting {} at port {}", __FUNCTION__, port);
 
     /* construct a router socket and bind to interface */
-    zmq::socket_t server = listen(*io, port);
+    auto server = listen(*io, port);
 
     /* attestation */
     context->set_peer_isid(attestation_servant(server, *context));
 
     /* compute query */
     {
-        json request = recv(server);
+        auto request = recv(server);
         SPDLOG_DEBUG("handle_compute_req: request received");
         assert(request["type"].get<MessageType>() == ComputeRequest);
-        auto sid = request["sid"].get<uint32_t>();
+        auto sid = request["sid"].get<u32>();
         auto payload = request["payload"].get<v8>();
 
-        json response = context->handle_compute_req(sid, payload);
+        auto response = context->handle_compute_req(sid, payload);
         assert(response["type"].get<MessageType>() == ComputeResponse);
         send(server, response);
         SPDLOG_DEBUG("handle_compute_req: response sent");
     }
 }
 
-void peer_client(
-    const char* peer_endpoint,
-    zmq::context_t* io,
-    PSIContext* context)
+void peer_client(const char* peer_endpoint, context_t* io, PSIContext* context)
 {
     SPDLOG_DEBUG("starting {} to {}", __FUNCTION__, peer_endpoint);
 
     /* construct a request socket and connect to interface */
-    zmq::socket_t client = connect(*io, peer_endpoint);
+    auto client = connect(*io, peer_endpoint);
 
     /* attestation */
     {
-        json request = context->prepare_attestation_req();
+        auto request = context->prepare_attestation_req();
         assert(request["type"].get<MessageType>() == AttestationRequest);
         send(client, request);
         SPDLOG_DEBUG("prepare_attestation_req: request sent");
 
-        json response = recv(client);
+        auto response = recv(client);
         SPDLOG_DEBUG("process_attestation_resp: response received");
         assert(response["type"].get<MessageType>() == AttestationResponse);
-        auto sid = response["sid"].get<uint32_t>();
+        auto sid = response["sid"].get<u32>();
         auto payload = response["payload"].get<v8>();
         context->set_peer_osid(context->process_attestation_resp(sid, payload));
     }
 
     /* build and send bloom filter */
     SPDLOG_DEBUG("prepare_compute_req");
-    json request = context->prepare_compute_req();
+    auto request = context->prepare_compute_req();
     assert(request["type"].get<MessageType>() == ComputeRequest);
     send(client, request);
     SPDLOG_DEBUG("prepare_compute_req: request sent");
 
     /* get match result and aggregate */
-    json response = recv(client);
+    auto response = recv(client);
     SPDLOG_DEBUG("process_compute_resp: response received");
     assert(response["type"].get<MessageType>() == ComputeResponse);
-    auto sid = response["sid"].get<uint32_t>();
+    auto sid = response["sid"].get<u32>();
     auto payload = response["payload"].get<v8>();
     context->process_compute_resp(sid, payload);
 }
@@ -130,13 +126,13 @@ auto main(int argc, const char* argv[]) -> int
         return EXIT_FAILURE;
     }
 
-    const int server_id = std::stoi(argv[1], nullptr, 0);
-    const int client_port = std::stoi(argv[2], nullptr, 0);
-    const int peer_port = std::stoi(argv[3], nullptr, 0);
+    const int server_id = stoi(argv[1], nullptr, 0);
+    const int client_port = stoi(argv[2], nullptr, 0);
+    const int peer_port = stoi(argv[3], nullptr, 0);
     const char* peer_endpoint = argv[4];
     const char* enclave_image_path = argv[5];
 
-    const std::string pattern = fmt::format(
+    const string pattern = fmt::format(
         "%^[%Y-%m-%d %H:%M:%S.%e] [%L] [s{}] [%t] %s:%# -%$ %v", server_id);
 
     spdlog::set_level(spdlog::level::debug);
@@ -159,7 +155,7 @@ auto main(int argc, const char* argv[]) -> int
     }
 
     /* initialize the zmq context with 2 IO thread */
-    zmq::context_t context(1);
+    context_t context(1);
 
     /* initialize PSI context */
     PSIContext psi(enclave_image_path, bool(server_id));
