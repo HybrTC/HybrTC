@@ -10,6 +10,7 @@
 #define __OUTSIDE_ENCLAVE__
 
 #include "common/uint128.hpp"
+#include "config.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "message_types.hpp"
 #include "paillier.hpp"
@@ -144,7 +145,7 @@ auto main(int argc, const char* argv[]) -> int
     rand_ctx = std::make_shared<mbedtls::ctr_drbg>();
 
     PSI::Paillier homo_crypto;
-    homo_crypto.keygen(512, *rand_ctx);
+    homo_crypto.keygen(PSI_PAILLIER_PK_LEN, *rand_ctx);
     auto pubkey = homo_crypto.dump_pubkey();
 
     /* initialize the zmq context with a single IO thread */
