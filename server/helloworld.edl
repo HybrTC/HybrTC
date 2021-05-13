@@ -54,6 +54,5 @@ enclave {
     };
 
     untrusted {
-        // void host_helloworld();
     };
 };

@@ -1,9 +1,8 @@
 #include <cstdint>
 
-#include <spdlog.hpp>
-
 #include "enclave.hpp"
 #include "helloworld_u.h"
+#include "spdlog.hpp"
 
 #define CHECK(f, result)                              \
     if ((result) != OE_OK)                            \
@@ -74,12 +73,6 @@ auto SPIEnclave::verifier_process_response(const v8& input) -> uint32_t
     lock.unlock();
     return sid;
 }
-
-// oe_result_t set_paillier_public_key(
-//     oe_enclave_t* enclave,
-//     uint32_t sid,
-//     const uint8_t* ibuf,
-//     size_t ilen);
 
 void SPIEnclave::set_paillier_public_key(uint32_t sid, const v8& input)
 {

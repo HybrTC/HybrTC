@@ -84,7 +84,7 @@ void peer_client(
 {
     SPDLOG_DEBUG("starting {} to {}", __FUNCTION__, peer_endpoint);
 
-    // construct a request socket and connect to interface
+    /* construct a request socket and connect to interface */
     zmq::socket_t client = connect(*io, peer_endpoint);
 
     /* attestation */
@@ -138,7 +138,7 @@ auto main(int argc, const char* argv[]) -> int
 
     const std::string pattern = fmt::format(
         "%^[%Y-%m-%d %H:%M:%S.%e] [%L] [s{}] [%t] %s:%# -%$ %v", server_id);
-    // spdlog::set_name(logger_name);
+
     spdlog::set_level(spdlog::level::debug);
     spdlog::set_pattern(pattern);
 
@@ -174,17 +174,11 @@ auto main(int argc, const char* argv[]) -> int
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     /* start client */
-    // auto c_peer = std::async(
-    //     std::launch::async, peer_client, peer_endpoint, &context, &psi);
-
     peer_client(peer_endpoint, &context, &psi);
 
     /* finish everything */
     s_peer.wait();
     SPDLOG_INFO("Server for peer closed");
-
-    // c_peer.wait();
-    // SPDLOG_INFO("Client for peer closed");
 
     s_client.wait();
     SPDLOG_INFO("Server for client closed");

@@ -90,7 +90,7 @@ auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk)
     -> json
 {
     SPDLOG_DEBUG(__PRETTY_FUNCTION__);
-    // construct a request socket and connect to interface
+    /* construct a request socket and connect to interface */
     zmq::socket_t client = connect(*io, server_addr);
     VerifierContext vctx;
     uint32_t sid;
