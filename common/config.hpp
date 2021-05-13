@@ -17,8 +17,6 @@
 #endif
 #endif
 
-#define PSI_SELECT_ONLY
-
 /* define aggregate policy */
 #ifndef PSI_SELECT_ONLY
 #ifndef PSI_JOIN_COUNT

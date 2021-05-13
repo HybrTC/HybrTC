@@ -14,6 +14,7 @@
 #include "sgx/attestation.hpp"
 
 #include "helloworld_t.h"
+#include "sgx/log.h"
 
 using mbedtls::mpi;
 using nlohmann::json;
@@ -221,6 +222,10 @@ void get_select_result(u32 sid, u8** obuf, size_t* olen)
 
     dump_enc(json::to_msgpack(result), *sessions[sid], obuf, olen);
 #else
+    (void)(sid);
+    (void)(obuf);
+    (void)(olen);
+
     abort();
 #endif
 }
@@ -308,6 +313,7 @@ void aggregate(
     /*
      * aggregate calculation
      */
+
     auto result = json::array();
     for (const auto& pair : peer)
     {
@@ -329,5 +335,10 @@ void aggregate(
         }
     }
 
+#ifdef PSI_JOIN_COUNT
+    auto ret = json::array({result.size(), rand_ctx->rand<size_t>()});
+    dump_enc(json::to_msgpack(ret), *sessions[client_sid], obuf, olen);
+#else
     dump_enc(json::to_msgpack(result), *sessions[client_sid], obuf, olen);
+#endif
 }

@@ -162,8 +162,16 @@ auto main(int argc, const char* argv[]) -> int
     auto p1 = c1.get();
 
     /* print out query result */
-    auto log0 = spdlog::stdout_color_mt("c0");
-    auto log1 = spdlog::stdout_color_mt("c1");
+
+#ifdef PSI_JOIN_COUNT
+
+    auto result0 = p0[0].get<size_t>();
+    SPDLOG_INFO("{}", result0);
+
+    auto result1 = p1[0].get<size_t>();
+    SPDLOG_INFO("{}", result1);
+
+#else
 
     for (auto pair : p0)
     {
@@ -173,7 +181,7 @@ auto main(int argc, const char* argv[]) -> int
             homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size()))
                 .to_unsigned<uint64_t>();
 
-        log0->info("{:sn} {:016x}", spdlog::to_hex(key_bin), dec);
+        SPDLOG_INFO("{:sn} {:016x}", spdlog::to_hex(key_bin), dec);
     }
 
     for (auto pair : p1)
@@ -184,8 +192,10 @@ auto main(int argc, const char* argv[]) -> int
             homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size()))
                 .to_unsigned<uint64_t>();
 
-        log1->info("{:sn} {:016x}", spdlog::to_hex(key_bin), dec);
+        SPDLOG_INFO("{:sn} {:016x}", spdlog::to_hex(key_bin), dec);
     }
+
+#endif
 
     return 0;
 }
