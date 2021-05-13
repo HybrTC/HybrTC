@@ -1,13 +1,11 @@
 #pragma once
 
-#include <type_traits>
-#include <vector>
+#include <stdexcept>
 
 #include "common/types.hpp"
 #include "crypto/aes.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "internal/resource.hpp"
-#include "sgx/log.h"
 
 namespace mbedtls
 {
@@ -82,8 +80,16 @@ class gcm
 
         if (result != 0)
         {
-            TRACE_ENCLAVE("mbedtls_gcm_auth_decrypt -> -0x%x", -result);
             output.resize(0);
+            switch (result)
+            {
+                case MBEDTLS_ERR_GCM_AUTH_FAILED:
+                    throw std::runtime_error("mbedtls_gcm_auth_decrypt returns "
+                                             "MBEDTLS_ERR_GCM_AUTH_FAILED");
+                case MBEDTLS_ERR_GCM_BAD_INPUT:
+                    throw std::runtime_error("mbedtls_gcm_auth_decrypt returns "
+                                             "MBEDTLS_ERR_GCM_BAD_INPUT");
+            }
         }
 
         return output;
