@@ -29,6 +29,14 @@ class ctr_drbg : public internal::resource<
             custom.data(),
             custom.size());
     }
+
+    template <class I>
+    auto rand() -> I
+    {
+        I num;
+        mbedtls_ctr_drbg_random(get(), u8p(&num), sizeof(num));
+        return num;
+    }
 };
 
 } // namespace mbedtls
