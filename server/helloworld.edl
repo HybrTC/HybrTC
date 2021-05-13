@@ -18,22 +18,21 @@ enclave {
                                                     size_t ilen);
 
 
-        public void set_paillier_public_key(        uint32_t sid,
-                                                    [in, size=ilen] const uint8_t* ibuf,
-                                                    size_t ilen);
+        public void set_client_query(       uint32_t sid,
+                                            [in, size=ilen] const uint8_t* ibuf,
+                                            size_t ilen,
+                                            bool half,
+                                            [user_check] const uint32_t* data_key,
+                                            [user_check] const uint32_t* data_val,
+                                            size_t data_size);
 
 
 
         public void build_bloom_filter(     uint32_t sid,
-                                            [user_check] const uint32_t* data_key,
-                                            size_t data_size,
                                             [out] uint8_t** obuf,
                                             [out] size_t* olen);
 
         public void match_bloom_filter(     uint32_t sid,
-                                            [user_check] const uint32_t* data_key,
-                                            [user_check] const uint32_t* data_val,
-                                            size_t data_size,
                                             [user_check] const uint8_t* ibuf,
                                             size_t ilen,
                                             [out] uint8_t** obuf,
@@ -44,9 +43,6 @@ enclave {
 
         public void aggregate(              uint32_t peer_sid,
                                             uint32_t client_sid,
-                                            [user_check] const uint32_t* data_key,
-                                            [user_check] const uint32_t* data_val,
-                                            size_t data_size,
                                             [user_check] const uint8_t* ibuf,
                                             size_t ilen,
                                             [out] uint8_t** obuf,

@@ -4,6 +4,26 @@
 #define PSI_PAILLIER_PK_LEN 128
 #endif
 
-#ifndef PSI_DATA_SET_SIZE
-#define PSI_DATA_SET_SIZE (1 << 20)
+#ifndef PSI_DATA_SET_SIZE_LOG
+#define PSI_DATA_SET_SIZE_LOG 12
+#endif
+
+#define PSI_DATA_KEY_RANGE_LOG (PSI_DATA_SET_SIZE_LOG) * 3 / 2
+
+/* define select policy */
+#ifndef PSI_SELECT_ODD
+#ifndef PSI_SELECT_EVEN
+#define PSI_SELECT_ALL
+#endif
+#endif
+
+/* define aggregate policy */
+#ifndef PSI_SELECT_ONLY
+#ifndef PSI_JOIN_COUNT
+#define PSI_JOIN_SUM
+#endif
+#endif
+
+#ifndef PSI_MELBOURNE_P
+#define PSI_MELBOURNE_P 3
 #endif

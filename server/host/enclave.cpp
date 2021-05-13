@@ -75,50 +75,44 @@ auto SPIEnclave::verifier_process_response(const v8& input) -> uint32_t
     return sid;
 }
 
-void SPIEnclave::set_paillier_public_key(uint32_t sid, const v8& input)
+void SPIEnclave::set_client_query(
+    uint32_t sid,
+    const v8& input,
+    bool half,
+    const v32& keys,
+    const v32& values)
 {
     lock.lock();
-    oe_result_t result =
-        ::set_paillier_public_key(enclave(), sid, input.data(), input.size());
-    CHECK("set_paillier_public_key", result);
+    oe_result_t result = ::set_client_query(
+        enclave(),
+        sid,
+        input.data(),
+        input.size(),
+        half,
+        keys.data(),
+        values.data(),
+        keys.size());
+    CHECK("set_client_query", result);
     lock.unlock();
 }
 
-void SPIEnclave::build_bloom_filter(
-    uint32_t sid,
-    const v32& keys,
-    buffer& bloom_filter)
+void SPIEnclave::build_bloom_filter(uint32_t sid, buffer& bloom_filter)
 {
     lock.lock();
     oe_result_t result = ::build_bloom_filter(
-        enclave(),
-        sid,
-        keys.data(),
-        keys.size(),
-        &bloom_filter.data,
-        &bloom_filter.size);
+        enclave(), sid, &bloom_filter.data, &bloom_filter.size);
     CHECK("build_bloom_filter", result);
     lock.unlock();
 }
 
 void SPIEnclave::match_bloom_filter(
     uint32_t sid,
-    const v32& keys,
-    const v32& values,
     const v8& input,
     buffer& output)
 {
     lock.lock();
     oe_result_t result = ::match_bloom_filter(
-        enclave(),
-        sid,
-        keys.data(),
-        values.data(),
-        keys.size(),
-        input.data(),
-        input.size(),
-        &output.data,
-        &output.size);
+        enclave(), sid, input.data(), input.size(), &output.data, &output.size);
     CHECK("match_bloom_filter", result);
     lock.unlock();
 }
@@ -126,8 +120,6 @@ void SPIEnclave::match_bloom_filter(
 void SPIEnclave::aggregate(
     uint32_t peer_sid,
     uint32_t client_sid,
-    const v32& keys,
-    const v32& values,
     const v8& input,
     buffer& output)
 {
@@ -136,9 +128,6 @@ void SPIEnclave::aggregate(
         enclave(),
         peer_sid,
         client_sid,
-        keys.data(),
-        values.data(),
-        keys.size(),
         input.data(),
         input.size(),
         &output.data,

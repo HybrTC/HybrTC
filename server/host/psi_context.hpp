@@ -21,9 +21,6 @@ class PSIContext
     v32 data_keys;
     v32 data_vals;
 
-    v32 left_keys;
-    v32 left_vals;
-
     struct
     {
         uint32_t sid;
@@ -48,27 +45,10 @@ class PSIContext
         /* generate random dataset */
         PRNG<uint32_t> prng;
 
-        if (half)
+        for (size_t i = 0; i < (1 << PSI_DATA_SET_SIZE_LOG); i++)
         {
-            for (size_t i = 0; i < PSI_DATA_SET_SIZE / 2; i++)
-            {
-                data_keys.push_back(prng());
-                data_vals.push_back(prng());
-            }
-
-            for (size_t i = PSI_DATA_SET_SIZE / 2; i < PSI_DATA_SET_SIZE; i++)
-            {
-                left_keys.push_back(prng());
-                left_vals.push_back(prng());
-            }
-        }
-        else
-        {
-            for (size_t i = 0; i < PSI_DATA_SET_SIZE; i++)
-            {
-                data_keys.push_back(prng());
-                data_vals.push_back(prng());
-            }
+            data_keys.push_back(prng() % (1 << PSI_DATA_KEY_RANGE_LOG));
+            data_vals.push_back(prng());
         }
 
         /* initialize locks */
@@ -137,7 +117,7 @@ class PSIContext
     auto handle_query_request(uint32_t sid, const v8& payload) -> nlohmann::json
     {
         assert(sid == client_ctx.sid);
-        enclave.set_paillier_public_key(sid, payload);
+        enclave.set_client_query(sid, payload, half, data_keys, data_vals);
 
         /* client sid and public key are set, ready for peer to use */
         SPDLOG_DEBUG("Unlocking client_ctx.lock");
@@ -165,7 +145,7 @@ class PSIContext
         SPDLOG_DEBUG("Locking client_ctx.lock_build");
         client_ctx.lock_build.lock();
         buffer request;
-        enclave.build_bloom_filter(peer_ctx.osid, data_keys, request);
+        enclave.build_bloom_filter(peer_ctx.osid, request);
         return {
             {"sid", peer_ctx.osid},
             {"type", ComputeRequest},
@@ -181,16 +161,7 @@ class PSIContext
         assert(sid == peer_ctx.isid);
 
         buffer response;
-        if (half)
-        {
-            enclave.match_bloom_filter(
-                sid, left_keys, left_vals, payload, response);
-        }
-        else
-        {
-            enclave.match_bloom_filter(
-                sid, data_keys, data_vals, payload, response);
-        }
+        enclave.match_bloom_filter(sid, payload, response);
 
         return {
             {"sid", sid},
@@ -203,8 +174,7 @@ class PSIContext
         assert(sid == peer_ctx.osid);
 
         buffer output;
-        enclave.aggregate(
-            sid, client_ctx.sid, data_keys, data_vals, payload, output);
+        enclave.aggregate(sid, client_ctx.sid, payload, output);
         peer_ctx.result = v8(output.data, output.data + output.size);
 
         /*

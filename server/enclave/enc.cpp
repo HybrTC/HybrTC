@@ -1,3 +1,4 @@
+#include <cstring>
 #include <nlohmann/json.hpp>
 
 #include "common/types.hpp"
@@ -7,6 +8,7 @@
 #include "paillier.hpp"
 #include "psi/bloom_filter.hpp"
 #include "psi/cuckoo_hashing.hpp"
+#include "psi/melbourne.hpp"
 #include "psi/prp.hpp"
 #include "sgx/attestation.hpp"
 
@@ -165,25 +167,46 @@ using HashTable = CuckooHashing<CH_LOG_LENGTH, CH_LOG_DEPTH, NUMBER_OF_HASHES>;
 
 sptr<PSI::Paillier> homo;
 
-void set_paillier_public_key(u32 sid, const u8* ibuf, size_t ilen)
+bool half_data = false;
+database_t local_data;
+database_t left_data;
+
+void set_client_query(
+    u32 sid,
+    const u8* ibuf,
+    size_t ilen,
+    bool half,
+    const u32* data_key,
+    const u32* data_val,
+    size_t data_size)
 {
     homo = std::make_shared<PSI::Paillier>();
     homo->load_pubkey(sessions[sid]->decrypt(ibuf, ilen));
+
+    half_data = half;
+    local_data = melbourne_shuffle(data_key, data_val, data_size);
+    if (half)
+    {
+        size_t mid = local_data.size() / 2;
+
+        left_data.resize(local_data.size() - mid);
+        memcpy(
+            u8p(&left_data[0]),
+            u8p(&local_data[mid]),
+            left_data.size() * sizeof(left_data[0]));
+
+        local_data.resize(mid);
+    }
 }
 
-void build_bloom_filter(
-    u32 sid,
-    const u32* data_key,
-    size_t data_size,
-    u8** obuf,
-    size_t* olen)
+void build_bloom_filter(u32 sid, u8** obuf, size_t* olen)
 {
     HashSet bloom_filter;
     PRP prp;
 
-    for (size_t i = 0; i < data_size; i++)
+    for (auto& [k, _] : local_data)
     {
-        bloom_filter.insert(prp(data_key[i]));
+        bloom_filter.insert(prp(k));
     }
 
     dump_enc(bloom_filter.data(), *sessions[sid], obuf, olen);
@@ -191,9 +214,6 @@ void build_bloom_filter(
 
 void match_bloom_filter(
     u32 sid,
-    const u32* data_key,
-    const u32* data_val,
-    size_t data_size,
     const u8* ibuf,
     size_t ilen,
     u8** obuf,
@@ -204,16 +224,34 @@ void match_bloom_filter(
 
     auto hits = json::array();
 
-    for (size_t i = 0; i < data_size; i++)
+    if (half_data)
     {
-        uint128_t key = prp(data_key[i]);
-        if (bloom_filter.lookup(key))
+        for (auto& [k, v] : left_data)
         {
-            auto enc = homo->encrypt(data_val[i], *rand_ctx).to_vector();
-            assert(!enc.empty());
+            uint128_t key = prp(k);
+            if (bloom_filter.lookup(key))
+            {
+                auto enc = homo->encrypt(v, *rand_ctx).to_vector();
+                assert(!enc.empty());
 
-            hits.push_back(json::array(
-                {*reinterpret_cast<const PRP::binary*>(&key), enc}));
+                hits.push_back(json::array(
+                    {*reinterpret_cast<const PRP::binary*>(&key), enc}));
+            }
+        }
+    }
+    else
+    {
+        for (auto& [k, v] : local_data)
+        {
+            uint128_t key = prp(k);
+            if (bloom_filter.lookup(key))
+            {
+                auto enc = homo->encrypt(v, *rand_ctx).to_vector();
+                assert(!enc.empty());
+
+                hits.push_back(json::array(
+                    {*reinterpret_cast<const PRP::binary*>(&key), enc}));
+            }
         }
     }
 
@@ -223,9 +261,6 @@ void match_bloom_filter(
 void aggregate(
     u32 peer_sid,
     u32 client_sid,
-    const u32* data_key,
-    const u32* data_val,
-    size_t data_size,
     const u8* ibuf,
     size_t ilen,
     u8** obuf,
@@ -239,9 +274,9 @@ void aggregate(
     PRP prp;
     HashTable hashing;
 
-    for (size_t i = 0; i < data_size; i++)
+    for (auto& [k, v] : local_data)
     {
-        hashing.insert(prp(data_key[i]), data_val[i]);
+        hashing.insert(prp(k), v);
     }
 
     /*
