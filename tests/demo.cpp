@@ -147,23 +147,52 @@ auto main(int argc, const char* argv[]) -> int
         {
             if (WIFCONTINUED(status))
             {
-                fprintf(stderr, "WIFCONTINUED=%d\n", WIFCONTINUED(status));
-            }
-            if (WIFEXITED(status))
-            {
-                fprintf(stderr, "WIFEXITED=%d\n", WIFEXITED(status));
-            }
-            if (WIFSIGNALED(status))
-            {
-                fprintf(stderr, "WIFSIGNALED=%d\n", WIFSIGNALED(status));
-            }
-            if (WIFSTOPPED(status))
-            {
-                fprintf(stderr, "WIFSTOPPED=%d\n", WIFSTOPPED(status));
+                fprintf(
+                    stderr,
+                    "Process %d: WIFCONTINUED=%d\n",
+                    pid,
+                    WIFCONTINUED(status));
             }
 
-            fprintf(
-                stderr, "process %d exit with %d\n", pid, WEXITSTATUS(status));
+            if (WCOREDUMP(status))
+            {
+                fprintf(
+                    stderr,
+                    "Process %d: WCOREDUMP=%d\n",
+                    pid,
+                    WCOREDUMP(status));
+            }
+
+            if (WIFSIGNALED(status))
+            {
+                fprintf(
+                    stderr,
+                    "Process %d: WIFSIGNALED=%d WTERMSIG=%d\n",
+                    pid,
+                    WIFSIGNALED(status),
+                    WTERMSIG(status));
+            }
+
+            if (WIFSTOPPED(status))
+            {
+                fprintf(
+                    stderr,
+                    "Process %d: WIFSTOPPED=%d WSTOPSIG=%d\n",
+                    pid,
+                    WIFSTOPPED(status),
+                    WSTOPSIG(status));
+            }
+
+            if (WIFEXITED(status))
+            {
+                fprintf(
+                    stderr,
+                    "Process %d: WIFEXITED=%d WEXITSTATUS=%d\n",
+                    pid,
+                    WIFEXITED(status),
+                    WEXITSTATUS(status));
+            }
+
             kill(0, SIGKILL);
             exit(-1);
         }
