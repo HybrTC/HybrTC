@@ -150,12 +150,8 @@ auto main(int argc, const char* argv[]) -> int
     homo_crypto.keygen(512, *ctr_drbg);
     auto pubkey = homo_crypto.dump_pubkey();
 
-    // initialize the zmq context with a single IO thread
+    /* initialize the zmq context with a single IO thread */
     zmq::context_t context{1};
-
-    // construct a REQ (request) socket and connect to interface
-    zmq::socket_t socket{context, zmq::socket_type::req};
-    socket.connect("tcp://localhost:5555");
 
     /* start client */
     auto c0 = std::async(
@@ -163,9 +159,11 @@ auto main(int argc, const char* argv[]) -> int
     auto c1 = std::async(
         std::launch::async, client, endpoint[1], &context, 1, pubkey);
 
+    /* wait for the result */
     auto p0 = c0.get();
     auto p1 = c1.get();
 
+    /* print out query result */
     auto log0 = spdlog::stdout_color_mt("c0");
     auto log1 = spdlog::stdout_color_mt("c1");
 
