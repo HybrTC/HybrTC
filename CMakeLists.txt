@@ -57,6 +57,13 @@ include_directories(${CMAKE_SOURCE_DIR}/common)
 add_subdirectory(server)
 add_subdirectory(client)
 
+add_subdirectory(tests)
+
+add_custom_target(
+  rundemo
+  DEPENDS demo client server sign
+  COMMAND demo ${CMAKE_BINARY_DIR})
+
 set(SERVER0_PORT_P 5000)
 set(SERVER0_PORT_C 5001)
 set(SERVER1_PORT_P 6000)
