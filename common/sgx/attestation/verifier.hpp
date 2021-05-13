@@ -12,7 +12,7 @@
 
 #include "claims.hpp"
 #include "common/types.hpp"
-#include "log.h"
+#include "sgx/log.h"
 
 class Verifier
 {

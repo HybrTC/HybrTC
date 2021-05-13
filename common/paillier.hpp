@@ -7,7 +7,7 @@
 #include "common/types.hpp"
 #include "crypto/bignum.hpp"
 #include "crypto/ctr_drbg.hpp"
-#include "log.h"
+#include "sgx/log.h"
 
 namespace PSI
 {

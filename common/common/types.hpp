@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 using u8 = std::uint8_t;
@@ -25,3 +26,6 @@ using a8 = std::array<u8, N>;
 
 using v8 = std::vector<u8>;
 using v32 = std::vector<u32>;
+
+template <class T>
+using sptr = std::shared_ptr<T>;

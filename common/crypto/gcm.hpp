@@ -7,7 +7,7 @@
 #include "crypto/aes.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "internal/resource.hpp"
-#include "log.h"
+#include "sgx/log.h"
 
 namespace mbedtls
 {

@@ -1,5 +1,5 @@
 ---
-Checks:             'clang-diagnostic-*,clang-analyzer-*,cert-*,bugprone-*,performance-*,portability-*,readability-*,misc-*,modernize-*,google-*'
+Checks:             'clang-diagnostic-*,clang-analyzer-*,cert-*,bugprone-*,performance-*,portability-*,readability-*,modernize-*,google-*'
 WarningsAsErrors:   '*'
 HeaderFilterRegex:  ''
 AnalyzeTemporaryDtors: false

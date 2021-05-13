@@ -9,18 +9,17 @@
 
 #define __OUTSIDE_ENCLAVE__
 
-#include "attestation.hpp"
 #include "common/uint128.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "message_types.hpp"
 #include "paillier.hpp"
-#include "session.hpp"
+#include "sgx/attestation.hpp"
 #include "utils/spdlog.hpp"
 #include "utils/zmq.hpp"
 
 using nlohmann::json;
 
-std::shared_ptr<mbedtls::ctr_drbg> ctr_drbg;
+std::shared_ptr<mbedtls::ctr_drbg> rand_ctx;
 std::map<uint32_t, std::shared_ptr<PSI::Session>> sessions;
 
 /*
@@ -31,7 +30,7 @@ auto verifier_generate_challenge(VerifierContext& ctx, int vid) -> v8
     SPDLOG_DEBUG(__PRETTY_FUNCTION__);
     /* set verifier id; generate and dump ephemeral public key */
     ctx.vid = vid;
-    ctx.vpk = ctx.ecdh.make_public(*ctr_drbg);
+    ctx.vpk = ctx.ecdh.make_public(*rand_ctx);
 
     /* generate output object */
     json json = json::object(
@@ -142,10 +141,10 @@ auto main(int argc, const char* argv[]) -> int
     SPDLOG_INFO("server endpoint: {} {}", endpoint[0], endpoint[1]);
 
     /* prepare public key */
-    ctr_drbg = std::make_shared<mbedtls::ctr_drbg>();
+    rand_ctx = std::make_shared<mbedtls::ctr_drbg>();
 
     PSI::Paillier homo_crypto;
-    homo_crypto.keygen(512, *ctr_drbg);
+    homo_crypto.keygen(512, *rand_ctx);
     auto pubkey = homo_crypto.dump_pubkey();
 
     /* initialize the zmq context with a single IO thread */

@@ -1,37 +1,46 @@
-#include <cstddef>
-#include <cstdint>
-#include <memory>
-
 #include <nlohmann/json.hpp>
 
-#include "attestation.hpp"
 #include "common/types.hpp"
 #include "common/uint128.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "crypto/gcm.hpp"
-#include "log.h"
 #include "paillier.hpp"
 #include "psi/bloom_filter.hpp"
 #include "psi/cuckoo_hashing.hpp"
 #include "psi/prp.hpp"
-#include "session.hpp"
-#include "utils.hpp"
+#include "sgx/attestation.hpp"
 
 #include "helloworld_t.h"
 
 using mbedtls::mpi;
 using nlohmann::json;
 
-std::vector<std::shared_ptr<VerifierContext>> verifiers;
-std::map<u32, std::shared_ptr<PSI::Session>> sessions;
-std::shared_ptr<mbedtls::ctr_drbg> ctr_drbg;
+std::vector<sptr<VerifierContext>> verifiers;
+std::map<u32, sptr<PSI::Session>> sessions;
+sptr<mbedtls::ctr_drbg> rand_ctx;
 
 static void init()
 {
-    if (ctr_drbg == nullptr)
+    if (rand_ctx == nullptr)
     {
-        ctr_drbg = std::make_shared<mbedtls::ctr_drbg>();
+        rand_ctx = std::make_shared<mbedtls::ctr_drbg>();
     }
+}
+
+static void dump(const v8& bytes, uint8_t** obuf, size_t* olen)
+{
+    *olen = bytes.size();
+    *obuf = u8p(oe_host_malloc(bytes.size()));
+    memcpy(*obuf, bytes.data(), bytes.size());
+}
+
+static void dump_enc(
+    const v8& bytes,
+    PSI::Session& aes,
+    uint8_t** obuf,
+    size_t* olen)
+{
+    dump(aes.encrypt(bytes), obuf, olen);
 }
 
 /*
@@ -46,7 +55,7 @@ void verifier_generate_challenge(u8** obuf, size_t* olen)
 
     /* set verifier id; generate and dump ephemeral public key */
     ctx->vid = verifiers.size();
-    ctx->vpk = ctx->ecdh.make_public(*ctr_drbg);
+    ctx->vpk = ctx->ecdh.make_public(*rand_ctx);
     verifiers.push_back(ctx);
 
     /* generate output object */
@@ -74,8 +83,8 @@ auto attester_generate_response(
     AttesterContext ctx;
 
     /* set attester id; generate and dump ephemeral public key */
-    mbedtls_ctr_drbg_random(ctr_drbg.get(), u8p(&ctx.aid), sizeof(ctx.aid));
-    ctx.apk = ctx.ecdh.make_public(*ctr_drbg);
+    mbedtls_ctr_drbg_random(rand_ctx.get(), u8p(&ctx.aid), sizeof(ctx.aid));
+    ctx.apk = ctx.ecdh.make_public(*rand_ctx);
 
     /* deserialize and handle input */
     auto input = json::from_msgpack(ibuf, ibuf + ilen);
@@ -154,7 +163,7 @@ using HashTable = CuckooHashing<(1 << 16), (1 << 2), NUMBER_OF_HASHES>;
 
 using KeyBin = a8<sizeof(uint128_t)>;
 
-std::shared_ptr<PSI::Paillier> homo;
+sptr<PSI::Paillier> homo;
 
 void set_paillier_public_key(u32 sid, const u8* ibuf, size_t ilen)
 {
@@ -200,7 +209,7 @@ void match_bloom_filter(
         uint128_t key = prp(data_key[i]);
         if (bloom_filter.lookup(key))
         {
-            auto enc = homo->encrypt(data_val[i], *ctr_drbg).to_vector();
+            auto enc = homo->encrypt(data_val[i], *rand_ctx).to_vector();
             assert(!enc.empty());
 
             hits.push_back(
@@ -254,7 +263,7 @@ void aggregate(
         {
             result.push_back(json::array(
                 {pair[0],
-                 homo->add(peer_val, homo->encrypt(val, *ctr_drbg))
+                 homo->add(peer_val, homo->encrypt(val, *rand_ctx))
                      .to_vector()}));
         }
     }

@@ -43,7 +43,7 @@ struct AttestationContext
         mbedtls::sha256 hash;
         hash.update(vid);
         hash.update(aid);
-        hash.update(ecdh.calc_secret(*ctr_drbg));
+        hash.update(ecdh.calc_secret(*rand_ctx));
         auto session_key = hash.finish();
 
         if (sessions.find(sid) != sessions.end())
