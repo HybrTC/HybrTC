@@ -14,6 +14,7 @@
 #include "log.h"
 #include "paillier.hpp"
 #include "prp.hpp"
+#include "session.hpp"
 #include "utils.hpp"
 
 #include "helloworld_t.h"
@@ -21,7 +22,7 @@
 using nlohmann::json;
 
 std::vector<std::shared_ptr<VerifierContext>> verifiers;
-std::map<uint32_t, std::shared_ptr<mbedtls::aes_gcm_256>> sessions;
+std::map<uint32_t, std::shared_ptr<PSI::Session>> sessions;
 std::shared_ptr<mbedtls::ctr_drbg> ctr_drbg;
 
 static void init()
@@ -175,7 +176,7 @@ void build_bloom_filter(
         bloom_filter.insert(prp(data_key[i]));
     }
 
-    dump_enc(bloom_filter.data(), *sessions[sid], *ctr_drbg, obuf, olen);
+    dump_enc(bloom_filter.data(), *sessions[sid], obuf, olen);
 }
 
 void match_bloom_filter(
@@ -206,7 +207,7 @@ void match_bloom_filter(
         }
     }
 
-    dump_enc(json::to_msgpack(hits), *sessions[sid], *ctr_drbg, obuf, olen);
+    dump_enc(json::to_msgpack(hits), *sessions[sid], obuf, olen);
 }
 
 void aggregate(
@@ -257,6 +258,5 @@ void aggregate(
         }
     }
 
-    dump_enc(
-        json::to_msgpack(result), *sessions[client_sid], *ctr_drbg, obuf, olen);
+    dump_enc(json::to_msgpack(result), *sessions[client_sid], obuf, olen);
 }

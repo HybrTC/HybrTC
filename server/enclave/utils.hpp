@@ -4,8 +4,7 @@
 #include <nlohmann/json.hpp>
 
 #include "common/types.hpp"
-#include "crypto/ctr_drbg.hpp"
-#include "crypto/gcm.hpp"
+#include "session.hpp"
 
 static void dump(const v8& bytes, uint8_t** obuf, size_t* olen)
 {
@@ -16,10 +15,9 @@ static void dump(const v8& bytes, uint8_t** obuf, size_t* olen)
 
 static void dump_enc(
     const v8& bytes,
-    mbedtls::aes_gcm_256& aes,
-    mbedtls::ctr_drbg& ctr_drbg,
+    PSI::Session& aes,
     uint8_t** obuf,
     size_t* olen)
 {
-    dump(aes.encrypt(bytes, ctr_drbg), obuf, olen);
+    dump(aes.encrypt(bytes), obuf, olen);
 }

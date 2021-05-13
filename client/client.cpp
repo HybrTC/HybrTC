@@ -16,12 +16,13 @@
 #include "crypto/ctr_drbg.hpp"
 #include "message_types.hpp"
 #include "paillier.hpp"
+#include "session.hpp"
 #include "zmq_utils.hpp"
 
 using nlohmann::json;
 
 std::shared_ptr<mbedtls::ctr_drbg> ctr_drbg;
-std::map<uint32_t, std::shared_ptr<mbedtls::aes_gcm_256>> sessions;
+std::map<uint32_t, std::shared_ptr<PSI::Session>> sessions;
 
 /*
  * output:  vid, this_pk, format_setting

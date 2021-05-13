@@ -24,6 +24,7 @@ class gcm
 
     struct ciphertext
     {
+        uint32_t id;
         uint8_t iv[IV_LEN];
         uint8_t tag[TAG_LEN];
         uint8_t ciphertext[];
@@ -37,23 +38,13 @@ class gcm
         mbedtls_gcm_setkey(get(), cipher, key.data(), keybits);
     }
 
-    auto encrypt(const v8& input, ctr_drbg& ctr_drbg) -> v8
-    {
-        return encrypt(input.data(), input.size(), ctr_drbg);
-    }
-
-    auto encrypt(const std::vector<uint32_t>& input, ctr_drbg& ctr_drbg) -> v8
-    {
-        return encrypt(
-            u8p(input.data()), input.size() * sizeof(uint32_t), ctr_drbg);
-    }
-
     auto encrypt(const uint8_t* input, size_t input_size, ctr_drbg& ctr_drbg)
         -> v8
     {
         v8 output(input_size + sizeof(ciphertext), 0);
         ciphertext& enc = *reinterpret_cast<ciphertext*>(&output[0]);
 
+        mbedtls_ctr_drbg_random(ctr_drbg.get(), u8p(&enc.id), sizeof(enc.id));
         mbedtls_ctr_drbg_random(ctr_drbg.get(), enc.iv, IV_LEN);
 
         mbedtls_gcm_crypt_and_tag(
@@ -70,11 +61,6 @@ class gcm
             enc.tag);
 
         return output;
-    }
-
-    [[nodiscard]] auto decrypt(const v8& input) -> v8
-    {
-        return decrypt(input.data(), input.size());
     }
 
     auto decrypt(const uint8_t* input, size_t input_size) -> v8

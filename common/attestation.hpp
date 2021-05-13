@@ -9,9 +9,10 @@
 #include "crypto/ecdh.hpp"
 #include "crypto/gcm.hpp"
 #include "crypto/sha256.hpp"
+#include "log.h"
+#include "session.hpp"
 
-extern std::map<uint32_t, std::shared_ptr<mbedtls::aes_gcm_256>> sessions;
-extern std::shared_ptr<mbedtls::ctr_drbg> ctr_drbg;
+extern std::map<uint32_t, std::shared_ptr<PSI::Session>> sessions;
 
 struct AttestationContext
 {
@@ -37,16 +38,25 @@ struct AttestationContext
 
     auto complete_attestation()
     {
+        uint32_t sid = (vid << (sizeof(uint16_t) << 3)) | aid;
+
         mbedtls::sha256 hash;
         hash.update(vid);
         hash.update(aid);
         hash.update(ecdh.calc_secret(*ctr_drbg));
         auto session_key = hash.finish();
 
-        auto crypto_ctx = std::make_shared<mbedtls::aes_gcm_256>(session_key);
-        uint32_t sid = (vid << (sizeof(uint16_t) << 3)) | aid;
+        if (sessions.find(sid) != sessions.end())
+        {
+            TRACE_ENCLAVE(
+                "session id collision: vid=%04x aid=%04x sid=%08x",
+                vid,
+                aid,
+                sid);
+            abort();
+        }
 
-        sessions.insert({sid, crypto_ctx});
+        sessions.insert({sid, std::make_shared<PSI::Session>(session_key)});
         return sid;
     }
 };

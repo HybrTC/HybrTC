@@ -14,9 +14,9 @@ class sha256 : public internal::resource<
                    mbedtls_sha256_init,
                    mbedtls_sha256_free>
 {
+  public:
     constexpr static size_t hash_size = 256 >> 3;
 
-  public:
     sha256()
     {
         mbedtls_sha256_starts_ret(get(), 0);
@@ -51,5 +51,7 @@ class sha256 : public internal::resource<
         return h;
     }
 };
+
+using hash256 = a8<sha256::hash_size>;
 
 } // namespace mbedtls
