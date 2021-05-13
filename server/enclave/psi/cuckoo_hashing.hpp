@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -10,15 +11,15 @@
 /**
  * @brief   the table can accomodate L*D*HN elements
  *
- * @tparam L    length of a single table
- * @tparam D    number of elements in a single bin
+ * @tparam LL    logarithm of the length of a single table
+ * @tparam LD    logarithm of the number of elements in a single bin
  * @tparam HN   number of hash functions
  * @tparam KT   key type
  * @tparam VT   value type
  */
 template <
-    uint32_t L,
-    uint32_t D,
+    uint32_t LL,
+    uint32_t LD,
     uint32_t HN,
     class KT = uint128_t,
     class VT = uint32_t>
@@ -28,6 +29,8 @@ class CuckooHashing
     using ET = std::pair<KT, VT>;
 
     // hash table
+    constexpr static uint32_t D = 1 << LD;
+    constexpr static uint32_t L = 1 << LL;
     using CHTABLE = std::array<std::array<std::vector<ET>, L>, HN>;
     std::unique_ptr<CHTABLE> table_ptr = std::make_unique<CHTABLE>();
     CHTABLE& table = *table_ptr;
@@ -37,8 +40,6 @@ class CuckooHashing
     using HT = uint32_t;
     using HC = std::array<HT, HN>;
     HASH<HN, HT, KT> hash;
-
-    // forbid copy constructor
 
     void evict(uint32_t hash_index, uint32_t bin_index)
     {
@@ -95,20 +96,10 @@ class CuckooHashing
     }
 
   public:
-    CuckooHashing(const CuckooHashing& other) = delete;
+    CuckooHashing() = default;
 
-    CuckooHashing()
-    {
-#if 0
-        for (auto& htable : table)
-        {
-            for (auto& bin : htable)
-            {
-                bin.reserve(D);
-            }
-        }
-#endif
-    };
+    // forbid copy constructor
+    CuckooHashing(const CuckooHashing& other) = delete;
 
     void insert(const KT& key, const VT& value)
     {

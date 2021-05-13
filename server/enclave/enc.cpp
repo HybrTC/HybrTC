@@ -157,11 +157,11 @@ auto verifier_process_response(const u8* ibuf, size_t ilen) -> u32
 
 constexpr u32 FILTER_POWER_BITS = 24;
 constexpr u32 NUMBER_OF_HASHES = 4;
+constexpr u32 CH_LOG_LENGTH = 16;
+constexpr u32 CH_LOG_DEPTH = 2;
 
-using HashSet = BloomFilter<FILTER_POWER_BITS, NUMBER_OF_HASHES>;
-using HashTable = CuckooHashing<(1 << 16), (1 << 2), NUMBER_OF_HASHES>;
-
-using KeyBin = a8<sizeof(uint128_t)>;
+using HashSet = BloomFilter<FILTER_POWER_BITS, NUMBER_OF_HASHES, PRP::integer>;
+using HashTable = CuckooHashing<CH_LOG_LENGTH, CH_LOG_DEPTH, NUMBER_OF_HASHES>;
 
 sptr<PSI::Paillier> homo;
 
@@ -212,8 +212,8 @@ void match_bloom_filter(
             auto enc = homo->encrypt(data_val[i], *rand_ctx).to_vector();
             assert(!enc.empty());
 
-            hits.push_back(
-                json::array({*reinterpret_cast<const KeyBin*>(&key), enc}));
+            hits.push_back(json::array(
+                {*reinterpret_cast<const PRP::binary*>(&key), enc}));
         }
     }
 
@@ -250,7 +250,7 @@ void aggregate(
     auto result = json::array();
     for (const auto& pair : peer)
     {
-        KeyBin key_bin = pair[0];
+        PRP::binary key_bin = pair[0];
         v8 val_bin = pair[1];
 
         const uint128_t& key =
