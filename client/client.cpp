@@ -291,22 +291,22 @@ auto main(int argc, const char* argv[]) -> int
          },
          {"time", records}});
 
-    std::string output_str = output.dump();
+    {
+        std::string output_str = output.dump();
 
-    auto h = mbedtls::sha256();
-    h.update(output_str);
-    auto h_str = hexdump(h.finish());
+        auto h = mbedtls::sha256();
+        h.update(output_str);
+        auto h_str = hexdump(h.finish());
 
-    auto t = std::chrono::system_clock::now();
+        auto fn = fmt::format(
+            "{:%Y%m%dT%H%M%S}-{}.json", fmt::localtime(time(nullptr)), h_str);
 
-    auto fn = fmt::format(
-        "{:%Y%m%dT%H%M%S}-{}.json", fmt::localtime(time(nullptr)), h_str);
+        FILE* fp = std::fopen(fn.c_str(), "w");
+        fputs(output_str.c_str(), fp);
+        fclose(fp);
 
-    FILE* fp = std::fopen(fn.c_str(), "w");
-    fputs(output_str.c_str(), fp);
-    fclose(fp);
-
-    SPDLOG_INFO("Benchmark written to {}", fn);
+        SPDLOG_INFO("Benchmark written to {}", fn);
+    }
 
     return 0;
 }
