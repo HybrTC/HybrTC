@@ -62,30 +62,3 @@ add_custom_target(
   rundemo
   DEPENDS demo client server sign
   COMMAND demo ${CMAKE_BINARY_DIR})
-
-set(SERVER0_PORT_P 5000)
-set(SERVER0_PORT_C 5001)
-set(SERVER1_PORT_P 6000)
-set(SERVER1_PORT_C 6001)
-
-add_custom_target(
-  runs0
-  DEPENDS server sign
-  COMMAND
-    server 0 ${SERVER0_PORT_C} ${SERVER0_PORT_P}
-    tcp://localhost:${SERVER1_PORT_P}
-    ${CMAKE_BINARY_DIR}/server/enclave/enclave.signed)
-
-add_custom_target(
-  runs1
-  DEPENDS server sign
-  COMMAND
-    server 1 ${SERVER1_PORT_C} ${SERVER1_PORT_P}
-    tcp://localhost:${SERVER0_PORT_P}
-    ${CMAKE_BINARY_DIR}/server/enclave/enclave.signed)
-
-add_custom_target(
-  runc
-  DEPENDS client
-  COMMAND client tcp://localhost:${SERVER0_PORT_C}
-          tcp://localhost:${SERVER1_PORT_C})

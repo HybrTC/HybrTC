@@ -39,6 +39,11 @@ class sha256 : public internal::resource<
         mbedtls_sha256_update_ret(get(), input.data(), input.size());
     }
 
+    void update(const std::string& input)
+    {
+        mbedtls_sha256_update_ret(get(), u8p(input.c_str()), input.length());
+    }
+
     void update(const uint8_t* input, size_t size)
     {
         mbedtls_sha256_update_ret(get(), input, size);

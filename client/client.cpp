@@ -1,5 +1,10 @@
+#include <sys/syscall.h>
+#include <unistd.h>
+#include <chrono>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <future>
 #include <iostream>
 #include <string>
@@ -12,6 +17,7 @@
 #include "common/uint128.hpp"
 #include "config.hpp"
 #include "crypto/ctr_drbg.hpp"
+#include "crypto/sha256.hpp"
 #include "message_types.hpp"
 #include "paillier.hpp"
 #include "sgx/attestation.hpp"
@@ -22,6 +28,26 @@ using nlohmann::json;
 
 std::shared_ptr<mbedtls::ctr_drbg> rand_ctx;
 std::map<uint32_t, std::shared_ptr<PSI::Session>> sessions;
+
+struct time_record
+{
+    clock_t timestamp;
+    int64_t thread_id;
+    std::string name;
+
+    explicit time_record(const char* name)
+        : timestamp(clock()), thread_id(syscall(__NR_gettid)), name(name)
+    {
+    }
+
+    auto to_json() -> json
+    {
+        return json::object(
+            {{"clock", timestamp}, {"thread", thread_id}, {"name", name}});
+    }
+};
+
+std::vector<time_record> benchmark_records;
 
 /*
  * output:  vid, this_pk, format_setting
@@ -89,12 +115,15 @@ auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk)
     -> json
 {
     SPDLOG_DEBUG(__PRETTY_FUNCTION__);
+
     /* construct a request socket and connect to interface */
     zmq::socket_t client = connect(*io, server_addr);
     VerifierContext vctx;
     uint32_t sid;
 
     /* attestation */
+    benchmark_records.emplace_back("initiate attestation");
+
     {
         json request = {
             {"sid", -1},
@@ -110,6 +139,8 @@ auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk)
         assert(sid == response["sid"].get<uint32_t>());
     }
 
+    benchmark_records.emplace_back("initiate query");
+
     auto crypto = sessions[sid];
 
     /* set public key */
@@ -123,6 +154,10 @@ auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk)
     assert(response["type"].get<MessageType>() == QueryResponse);
     assert(sid == response["sid"].get<uint32_t>());
     auto result = crypto->decrypt(response["payload"].get<v8>());
+
+    benchmark_records.emplace_back("result received");
+
+    client.close();
 
     return json::from_msgpack(result);
 }
@@ -151,6 +186,8 @@ auto main(int argc, const char* argv[]) -> int
     /* initialize the zmq context with a single IO thread */
     zmq::context_t context{1};
 
+    benchmark_records.emplace_back("start");
+
     /* start client */
     auto c0 = std::async(
         std::launch::async, client, endpoint[0], &context, 0, pubkey);
@@ -160,6 +197,8 @@ auto main(int argc, const char* argv[]) -> int
     /* wait for the result */
     auto p0 = c0.get();
     auto p1 = c1.get();
+
+    benchmark_records.emplace_back("done");
 
     /* print out query result */
 
@@ -196,6 +235,78 @@ auto main(int argc, const char* argv[]) -> int
     }
 
 #endif
+
+    json records = json::array();
+    for (auto r : benchmark_records)
+    {
+        records.push_back(r.to_json());
+    }
+
+    json output = json::object(
+        {{"PSI_PAILLIER_PK_LEN", PSI_PAILLIER_PK_LEN},
+         {"PSI_DATA_SET_SIZE_LOG", PSI_DATA_SET_SIZE_LOG},
+         {"PSI_DATA_KEY_RANGE_LOG", PSI_DATA_KEY_RANGE_LOG},
+         {"PSI_MELBOURNE_P", PSI_MELBOURNE_P},
+         {"PSI_SELECT_ODD",
+#ifdef PSI_SELECT_ODD
+          1
+#else
+          0
+#endif
+         },
+         {"PSI_SELECT_EVEN",
+#ifdef PSI_SELECT_EVEN
+          1
+#else
+          0
+#endif
+         },
+         {"PSI_SELECT_ALL",
+#ifdef PSI_SELECT_ALL
+          1
+#else
+          0
+#endif
+         },
+         {"PSI_SELECT_ONLY",
+#ifdef PSI_SELECT_ODD
+          1
+#else
+          0
+#endif
+         },
+         {"PSI_JOIN_COUNT",
+#ifdef PSI_SELECT_EVEN
+          1
+#else
+          0
+#endif
+         },
+         {"PSI_JOIN_SUM",
+#ifdef PSI_SELECT_ALL
+          1
+#else
+          0
+#endif
+         },
+         {"time", records}});
+
+    std::string output_str = output.dump();
+
+    auto h = mbedtls::sha256();
+    h.update(output_str);
+    auto h_str = hexdump(h.finish());
+
+    auto t = std::chrono::system_clock::now();
+
+    auto fn = fmt::format(
+        "{:%Y%m%dT%H%M%S}-{}.json", fmt::localtime(time(nullptr)), h_str);
+
+    FILE* fp = std::fopen(fn.c_str(), "w");
+    fputs(output_str.c_str(), fp);
+    fclose(fp);
+
+    SPDLOG_INFO("Benchmark written to {}", fn);
 
     return 0;
 }
