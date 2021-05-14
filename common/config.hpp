@@ -1,9 +1,19 @@
 #pragma once
 
+/* define logging option */
+#ifdef VERBOSE
+#define PSI_ENABLE_TRACE_ENCLAVE
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
+#else
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_INFO
+#endif
+
+/* define the bitlen of paillier public key */
 #ifndef PSI_PAILLIER_PK_LEN
 #define PSI_PAILLIER_PK_LEN 128
 #endif
 
+/* define the size of date set */
 #ifndef PSI_DATA_SET_SIZE_LOG
 #define PSI_DATA_SET_SIZE_LOG 12
 #endif

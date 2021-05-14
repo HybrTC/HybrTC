@@ -10,6 +10,8 @@
 #include <string>
 #include <thread>
 
+#include "config.hpp"
+
 static auto get_thread_id() -> std::string
 {
     std::stringstream s;
@@ -43,6 +45,8 @@ static auto hexdump(const T* data, size_t sz) -> std::string
     return h;
 }
 
+#ifdef PSI_ENABLE_TRACE_ENCLAVE
+
 #define TRACE_ENCLAVE(fmt, ...)       \
     fprintf(                          \
         stderr,                       \
@@ -51,5 +55,11 @@ static auto hexdump(const T* data, size_t sz) -> std::string
         __FILE__,                     \
         __LINE__,                     \
         ##__VA_ARGS__)
+
+#else
+
+#define TRACE_ENCLAVE(fmt, ...) (void)(fmt)
+
+#endif
 
 #endif // OE_SAMPLES_ATTESTATION_COMMON_LOG_H
