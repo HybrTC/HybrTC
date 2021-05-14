@@ -269,21 +269,21 @@ auto main(int argc, const char* argv[]) -> int
 #endif
          },
          {"PSI_SELECT_ONLY",
-#ifdef PSI_SELECT_ODD
+#ifdef PSI_SELECT_ONLY
           1
 #else
           0
 #endif
          },
          {"PSI_JOIN_COUNT",
-#ifdef PSI_SELECT_EVEN
+#ifdef PSI_JOIN_COUNT
           1
 #else
           0
 #endif
          },
          {"PSI_JOIN_SUM",
-#ifdef PSI_SELECT_ALL
+#ifdef PSI_JOIN_SUM
           1
 #else
           0
