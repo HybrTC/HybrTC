@@ -202,6 +202,7 @@ auto main(int argc, const char* argv[]) -> int
 
     /* print out query result */
 
+#if 0
 #ifdef PSI_JOIN_COUNT
 
     auto result0 = p0[0].get<size_t>();
@@ -235,6 +236,7 @@ auto main(int argc, const char* argv[]) -> int
     }
 
 #endif
+#endif
 
     json records = json::array();
     for (auto r : benchmark_records)
@@ -247,6 +249,13 @@ auto main(int argc, const char* argv[]) -> int
          {"PSI_DATA_SET_SIZE_LOG", PSI_DATA_SET_SIZE_LOG},
          {"PSI_DATA_KEY_RANGE_LOG", PSI_DATA_KEY_RANGE_LOG},
          {"PSI_MELBOURNE_P", PSI_MELBOURNE_P},
+         {"PSI_DISABLE_SHUFFLE",
+#ifdef PSI_DISABLE_SHUFFLE
+          1
+#else
+          0
+#endif
+         },
          {"PSI_SELECT_ODD",
 #ifdef PSI_SELECT_ODD
           1

@@ -185,7 +185,15 @@ void set_client_query(
     homo->load_pubkey(sessions[sid]->decrypt(ibuf, ilen));
 
     half_data = half;
+
+#if PSI_DISABLE_SHUFFLE
+    for (size_t i = 0; i < data_size; i++)
+    {
+        local_data.push_back(std::make_pair(data_key[i], data_val[i]));
+    }
+#else
     local_data = melbourne_shuffle(data_key, data_val, data_size);
+#endif
 
 #ifndef PSI_SELECT_ONLY
     if (half)
@@ -327,10 +335,14 @@ void aggregate(
 
         for (auto val : query_result)
         {
+#ifdef PSI_JOIN_COUNT
+            result.push_back(val);
+#else
             result.push_back(json::array(
                 {pair[0],
                  homo->add(peer_val, homo->encrypt(val, *rand_ctx))
                      .to_vector()}));
+#endif
         }
     }
 

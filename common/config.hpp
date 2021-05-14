@@ -21,12 +21,16 @@
 #define PSI_DATA_KEY_RANGE_LOG (PSI_DATA_SET_SIZE_LOG) * 3 / 2
 
 /* define select policy */
+#ifndef PSI_DISABLE_SHUFFLE
+
 #ifndef PSI_SELECT_ODD
 #ifndef PSI_SELECT_EVEN
 #ifndef PSI_SELECT_ALL
 #define PSI_SELECT_ALL
 #endif
 #endif
+#endif
+
 #endif
 
 /* define aggregate policy */
