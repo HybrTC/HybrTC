@@ -202,7 +202,7 @@ auto main(int argc, const char* argv[]) -> int
 
     /* print out query result */
 
-#if 0
+#ifdef VERBOSE
 #ifdef PSI_JOIN_COUNT
 
     auto result0 = p0[0].get<size_t>();
