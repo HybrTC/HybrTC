@@ -5,16 +5,15 @@
 #include "common/uint128.hpp"
 #include "config.hpp"
 #include "crypto/ctr_drbg.hpp"
-#include "crypto/gcm.hpp"
 #include "paillier.hpp"
 #include "psi/bloom_filter.hpp"
 #include "psi/cuckoo_hashing.hpp"
 #include "psi/melbourne.hpp"
 #include "psi/prp.hpp"
 #include "sgx/attestation.hpp"
+#include "sgx/log.h"
 
 #include "helloworld_t.h"
-#include "sgx/log.h"
 
 using mbedtls::mpi;
 using nlohmann::json;
