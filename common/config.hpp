@@ -23,14 +23,18 @@
 /* define select policy */
 #ifndef PSI_SELECT_ODD
 #ifndef PSI_SELECT_EVEN
+#ifndef PSI_SELECT_ALL
 #define PSI_SELECT_ALL
+#endif
 #endif
 #endif
 
 /* define aggregate policy */
 #ifndef PSI_SELECT_ONLY
 #ifndef PSI_JOIN_COUNT
+#ifndef PSI_JOIN_SUM
 #define PSI_JOIN_SUM
+#endif
 #endif
 #endif
 
