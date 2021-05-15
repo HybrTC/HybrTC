@@ -52,6 +52,26 @@ set(CPPZMQ_BUILD_TESTS
 add_subdirectory(3rd-party/libzmq)
 add_subdirectory(3rd-party/cppzmq)
 
+option(PSI_DATA_SET_SIZE_LOG "" 10)
+
+# Test SELECT
+# add_compile_definitions(PSI_SELECT_ALL=1 PSI_SELECT_ONLY=1
+#                         PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG})
+
+# Test JOIN
+add_compile_definitions(PSI_DISABLE_SHUFFLE=1 PSI_JOIN_COUNT=1
+                        PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG})
+# add_compile_definitions(PSI_DISABLE_SHUFFLE=1 PSI_JOIN_SUM=1
+#                         PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG})
+
+# Test Query1
+# add_compile_definitions(PSI_SELECT_ODD=1 PSI_JOIN_SUM=1
+#                         PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG})
+
+# Test Query2
+# add_compile_definitions(PSI_SELECT_EVEN=1 PSI_JOIN_COUNT=1
+#                         PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG})
+
 include_directories(${CMAKE_SOURCE_DIR}/common)
 
 add_subdirectory(server)

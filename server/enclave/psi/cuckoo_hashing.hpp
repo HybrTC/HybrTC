@@ -25,6 +25,7 @@ template <
     class VT = uint32_t>
 class CuckooHashing
 {
+  protected:
     // element type
     using ET = std::pair<KT, VT>;
 
@@ -139,27 +140,4 @@ class CuckooHashing
 
         return result;
     }
-
-#if 0
-    void inspect() const
-    {
-        for (uint32_t hi = 0; hi < HN; hi++)
-        {
-            printf("| ");
-            for (uint32_t bi = 0; bi < L; bi++)
-            {
-                std::vector<ET>& bin = table[hi][bi];
-                if (bin.size() > 0)
-                {
-                    printf("%lu ", bin.size());
-                }
-                else
-                {
-                    printf("- ");
-                }
-            }
-        }
-        printf("| stash = %lu |\n", stash.size());
-    }
-#endif
 };
