@@ -46,15 +46,7 @@ class Verifier
         size_t claims_length = 0;
 
         oe_result_t result = oe_verify_evidence(
-            format_ptr,
-            evidence.data(),
-            evidence.size(),
-            nullptr,
-            0,
-            nullptr,
-            0,
-            &claims,
-            &claims_length);
+            format_ptr, evidence.data(), evidence.size(), nullptr, 0, nullptr, 0, &claims, &claims_length);
 
         if (result != OE_OK)
         {

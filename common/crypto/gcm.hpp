@@ -13,9 +13,7 @@ namespace mbedtls
 #include <mbedtls/gcm.h>
 
 template <mbedtls_cipher_id_t cipher, uint32_t keybits>
-class gcm
-    : public internal::
-          resource<mbedtls_gcm_context, mbedtls_gcm_init, mbedtls_gcm_free>
+class gcm : public internal::resource<mbedtls_gcm_context, mbedtls_gcm_init, mbedtls_gcm_free>
 {
   public:
     constexpr static size_t IV_LEN = 16;
@@ -35,8 +33,7 @@ class gcm
         mbedtls_gcm_setkey(get(), cipher, key.data(), keybits);
     }
 
-    auto encrypt(const uint8_t* input, size_t input_size, ctr_drbg& ctr_drbg)
-        -> v8
+    auto encrypt(const uint8_t* input, size_t input_size, ctr_drbg& ctr_drbg) -> v8
     {
         v8 output(input_size + sizeof(ciphertext), 0);
         ciphertext& enc = *reinterpret_cast<ciphertext*>(&output[0]);
@@ -66,16 +63,7 @@ class gcm
         v8 output(input_size - sizeof(ciphertext));
 
         int result = mbedtls_gcm_auth_decrypt(
-            get(),
-            output.size(),
-            enc.iv,
-            IV_LEN,
-            nullptr,
-            0,
-            enc.tag,
-            TAG_LEN,
-            enc.ciphertext,
-            &output[0]);
+            get(), output.size(), enc.iv, IV_LEN, nullptr, 0, enc.tag, TAG_LEN, enc.ciphertext, &output[0]);
 
         if (result != 0)
         {

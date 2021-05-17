@@ -10,10 +10,7 @@ namespace mbedtls
 {
 #include <mbedtls/sha512.h>
 
-class sha512 : public internal::resource<
-                   mbedtls_sha512_context,
-                   mbedtls_sha512_init,
-                   mbedtls_sha512_free>
+class sha512 : public internal::resource<mbedtls_sha512_context, mbedtls_sha512_init, mbedtls_sha512_free>
 {
     constexpr static size_t hash_size = 512 >> 3;
 

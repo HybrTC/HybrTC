@@ -27,10 +27,7 @@ class Paillier
         {
             if (bits == 0 || !n.get_bit(bits - 1))
             {
-                TRACE_ENCLAVE(
-                    "bits = %u ; n.get_bit(bits) = %d",
-                    bits,
-                    n.get_bit(bits - 1));
+                TRACE_ENCLAVE("bits = %u ; n.get_bit(bits) = %d", bits, n.get_bit(bits - 1));
                 return false;
             }
 
@@ -163,16 +160,12 @@ class Paillier
 
         mpi r = mpi::gen_rand(pubkey.bits >> 3, ctr_drbg);
 
-        return (pubkey.g.exp_mod(plaintext, pubkey.n_sq) *
-                r.exp_mod(pubkey.n, pubkey.n_sq)) %
-               pubkey.n_sq;
+        return (pubkey.g.exp_mod(plaintext, pubkey.n_sq) * r.exp_mod(pubkey.n, pubkey.n_sq)) % pubkey.n_sq;
     }
 
     [[nodiscard]] auto decrypt(const mpi& ciphertext) const -> mpi
     {
-        return ((((ciphertext.exp_mod(prvkey.λ, pubkey.n_sq)) - 1) / pubkey.n) *
-                prvkey.μ) %
-               pubkey.n;
+        return ((((ciphertext.exp_mod(prvkey.λ, pubkey.n_sq)) - 1) / pubkey.n) * prvkey.μ) % pubkey.n;
     }
 
     [[nodiscard]] auto add(const mpi& A, const mpi& B) const -> mpi

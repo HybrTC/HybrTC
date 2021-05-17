@@ -21,12 +21,7 @@ using nlohmann::json;
  * @tparam KT   key type
  * @tparam VT   value type
  */
-template <
-    uint32_t LL,
-    uint32_t LD,
-    uint32_t HN,
-    class KT = uint128_t,
-    class VT = uint32_t>
+template <uint32_t LL, uint32_t LD, uint32_t HN, class KT = uint128_t, class VT = uint32_t>
 class CHTest : public CuckooHashing<LL, LD, HN, KT, VT>
 {
   public:
@@ -127,11 +122,7 @@ auto test(size_t repeat) -> json
          {"stash_sizes", ret}});
 
     auto fn = fmt::format(
-        "{:%Y%m%dT%H%M%S}-{}-{}-{}.json",
-        fmt::localtime(time(nullptr)),
-        CH_LOG_LENGTH,
-        CH_LOG_DEPTH,
-        NUMBER_OF_HASHES);
+        "{:%Y%m%dT%H%M%S}-{}-{}-{}.json", fmt::localtime(time(nullptr)), CH_LOG_LENGTH, CH_LOG_DEPTH, NUMBER_OF_HASHES);
 
     dump_json(fn, x);
 

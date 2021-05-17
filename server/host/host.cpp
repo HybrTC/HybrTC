@@ -134,26 +134,19 @@ auto main(int argc, const char* argv[]) -> int
     const char* peer_endpoint = argv[4];
     const char* enclave_image_path = argv[5];
 
-    const string pattern = fmt::format(
-        "%^[%Y-%m-%d %H:%M:%S.%e] [%L] [s{}] [%t] %s:%# -%$ %v", server_id);
+    const string pattern = fmt::format("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [s{}] [%t] %s:%# -%$ %v", server_id);
 
     spdlog::set_level(spdlog::level::debug);
     spdlog::set_pattern(pattern);
 
     if (server_id != 0 && server_id != 1)
     {
-        SPDLOG_ERROR(
-            "unexpected server id {}: it can only be 0 or 1", server_id);
+        SPDLOG_ERROR("unexpected server id {}: it can only be 0 or 1", server_id);
         exit(EXIT_FAILURE);
     }
     else
     {
-        SPDLOG_INFO(
-            "server_id={} port={}/{} peer_endpoint={}",
-            server_id,
-            client_port,
-            peer_port,
-            peer_endpoint);
+        SPDLOG_INFO("server_id={} port={}/{} peer_endpoint={}", server_id, client_port, peer_port, peer_endpoint);
     }
 
     /* initialize the zmq context with 2 IO thread */
@@ -163,12 +156,10 @@ auto main(int argc, const char* argv[]) -> int
     PSIContext psi(enclave_image_path, bool(server_id));
 
     /* start server */
-    auto s_client = std::async(
-        std::launch::async, client_servant, client_port, &context, &psi);
+    auto s_client = std::async(std::launch::async, client_servant, client_port, &context, &psi);
 
 #ifndef PSI_SELECT_ONLY
-    auto s_peer =
-        std::async(std::launch::async, peer_servant, peer_port, &context, &psi);
+    auto s_peer = std::async(std::launch::async, peer_servant, peer_port, &context, &psi);
 
     /* wait for the server starting up */
     std::this_thread::sleep_for(std::chrono::seconds(1));

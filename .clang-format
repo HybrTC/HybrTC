@@ -1,6 +1,7 @@
 ---
 BasedOnStyle: LLVM
 Language: Cpp
+ColumnLimit: 120
 AlignAfterOpenBracket: AlwaysBreak
 AlignEscapedNewlinesLeft: true
 AllowAllParametersOfDeclarationOnNextLine: false

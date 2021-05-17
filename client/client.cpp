@@ -35,15 +35,13 @@ struct time_record
     int64_t thread_id;
     std::string name;
 
-    explicit time_record(const char* name)
-        : timestamp(clock()), thread_id(syscall(__NR_gettid)), name(name)
+    explicit time_record(const char* name) : timestamp(clock()), thread_id(syscall(__NR_gettid)), name(name)
     {
     }
 
     auto to_json() -> json
     {
-        return json::object(
-            {{"clock", timestamp}, {"thread", thread_id}, {"name", name}});
+        return json::object({{"clock", timestamp}, {"thread", thread_id}, {"name", name}});
     }
 };
 
@@ -60,10 +58,7 @@ auto verifier_generate_challenge(VerifierContext& ctx, int vid) -> v8
     ctx.vpk = ctx.ecdh.make_public(*rand_ctx);
 
     /* generate output object */
-    json json = json::object(
-        {{"vid", ctx.vid},
-         {"vpk", ctx.vpk},
-         {"format_settings", ctx.core.format_settings()}});
+    json json = json::object({{"vid", ctx.vid}, {"vpk", ctx.vpk}, {"format_settings", ctx.core.format_settings()}});
 
     return json::to_msgpack(json);
 }
@@ -111,8 +106,7 @@ auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
     return ctx.complete_attestation();
 }
 
-auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk)
-    -> json
+auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk) -> json
 {
     SPDLOG_DEBUG(__PRETTY_FUNCTION__);
 
@@ -125,10 +119,7 @@ auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk)
     benchmark_records.emplace_back("initiate attestation");
 
     {
-        json request = {
-            {"sid", -1},
-            {"type", AttestationRequest},
-            {"payload", verifier_generate_challenge(vctx, id)}};
+        json request = {{"sid", -1}, {"type", AttestationRequest}, {"payload", verifier_generate_challenge(vctx, id)}};
         assert(request["type"].get<MessageType>() == AttestationRequest);
         send(client, request);
 
@@ -144,8 +135,7 @@ auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk)
     auto crypto = sessions[sid];
 
     /* set public key */
-    json request = {
-        {"sid", sid}, {"type", QueryRequest}, {"payload", crypto->encrypt(pk)}};
+    json request = {{"sid", sid}, {"type", QueryRequest}, {"payload", crypto->encrypt(pk)}};
     assert(request["type"].get<MessageType>() == QueryRequest);
     send(client, request);
 
@@ -189,10 +179,8 @@ auto main(int argc, const char* argv[]) -> int
     benchmark_records.emplace_back("start");
 
     /* start client */
-    auto c0 = std::async(
-        std::launch::async, client, endpoint[0], &context, 0, pubkey);
-    auto c1 = std::async(
-        std::launch::async, client, endpoint[1], &context, 1, pubkey);
+    auto c0 = std::async(std::launch::async, client, endpoint[0], &context, 0, pubkey);
+    auto c1 = std::async(std::launch::async, client, endpoint[1], &context, 1, pubkey);
 
     /* wait for the result */
     auto p0 = c0.get();
@@ -217,9 +205,7 @@ auto main(int argc, const char* argv[]) -> int
     {
         std::array<uint8_t, sizeof(uint128_t)> key_bin = pair[0];
         std::vector<uint8_t> val_bin = pair[1];
-        auto dec =
-            homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size()))
-                .to_unsigned<uint64_t>();
+        auto dec = homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size())).to_unsigned<uint64_t>();
 
         SPDLOG_INFO("{:sn} {:016x}", spdlog::to_hex(key_bin), dec);
     }
@@ -228,9 +214,7 @@ auto main(int argc, const char* argv[]) -> int
     {
         std::array<uint8_t, sizeof(uint128_t)> key_bin = pair[0];
         std::vector<uint8_t> val_bin = pair[1];
-        auto dec =
-            homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size()))
-                .to_unsigned<uint64_t>();
+        auto dec = homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size())).to_unsigned<uint64_t>();
 
         SPDLOG_INFO("{:sn} {:016x}", spdlog::to_hex(key_bin), dec);
     }
@@ -307,8 +291,7 @@ auto main(int argc, const char* argv[]) -> int
         h.update(output_str);
         auto h_str = hexdump(h.finish());
 
-        auto fn = fmt::format(
-            "{:%Y%m%dT%H%M%S}-{}.json", fmt::localtime(time(nullptr)), h_str);
+        auto fn = fmt::format("{:%Y%m%dT%H%M%S}-{}.json", fmt::localtime(time(nullptr)), h_str);
 
         FILE* fp = std::fopen(fn.c_str(), "w");
         fputs(output_str.c_str(), fp);

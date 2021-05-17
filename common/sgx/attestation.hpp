@@ -48,11 +48,7 @@ struct AttestationContext
 
         if (sessions.find(sid) != sessions.end())
         {
-            TRACE_ENCLAVE(
-                "session id collision: vid=%04x aid=%04x sid=%08x",
-                vid,
-                aid,
-                sid);
+            TRACE_ENCLAVE("session id collision: vid=%04x aid=%04x sid=%08x", vid, aid, sid);
             abort();
         }
 

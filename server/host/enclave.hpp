@@ -48,17 +48,11 @@ class SPIEnclave
 
     void verifier_generate_challenge(buffer& output);
 
-    auto attester_generate_response(const v8& input, buffer& output)
-        -> uint32_t;
+    auto attester_generate_response(const v8& input, buffer& output) -> uint32_t;
 
     auto verifier_process_response(const v8& input) -> uint32_t;
 
-    void set_client_query(
-        uint32_t sid,
-        const v8& input,
-        bool half,
-        const v32& keys,
-        const v32& values);
+    void set_client_query(uint32_t sid, const v8& input, bool half, const v32& keys, const v32& values);
 
     void get_select_result(uint32_t sid, buffer& obuf);
 
@@ -66,9 +60,5 @@ class SPIEnclave
 
     void match_bloom_filter(uint32_t sid, const v8& input, buffer& output);
 
-    void aggregate(
-        uint32_t peer_sid,
-        uint32_t client_sid,
-        const v8& input,
-        buffer& output);
+    void aggregate(uint32_t peer_sid, uint32_t client_sid, const v8& input, buffer& output);
 };

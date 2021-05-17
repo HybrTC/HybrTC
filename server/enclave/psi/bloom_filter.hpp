@@ -18,15 +18,8 @@ class BloomFilter
     INTEGER_CHECK(IT, "input value");
 
     constexpr static size_t BITS_PER_BYTE = 8;
-    constexpr static std::array<uint8_t, BITS_PER_BYTE> BITMASK = {
-        1UL << 0,
-        1UL << 1,
-        1UL << 2,
-        1UL << 3,
-        1UL << 4,
-        1UL << 5,
-        1UL << 6,
-        1UL << 7};
+    constexpr static std::array<uint8_t, BITS_PER_BYTE> BITMASK =
+        {1UL << 0, 1UL << 1, 1UL << 2, 1UL << 3, 1UL << 4, 1UL << 5, 1UL << 6, 1UL << 7};
 
     // bitmap for the filter
     constexpr static size_t FILTER_BYTES = ((1UL << LL) + 7) / BITS_PER_BYTE;
@@ -41,8 +34,7 @@ class BloomFilter
     {
         if (index >= (1UL << LL))
         {
-            throw std::range_error(
-                "the bit is beyond the range of this filter");
+            throw std::range_error("the bit is beyond the range of this filter");
         }
     }
 
@@ -53,8 +45,8 @@ class BloomFilter
         uint32_t block_index = index / BITS_PER_BYTE;
         uint32_t bit_index = index % BITS_PER_BYTE;
 
-        bitmap[block_index] = set ? bitmap[block_index] | BITMASK[bit_index]
-                                  : bitmap[block_index] & ~BITMASK[bit_index];
+        bitmap[block_index] =
+            set ? bitmap[block_index] | BITMASK[bit_index] : bitmap[block_index] & ~BITMASK[bit_index];
     }
 
     [[nodiscard]] auto test_bit(const HT& index) const -> bool

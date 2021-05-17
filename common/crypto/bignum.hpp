@@ -11,13 +11,10 @@ namespace mbedtls
 {
 #include <mbedtls/bignum.h>
 
-class mpi : public internal::
-                resource<mbedtls_mpi, &mbedtls_mpi_init, &mbedtls_mpi_free>
+class mpi : public internal::resource<mbedtls_mpi, &mbedtls_mpi_init, &mbedtls_mpi_free>
 {
-    static auto eval(
-        int (*op)(mbedtls_mpi* X, const mbedtls_mpi* A, const mbedtls_mpi* B),
-        const mpi& A,
-        const mpi& B) -> mpi
+    static auto eval(int (*op)(mbedtls_mpi* X, const mbedtls_mpi* A, const mbedtls_mpi* B), const mpi& A, const mpi& B)
+        -> mpi
     {
         mpi X;
         op(X.get(), A.get(), B.get());
@@ -55,8 +52,7 @@ class mpi : public internal::
     static auto gen_prime(size_t nbits, ctr_drbg& ctr_drbg) -> mpi
     {
         mpi X;
-        mbedtls_mpi_gen_prime(
-            X.get(), nbits, 0, mbedtls_ctr_drbg_random, ctr_drbg.get());
+        mbedtls_mpi_gen_prime(X.get(), nbits, 0, mbedtls_ctr_drbg_random, ctr_drbg.get());
 
         return X;
     }
@@ -64,8 +60,7 @@ class mpi : public internal::
     static auto gen_rand(size_t nbytes, ctr_drbg& ctr_drbg) -> mpi
     {
         mpi X;
-        mbedtls_mpi_fill_random(
-            X.get(), nbytes, mbedtls_ctr_drbg_random, ctr_drbg.get());
+        mbedtls_mpi_fill_random(X.get(), nbytes, mbedtls_ctr_drbg_random, ctr_drbg.get());
 
         return X;
     }

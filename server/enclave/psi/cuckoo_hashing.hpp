@@ -17,12 +17,7 @@
  * @tparam KT   key type
  * @tparam VT   value type
  */
-template <
-    uint32_t LL,
-    uint32_t LD,
-    uint32_t HN,
-    class KT = uint128_t,
-    class VT = uint32_t>
+template <uint32_t LL, uint32_t LD, uint32_t HN, class KT = uint128_t, class VT = uint32_t>
 class CuckooHashing
 {
   protected:
@@ -47,10 +42,7 @@ class CuckooHashing
         std::vector<ET>& bin = table[hash_index][bin_index];
         if (bin.size() != D)
         {
-            printf(
-                ":( something bad happening: [%s][%d]\n",
-                __PRETTY_FUNCTION__,
-                __LINE__);
+            printf(":( something bad happening: [%s][%d]\n", __PRETTY_FUNCTION__, __LINE__);
             abort();
         }
 
@@ -65,11 +57,7 @@ class CuckooHashing
         }
     }
 
-    auto insert_from(
-        const KT& key,
-        const VT& value,
-        uint32_t hash_index,
-        const HC& hashes) -> bool
+    auto insert_from(const KT& key, const VT& value, uint32_t hash_index, const HC& hashes) -> bool
     {
         if (hash_index >= HN)
         {

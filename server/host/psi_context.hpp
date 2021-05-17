@@ -39,8 +39,7 @@ class PSIContext
     bool half;
 
   public:
-    explicit PSIContext(const char* enclave_image_path, bool half)
-        : enclave(enclave_image_path, false), half(half)
+    explicit PSIContext(const char* enclave_image_path, bool half) : enclave(enclave_image_path, false), half(half)
     {
         /* generate random dataset */
         PRNG<uint32_t> prng;
@@ -85,10 +84,7 @@ class PSIContext
         buffer request;
         enclave.verifier_generate_challenge(request);
 
-        return {
-            {"sid", -1},
-            {"type", AttestationRequest},
-            {"payload", v8(request.data, request.data + request.size)}};
+        return {{"sid", -1}, {"type", AttestationRequest}, {"payload", v8(request.data, request.data + request.size)}};
     }
 
     auto handle_attestation_req(const v8& request) -> nlohmann::json
@@ -97,9 +93,7 @@ class PSIContext
         uint32_t sid = enclave.attester_generate_response(request, response);
 
         return {
-            {"sid", sid},
-            {"type", AttestationResponse},
-            {"payload", v8(response.data, response.data + response.size)}};
+            {"sid", sid}, {"type", AttestationResponse}, {"payload", v8(response.data, response.data + response.size)}};
     }
 
     auto process_attestation_resp(uint32_t sid, const v8& response) -> uint32_t
@@ -137,10 +131,7 @@ class PSIContext
 #endif
 
         /* build and return query result */
-        return {
-            {"sid", sid},
-            {"type", QueryResponse},
-            {"payload", peer_ctx.result}};
+        return {{"sid", sid}, {"type", QueryResponse}, {"payload", peer_ctx.result}};
     }
 
     /*
@@ -172,10 +163,7 @@ class PSIContext
         buffer response;
         enclave.match_bloom_filter(sid, payload, response);
 
-        return {
-            {"sid", sid},
-            {"type", ComputeResponse},
-            {"payload", v8(response.data, response.data + response.size)}};
+        return {{"sid", sid}, {"type", ComputeResponse}, {"payload", v8(response.data, response.data + response.size)}};
     }
 
     void process_compute_resp(uint32_t sid, const v8& payload)

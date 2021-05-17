@@ -37,11 +37,7 @@ static void dump(const v8& bytes, uint8_t** obuf, size_t* olen)
     memcpy(*obuf, bytes.data(), bytes.size());
 }
 
-static void dump_enc(
-    const v8& bytes,
-    PSI::Session& aes,
-    uint8_t** obuf,
-    size_t* olen)
+static void dump_enc(const v8& bytes, PSI::Session& aes, uint8_t** obuf, size_t* olen)
 {
     dump(aes.encrypt(bytes), obuf, olen);
 }
@@ -62,10 +58,7 @@ void verifier_generate_challenge(u8** obuf, size_t* olen)
     verifiers.push_back(ctx);
 
     /* generate output object */
-    auto json = json::object(
-        {{"vid", ctx->vid},
-         {"vpk", ctx->vpk},
-         {"format_settings", ctx->core.format_settings()}});
+    auto json = json::object({{"vid", ctx->vid}, {"vpk", ctx->vpk}, {"format_settings", ctx->core.format_settings()}});
 
     dump(json::to_msgpack(json), obuf, olen);
 }
@@ -74,11 +67,7 @@ void verifier_generate_challenge(u8** obuf, size_t* olen)
  * input:   vid, peer_pk, format_settings
  * output:  vid, aid, this_pk, evidence
  */
-auto attester_generate_response(
-    const u8* ibuf,
-    size_t ilen,
-    u8** obuf,
-    size_t* olen) -> u32
+auto attester_generate_response(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen) -> u32
 {
     init();
 
@@ -102,11 +91,7 @@ auto attester_generate_response(
     auto evidence = ctx.core.get_evidence(fs, ctx.build_claims());
 
     /* generate output object */
-    auto json = json::object(
-        {{"vid", ctx.vid},
-         {"aid", ctx.aid},
-         {"apk", ctx.apk},
-         {"evidence", evidence}});
+    auto json = json::object({{"vid", ctx.vid}, {"aid", ctx.aid}, {"apk", ctx.apk}, {"evidence", evidence}});
 
     dump(json::to_msgpack(json), obuf, olen);
 
@@ -126,7 +111,7 @@ auto verifier_process_response(const u8* ibuf, size_t ilen) -> u32
     auto ctx = verifiers[input["vid"].get<uint16_t>()]; // load verifier context
     ctx->aid = input["aid"].get<uint16_t>();            // set attester id
     ctx->apk = input["apk"].get<v8>();                  // set attester pubkey
-    auto evidence = input["evidence"].get<v8>(); // load attestation evidence
+    auto evidence = input["evidence"].get<v8>();        // load attestation evidence
 
     /* set vpk in ecdh context */
     ctx->ecdh.read_public(ctx->apk);
@@ -201,10 +186,7 @@ void set_client_query(
         size_t mid = local_data.size() / 2;
 
         left_data.resize(local_data.size() - mid);
-        memcpy(
-            u8p(&left_data[0]),
-            u8p(&local_data[mid]),
-            left_data.size() * sizeof(left_data[0]));
+        memcpy(u8p(&left_data[0]), u8p(&local_data[mid]), left_data.size() * sizeof(left_data[0]));
 
         local_data.resize(mid);
     }
@@ -223,8 +205,7 @@ void get_select_result(u32 sid, u8** obuf, size_t* olen)
         auto enc = homo->encrypt(v, *rand_ctx).to_vector();
         assert(!enc.empty());
 
-        result.push_back(
-            json::array({*reinterpret_cast<const PRP::binary*>(&key), enc}));
+        result.push_back(json::array({*reinterpret_cast<const PRP::binary*>(&key), enc}));
     }
 
     dump_enc(json::to_msgpack(result), *sessions[sid], obuf, olen);
@@ -250,12 +231,7 @@ void build_bloom_filter(u32 sid, u8** obuf, size_t* olen)
     dump_enc(bloom_filter.data(), *sessions[sid], obuf, olen);
 }
 
-void match_bloom_filter(
-    u32 sid,
-    const u8* ibuf,
-    size_t ilen,
-    u8** obuf,
-    size_t* olen)
+void match_bloom_filter(u32 sid, const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
 {
     HashSet bloom_filter(sessions[sid]->decrypt(ibuf, ilen));
     PRP prp;
@@ -272,8 +248,7 @@ void match_bloom_filter(
                 auto enc = homo->encrypt(v, *rand_ctx).to_vector();
                 assert(!enc.empty());
 
-                hits.push_back(json::array(
-                    {*reinterpret_cast<const PRP::binary*>(&key), enc}));
+                hits.push_back(json::array({*reinterpret_cast<const PRP::binary*>(&key), enc}));
             }
         }
     }
@@ -287,8 +262,7 @@ void match_bloom_filter(
                 auto enc = homo->encrypt(v, *rand_ctx).to_vector();
                 assert(!enc.empty());
 
-                hits.push_back(json::array(
-                    {*reinterpret_cast<const PRP::binary*>(&key), enc}));
+                hits.push_back(json::array({*reinterpret_cast<const PRP::binary*>(&key), enc}));
             }
         }
     }
@@ -296,13 +270,7 @@ void match_bloom_filter(
     dump_enc(json::to_msgpack(hits), *sessions[sid], obuf, olen);
 }
 
-void aggregate(
-    u32 peer_sid,
-    u32 client_sid,
-    const u8* ibuf,
-    size_t ilen,
-    u8** obuf,
-    size_t* olen)
+void aggregate(u32 peer_sid, u32 client_sid, const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
 {
     auto peer = json::from_msgpack(sessions[peer_sid]->decrypt(ibuf, ilen));
 
@@ -327,8 +295,7 @@ void aggregate(
         PRP::binary key_bin = pair[0];
         v8 val_bin = pair[1];
 
-        const uint128_t& key =
-            *reinterpret_cast<const uint128_t*>(key_bin.data());
+        const uint128_t& key = *reinterpret_cast<const uint128_t*>(key_bin.data());
         mpi peer_val(val_bin.data(), val_bin.size());
 
         auto query_result = hashing.lookup(key);
@@ -338,10 +305,7 @@ void aggregate(
 #ifdef PSI_JOIN_COUNT
             result.push_back(val);
 #else
-            result.push_back(json::array(
-                {pair[0],
-                 homo->add(peer_val, homo->encrypt(val, *rand_ctx))
-                     .to_vector()}));
+            result.push_back(json::array({pair[0], homo->add(peer_val, homo->encrypt(val, *rand_ctx)).to_vector()}));
 #endif
         }
     }

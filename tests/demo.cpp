@@ -17,8 +17,7 @@ constexpr const char* FMT_SERVER_BIN = "%s/server/host/server";
 constexpr const char* FMT_ENCLAVE_SIGNED = "%s/server/enclave/enclave.signed";
 constexpr const char* FMT_CLIENT_BIN = "%s/client/client";
 
-#define PATH_GENERATOR(prefix, format_string, buf) \
-    snprintf(&(buf)[0], (buf).size(), format_string, prefix)
+#define PATH_GENERATOR(prefix, format_string, buf) snprintf(&(buf)[0], (buf).size(), format_string, prefix)
 
 std::array<char, BUFSIZ> server_bin = {0};
 std::array<char, BUFSIZ> enclave_signed = {0};
@@ -30,8 +29,7 @@ std::array<char, BUFSIZ> client_bin = {0};
 
 constexpr const char* FMT_ENDPOINT = "tcp://%s:%s";
 
-#define ENDPOINT_GENERATOR(host, port, buf) \
-    snprintf(&(buf)[0], (buf).size(), FMT_ENDPOINT, host, port)
+#define ENDPOINT_GENERATOR(host, port, buf) snprintf(&(buf)[0], (buf).size(), FMT_ENDPOINT, host, port)
 
 constexpr const char* SERVER0_HOST = "localhost";
 constexpr const char* SERVER0_PORT_P = "5000";
@@ -122,12 +120,7 @@ auto main(int argc, const char* argv[]) -> int
 
         std::this_thread::sleep_for(std::chrono::seconds(2));
 
-        execl(
-            client_bin.data(),
-            client_bin.data(),
-            s0_2c_endpoint.data(),
-            s1_2c_endpoint.data(),
-            nullptr);
+        execl(client_bin.data(), client_bin.data(), s0_2c_endpoint.data(), s1_2c_endpoint.data(), nullptr);
     }
     else
     {
@@ -147,50 +140,28 @@ auto main(int argc, const char* argv[]) -> int
         {
             if (WIFCONTINUED(status))
             {
-                fprintf(
-                    stderr,
-                    "Process %d: WIFCONTINUED=%d\n",
-                    pid,
-                    WIFCONTINUED(status));
+                fprintf(stderr, "Process %d: WIFCONTINUED=%d\n", pid, WIFCONTINUED(status));
             }
 
             if (WCOREDUMP(status))
             {
-                fprintf(
-                    stderr,
-                    "Process %d: WCOREDUMP=%d\n",
-                    pid,
-                    WCOREDUMP(status));
+                fprintf(stderr, "Process %d: WCOREDUMP=%d\n", pid, WCOREDUMP(status));
             }
 
             if (WIFSIGNALED(status))
             {
-                fprintf(
-                    stderr,
-                    "Process %d: WIFSIGNALED=%d WTERMSIG=%d\n",
-                    pid,
-                    WIFSIGNALED(status),
-                    WTERMSIG(status));
+                fprintf(stderr, "Process %d: WIFSIGNALED=%d WTERMSIG=%d\n", pid, WIFSIGNALED(status), WTERMSIG(status));
             }
 
             if (WIFSTOPPED(status))
             {
-                fprintf(
-                    stderr,
-                    "Process %d: WIFSTOPPED=%d WSTOPSIG=%d\n",
-                    pid,
-                    WIFSTOPPED(status),
-                    WSTOPSIG(status));
+                fprintf(stderr, "Process %d: WIFSTOPPED=%d WSTOPSIG=%d\n", pid, WIFSTOPPED(status), WSTOPSIG(status));
             }
 
             if (WIFEXITED(status))
             {
                 fprintf(
-                    stderr,
-                    "Process %d: WIFEXITED=%d WEXITSTATUS=%d\n",
-                    pid,
-                    WIFEXITED(status),
-                    WEXITSTATUS(status));
+                    stderr, "Process %d: WIFEXITED=%d WEXITSTATUS=%d\n", pid, WIFEXITED(status), WEXITSTATUS(status));
             }
 
             kill(0, SIGKILL);

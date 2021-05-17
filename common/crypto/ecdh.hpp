@@ -13,9 +13,7 @@ namespace mbedtls
 {
 #include <mbedtls/ecdh.h>
 
-class ecdh
-    : public internal::
-          resource<mbedtls_ecdh_context, mbedtls_ecdh_init, mbedtls_ecdh_free>
+class ecdh : public internal::resource<mbedtls_ecdh_context, mbedtls_ecdh_init, mbedtls_ecdh_free>
 {
   public:
     explicit ecdh(mbedtls_ecp_group_id grp_id)
@@ -28,13 +26,7 @@ class ecdh
         v8 buf(MBEDTLS_ECP_MAX_BYTES, 0);
         size_t len;
 
-        mbedtls_ecdh_make_public(
-            get(),
-            &len,
-            &buf[0],
-            buf.size(),
-            mbedtls_ctr_drbg_random,
-            ctr_drbg.get());
+        mbedtls_ecdh_make_public(get(), &len, &buf[0], buf.size(), mbedtls_ctr_drbg_random, ctr_drbg.get());
 
         buf.resize((len));
         return buf;
@@ -50,13 +42,7 @@ class ecdh
         v8 buf(MBEDTLS_ECP_MAX_BYTES, 0);
         size_t len;
 
-        mbedtls_ecdh_calc_secret(
-            get(),
-            &len,
-            &buf[0],
-            buf.size(),
-            mbedtls_ctr_drbg_random,
-            ctr_drbg.get());
+        mbedtls_ecdh_calc_secret(get(), &len, &buf[0], buf.size(), mbedtls_ctr_drbg_random, ctr_drbg.get());
 
         buf.resize(len);
         return buf;

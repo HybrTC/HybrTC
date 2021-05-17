@@ -9,10 +9,7 @@ namespace mbedtls
 {
 #include <mbedtls/sha256.h>
 
-class sha256 : public internal::resource<
-                   mbedtls_sha256_context,
-                   mbedtls_sha256_init,
-                   mbedtls_sha256_free>
+class sha256 : public internal::resource<mbedtls_sha256_context, mbedtls_sha256_init, mbedtls_sha256_free>
 {
   public:
     constexpr static size_t hash_size = 256 >> 3;

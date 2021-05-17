@@ -24,8 +24,7 @@ class Attester
     }
 
     template <size_t N>
-    auto get_evidence(const v8& format_settings, const a8<N>& custom_claims)
-        -> v8
+    auto get_evidence(const v8& format_settings, const a8<N>& custom_claims) -> v8
     {
         uint8_t* evidence_buf = nullptr;
         size_t evidence_size;

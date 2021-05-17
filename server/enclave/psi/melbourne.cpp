@@ -25,8 +25,7 @@ extern sptr<mbedtls::ctr_drbg> rand_ctx;
 template <class F, class S>
 auto operator<(const std::pair<F, S>& lhs, const std::pair<F, S>& rhs) -> bool
 {
-    return lhs.first == rhs.first ? lhs.second < rhs.second
-                                  : lhs.first < rhs.first;
+    return lhs.first == rhs.first ? lhs.second < rhs.second : lhs.first < rhs.first;
 }
 
 /*
@@ -120,19 +119,14 @@ union plaintext
     }
 };
 
-constexpr size_t CIPHERTEXT_SIZE = sizeof(u32) + aes_gcm_256::IV_LEN +
-                                   aes_gcm_256::TAG_LEN + sizeof(plaintext);
+constexpr size_t CIPHERTEXT_SIZE = sizeof(u32) + aes_gcm_256::IV_LEN + aes_gcm_256::TAG_LEN + sizeof(plaintext);
 using ciphertext = a8<CIPHERTEXT_SIZE>;
 
 /*
  * Melbourne Shuffle
  */
-auto read_bucket(
-    const u32* keys,
-    const u32* vals,
-    size_t data_size,
-    size_t bucket_size,
-    size_t offset) -> std::vector<plaintext>
+auto read_bucket(const u32* keys, const u32* vals, size_t data_size, size_t bucket_size, size_t offset)
+    -> std::vector<plaintext>
 {
     std::vector<plaintext> read_in;
     read_in.reserve(bucket_size);
@@ -196,8 +190,7 @@ auto pad_write_bucket(
     }
 }
 
-auto melbourne_shuffle(const u32* keys, const u32* vals, size_t data_size)
-    -> database_t
+auto melbourne_shuffle(const u32* keys, const u32* vals, size_t data_size) -> database_t
 {
     /*
      * split the input array
@@ -220,8 +213,7 @@ auto melbourne_shuffle(const u32* keys, const u32* vals, size_t data_size)
     auto t_size = t_bucket_size * bucket_cnt;
 
     /* allocate external memory */
-    auto* t =
-        reinterpret_cast<ciphertext*>(oe_host_malloc(t_size * CIPHERTEXT_SIZE));
+    auto* t = reinterpret_cast<ciphertext*>(oe_host_malloc(t_size * CIPHERTEXT_SIZE));
 
     /*
      * initialize prng and cipher
@@ -239,16 +231,11 @@ auto melbourne_shuffle(const u32* keys, const u32* vals, size_t data_size)
     {
         if ((idx_b & 0xf) == 0)
         {
-            TRACE_ENCLAVE(
-                "%s: distribution phase %lu/%lu",
-                __FUNCTION__,
-                idx_b,
-                bucket_cnt);
+            TRACE_ENCLAVE("%s: distribution phase %lu/%lu", __FUNCTION__, idx_b, bucket_cnt);
         }
 
         /* read a bucket of data */
-        std::vector<plaintext> read_in = read_bucket(
-            keys, vals, data_size, bucket_size, idx_b * bucket_size);
+        std::vector<plaintext> read_in = read_bucket(keys, vals, data_size, bucket_size, idx_b * bucket_size);
 
         /* prepare private memory */
         std::vector<std::vector<v8>> private_memory(bucket_cnt);
@@ -271,13 +258,7 @@ auto melbourne_shuffle(const u32* keys, const u32* vals, size_t data_size)
         for (size_t bucket_idx = 0; bucket_idx < bucket_cnt; bucket_idx++)
         {
             pad_write_bucket(
-                bucket_idx,
-                private_memory[bucket_idx],
-                t_counter[bucket_idx],
-                t_bucket_size,
-                p_bucket_size,
-                cipher,
-                t);
+                bucket_idx, private_memory[bucket_idx], t_counter[bucket_idx], t_bucket_size, p_bucket_size, cipher, t);
         }
 
         private_memory.clear();
@@ -287,8 +268,7 @@ auto melbourne_shuffle(const u32* keys, const u32* vals, size_t data_size)
     {
         if (cnt != t_bucket_size)
         {
-            throw std::length_error(
-                "unexpected final bucket size in intermediate array");
+            throw std::length_error("unexpected final bucket size in intermediate array");
         }
     }
 
@@ -303,8 +283,7 @@ auto melbourne_shuffle(const u32* keys, const u32* vals, size_t data_size)
         const plaintext& obj = *reinterpret_cast<const plaintext*>(msg.data());
         if ((obj.r.tag & UINT8_MAX) > 0)
         {
-            result.emplace_back(std::make_pair(
-                obj.r.tag >> sizeof(u8), std::make_pair(obj.r.key, obj.r.val)));
+            result.emplace_back(std::make_pair(obj.r.tag >> sizeof(u8), std::make_pair(obj.r.key, obj.r.val)));
         }
     }
     std::sort(result.begin(), result.end());

@@ -27,8 +27,7 @@ static auto recv(zmq::socket_t& socket) -> nlohmann::json
     (void)socket.recv(msg, zmq::recv_flags::none);
 
     // deserialize the message
-    auto object = nlohmann::json::from_msgpack(
-        u8p(msg.data()), u8p(msg.data()) + msg.size());
+    auto object = nlohmann::json::from_msgpack(u8p(msg.data()), u8p(msg.data()) + msg.size());
 
     SPDLOG_TRACE("recv = {}", object.dump());
     return object;
