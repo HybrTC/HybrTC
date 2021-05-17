@@ -72,6 +72,8 @@ add_compile_definitions(PSI_DISABLE_SHUFFLE=1 PSI_JOIN_COUNT=1
 # add_compile_definitions(PSI_SELECT_EVEN=1 PSI_JOIN_COUNT=1
 #                         PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG})
 
+# set(CMAKE_VERBOSE_MAKEFILE ON)
+
 include_directories(${CMAKE_SOURCE_DIR}/common)
 
 add_subdirectory(server)

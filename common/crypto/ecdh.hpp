@@ -1,8 +1,8 @@
 #pragma once
 
-#include <mbedtls/ctr_drbg.h>
 #include <array>
 #include <cstddef>
+#include <utility>
 #include <vector>
 
 #include "common/types.hpp"
@@ -15,18 +15,20 @@ namespace mbedtls
 
 class ecdh : public internal::resource<mbedtls_ecdh_context, mbedtls_ecdh_init, mbedtls_ecdh_free>
 {
+    sptr<ctr_drbg> rand_ctx;
+
   public:
-    explicit ecdh(mbedtls_ecp_group_id grp_id)
+    explicit ecdh(mbedtls_ecp_group_id grp_id, sptr<ctr_drbg> rand_ctx) : rand_ctx(std::move(rand_ctx))
     {
         mbedtls_ecdh_setup(get(), grp_id);
     }
 
-    auto make_public(ctr_drbg& ctr_drbg) -> v8
+    auto make_public() -> v8
     {
         v8 buf(MBEDTLS_ECP_MAX_BYTES, 0);
         size_t len;
 
-        mbedtls_ecdh_make_public(get(), &len, &buf[0], buf.size(), mbedtls_ctr_drbg_random, ctr_drbg.get());
+        mbedtls_ecdh_make_public(get(), &len, &buf[0], buf.size(), mbedtls_ctr_drbg_random, rand_ctx->get());
 
         buf.resize((len));
         return buf;
@@ -37,12 +39,12 @@ class ecdh : public internal::resource<mbedtls_ecdh_context, mbedtls_ecdh_init, 
         mbedtls_ecdh_read_public(get(), buf.data(), buf.size());
     }
 
-    auto calc_secret(ctr_drbg& ctr_drbg) -> v8
+    auto calc_secret() -> v8
     {
         v8 buf(MBEDTLS_ECP_MAX_BYTES, 0);
         size_t len;
 
-        mbedtls_ecdh_calc_secret(get(), &len, &buf[0], buf.size(), mbedtls_ctr_drbg_random, ctr_drbg.get());
+        mbedtls_ecdh_calc_secret(get(), &len, &buf[0], buf.size(), mbedtls_ctr_drbg_random, rand_ctx->get());
 
         buf.resize(len);
         return buf;

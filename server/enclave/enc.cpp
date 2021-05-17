@@ -5,6 +5,7 @@
 #include "common/uint128.hpp"
 #include "config.hpp"
 #include "crypto/ctr_drbg.hpp"
+#include "enclave_context.hpp"
 #include "paillier.hpp"
 #include "psi/bloom_filter.hpp"
 #include "psi/cuckoo_hashing.hpp"
@@ -18,151 +19,31 @@
 using mbedtls::mpi;
 using nlohmann::json;
 
-std::vector<sptr<VerifierContext>> verifiers;
-std::map<u32, sptr<PSI::Session>> sessions;
-sptr<mbedtls::ctr_drbg> rand_ctx;
+sptr<EnclaveContext> global;
 
 static void init()
 {
-    if (rand_ctx == nullptr)
+    if (global == nullptr)
     {
-        rand_ctx = std::make_shared<mbedtls::ctr_drbg>();
+        global = std::make_shared<EnclaveContext>();
     }
 }
 
-static void dump(const v8& bytes, uint8_t** obuf, size_t* olen)
-{
-    *olen = bytes.size();
-    *obuf = u8p(oe_host_malloc(bytes.size()));
-    memcpy(*obuf, bytes.data(), bytes.size());
-}
-
-static void dump_enc(const v8& bytes, PSI::Session& aes, uint8_t** obuf, size_t* olen)
-{
-    dump(aes.encrypt(bytes), obuf, olen);
-}
-
-/*
- * output:  vid, this_pk, format_setting
- */
 void verifier_generate_challenge(u8** obuf, size_t* olen)
 {
     init();
-
-    /* initialize verifier context */
-    auto ctx = std::make_shared<VerifierContext>();
-
-    /* set verifier id; generate and dump ephemeral public key */
-    ctx->vid = verifiers.size();
-    ctx->vpk = ctx->ecdh.make_public(*rand_ctx);
-    verifiers.push_back(ctx);
-
-    /* generate output object */
-    auto json = json::object({{"vid", ctx->vid}, {"vpk", ctx->vpk}, {"format_settings", ctx->core.format_settings()}});
-
-    dump(json::to_msgpack(json), obuf, olen);
+    global->verifier_generate_challenge(obuf, olen);
 }
 
-/*
- * input:   vid, peer_pk, format_settings
- * output:  vid, aid, this_pk, evidence
- */
 auto attester_generate_response(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen) -> u32
 {
     init();
-
-    /* initialize attester context */
-    AttesterContext ctx;
-
-    /* set attester id; generate and dump ephemeral public key */
-    mbedtls_ctr_drbg_random(rand_ctx.get(), u8p(&ctx.aid), sizeof(ctx.aid));
-    ctx.apk = ctx.ecdh.make_public(*rand_ctx);
-
-    /* deserialize and handle input */
-    auto input = json::from_msgpack(ibuf, ibuf + ilen);
-    ctx.vid = input["vid"].get<uint16_t>();       // set verifier id
-    ctx.vpk = input["vpk"].get<v8>();             // set peer pk
-    auto fs = input["format_settings"].get<v8>(); // load format settings
-
-    /* set vpk in ecdh context */
-    ctx.ecdh.read_public(ctx.vpk);
-
-    /* build claims and generate evidence*/
-    auto evidence = ctx.core.get_evidence(fs, ctx.build_claims());
-
-    /* generate output object */
-    auto json = json::object({{"vid", ctx.vid}, {"aid", ctx.aid}, {"apk", ctx.apk}, {"evidence", evidence}});
-
-    dump(json::to_msgpack(json), obuf, olen);
-
-    /* build crypto context */
-    auto [sid, session] = ctx.complete_attestation();
-
-    if (sessions.find(sid) != sessions.end())
-    {
-        TRACE_ENCLAVE("session id collision: vid=%04x aid=%04x sid=%08x", vid, aid, sid);
-        abort();
-    }
-    else
-    {
-        sessions.insert({sid, session});
-    }
-
-    return sid;
+    return global->attester_generate_response(ibuf, ilen, obuf, olen);
 }
 
-/*
- * input:   vid, aid, evidence
- * output:  attestation_result
- */
 auto verifier_process_response(const u8* ibuf, size_t ilen) -> u32
 {
-    /* deserialize and handle input */
-    auto input = json::from_msgpack(ibuf, ibuf + ilen);
-
-    auto ctx = verifiers[input["vid"].get<uint16_t>()]; // load verifier context
-    ctx->aid = input["aid"].get<uint16_t>();            // set attester id
-    ctx->apk = input["apk"].get<v8>();                  // set attester pubkey
-    auto evidence = input["evidence"].get<v8>();        // load attestation evidence
-
-    /* set vpk in ecdh context */
-    ctx->ecdh.read_public(ctx->apk);
-
-    /* verify evidence */
-    auto claims = ctx->core.verify_evidence(evidence).custom_claims_buffer();
-
-    /* compare claims: (1) size (2) compare content in constant time */
-    auto claims_ = ctx->build_claims();
-    if (claims_.size() != claims.value_size)
-    {
-        return -1;
-    }
-
-    unsigned result = 0;
-    for (size_t i = 0; i < claims_.size() && i < claims.value_size; i++)
-    {
-        result += (claims_[i] ^ claims.value[i]);
-    }
-    if (result != 0)
-    {
-        return -1;
-    }
-
-    /* build crypto context and free verifier context */
-    auto [sid, session] = ctx->complete_attestation();
-
-    if (sessions.find(sid) != sessions.end())
-    {
-        TRACE_ENCLAVE("session id collision: vid=%04x aid=%04x sid=%08x", vid, aid, sid);
-        abort();
-    }
-    else
-    {
-        verifiers[ctx->vid] = nullptr;
-        sessions.insert({sid, session});
-    }
-
-    return sid;
+    return global->verifier_process_response(ibuf, ilen);
 }
 
 constexpr u32 FILTER_POWER_BITS = 24;
@@ -189,7 +70,7 @@ void set_client_query(
     size_t data_size)
 {
     homo = std::make_shared<PSI::Paillier>();
-    homo->load_pubkey(sessions[sid]->decrypt(ibuf, ilen));
+    homo->load_pubkey(global->session(sid).decrypt(ibuf, ilen));
 
     half_data = half;
 
@@ -224,13 +105,13 @@ void get_select_result(u32 sid, u8** obuf, size_t* olen)
     for (auto& [k, v] : local_data)
     {
         uint128_t key = prp(k);
-        auto enc = homo->encrypt(v, *rand_ctx).to_vector();
+        auto enc = homo->encrypt(v, global->rand()).to_vector();
         assert(!enc.empty());
 
         result.push_back(json::array({*reinterpret_cast<const PRP::binary*>(&key), enc}));
     }
 
-    dump_enc(json::to_msgpack(result), *sessions[sid], obuf, olen);
+    global->dump_enc(sid, json::to_msgpack(result), obuf, olen);
 #else
     (void)(sid);
     (void)(obuf);
@@ -250,12 +131,12 @@ void build_bloom_filter(u32 sid, u8** obuf, size_t* olen)
         bloom_filter.insert(prp(k));
     }
 
-    dump_enc(bloom_filter.data(), *sessions[sid], obuf, olen);
+    global->dump_enc(sid, bloom_filter.data(), obuf, olen);
 }
 
 void match_bloom_filter(u32 sid, const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
 {
-    HashSet bloom_filter(sessions[sid]->decrypt(ibuf, ilen));
+    HashSet bloom_filter(global->session(sid).decrypt(ibuf, ilen));
     PRP prp;
 
     auto hits = json::array();
@@ -267,7 +148,7 @@ void match_bloom_filter(u32 sid, const u8* ibuf, size_t ilen, u8** obuf, size_t*
             uint128_t key = prp(k);
             if (bloom_filter.lookup(key))
             {
-                auto enc = homo->encrypt(v, *rand_ctx).to_vector();
+                auto enc = homo->encrypt(v, global->rand()).to_vector();
                 assert(!enc.empty());
 
                 hits.push_back(json::array({*reinterpret_cast<const PRP::binary*>(&key), enc}));
@@ -281,7 +162,7 @@ void match_bloom_filter(u32 sid, const u8* ibuf, size_t ilen, u8** obuf, size_t*
             uint128_t key = prp(k);
             if (bloom_filter.lookup(key))
             {
-                auto enc = homo->encrypt(v, *rand_ctx).to_vector();
+                auto enc = homo->encrypt(v, global->rand()).to_vector();
                 assert(!enc.empty());
 
                 hits.push_back(json::array({*reinterpret_cast<const PRP::binary*>(&key), enc}));
@@ -289,12 +170,12 @@ void match_bloom_filter(u32 sid, const u8* ibuf, size_t ilen, u8** obuf, size_t*
         }
     }
 
-    dump_enc(json::to_msgpack(hits), *sessions[sid], obuf, olen);
+    global->dump_enc(sid, json::to_msgpack(hits), obuf, olen);
 }
 
 void aggregate(u32 peer_sid, u32 client_sid, const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
 {
-    auto peer = json::from_msgpack(sessions[peer_sid]->decrypt(ibuf, ilen));
+    auto peer = json::from_msgpack(global->session(peer_sid).decrypt(ibuf, ilen));
 
     /*
      * build cuckoo hashing table
@@ -327,15 +208,16 @@ void aggregate(u32 peer_sid, u32 client_sid, const u8* ibuf, size_t ilen, u8** o
 #ifdef PSI_JOIN_COUNT
             result.push_back(val);
 #else
-            result.push_back(json::array({pair[0], homo->add(peer_val, homo->encrypt(val, *rand_ctx)).to_vector()}));
+            result.push_back(
+                json::array({pair[0], homo->add(peer_val, homo->encrypt(val, global->rand())).to_vector()}));
 #endif
         }
     }
 
 #ifdef PSI_JOIN_COUNT
-    auto ret = json::array({result.size(), rand_ctx->rand<size_t>()});
-    dump_enc(json::to_msgpack(ret), *sessions[client_sid], obuf, olen);
+    auto ret = json::array({result.size(), global->rand().rand<size_t>()});
+    global->dump_enc(client_sid, json::to_msgpack(ret), obuf, olen);
 #else
-    dump_enc(json::to_msgpack(result), *sessions[client_sid], obuf, olen);
+    global->dump_enc(client_sid, json::to_msgpack(result), obuf, olen);
 #endif
 }

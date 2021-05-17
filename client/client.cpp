@@ -55,7 +55,6 @@ auto verifier_generate_challenge(VerifierContext& ctx, int vid) -> v8
     SPDLOG_DEBUG(__PRETTY_FUNCTION__);
     /* set verifier id; generate and dump ephemeral public key */
     ctx.vid = vid;
-    ctx.vpk = ctx.ecdh.make_public(*rand_ctx);
 
     /* generate output object */
     json json = json::object({{"vid", ctx.vid}, {"vpk", ctx.vpk}, {"format_settings", ctx.core.format_settings()}});
@@ -124,7 +123,7 @@ auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk) -
 
     /* construct a request socket and connect to interface */
     zmq::socket_t client = connect(*io, server_addr);
-    VerifierContext vctx;
+    VerifierContext vctx(rand_ctx);
     uint32_t sid;
 
     /* attestation */

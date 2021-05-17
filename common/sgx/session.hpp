@@ -6,22 +6,24 @@
 #include "crypto/sha256.hpp"
 #include "sgx/log.h"
 
-extern sptr<mbedtls::ctr_drbg> rand_ctx;
-
 namespace PSI
 {
 using mbedtls::aes_gcm_256;
 using mbedtls::hash256;
+using mbedtls::ctr_drbg;
 
 class Session
 {
     using key_t = hash256;
     key_t session_key;
+    sptr<ctr_drbg> rand_ctx;
 
   public:
-    Session(const key_t& key) : session_key(key)
+    Session(const key_t& key, sptr<ctr_drbg> rand_ctx) : session_key(key), rand_ctx(rand_ctx)
     {
     }
+
+    Session(const Session& o) = delete;
 
     auto encrypt(const v8& input) -> v8
     {
