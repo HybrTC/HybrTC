@@ -9,8 +9,8 @@
 #include "crypto/ecdh.hpp"
 #include "crypto/gcm.hpp"
 #include "crypto/sha256.hpp"
-#include "log.h"
-#include "session.hpp"
+#include "sgx/log.h"
+#include "sgx/session.hpp"
 
 extern std::map<uint32_t, std::shared_ptr<PSI::Session>> sessions;
 
