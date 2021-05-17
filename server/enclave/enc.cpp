@@ -96,7 +96,19 @@ auto attester_generate_response(const u8* ibuf, size_t ilen, u8** obuf, size_t* 
     dump(json::to_msgpack(json), obuf, olen);
 
     /* build crypto context */
-    return ctx.complete_attestation();
+    auto [sid, session] = ctx.complete_attestation();
+
+    if (sessions.find(sid) != sessions.end())
+    {
+        TRACE_ENCLAVE("session id collision: vid=%04x aid=%04x sid=%08x", vid, aid, sid);
+        abort();
+    }
+    else
+    {
+        sessions.insert({sid, session});
+    }
+
+    return sid;
 }
 
 /*
@@ -137,8 +149,18 @@ auto verifier_process_response(const u8* ibuf, size_t ilen) -> u32
     }
 
     /* build crypto context and free verifier context */
-    auto sid = ctx->complete_attestation();
-    verifiers[ctx->vid] = nullptr;
+    auto [sid, session] = ctx->complete_attestation();
+
+    if (sessions.find(sid) != sessions.end())
+    {
+        TRACE_ENCLAVE("session id collision: vid=%04x aid=%04x sid=%08x", vid, aid, sid);
+        abort();
+    }
+    else
+    {
+        verifiers[ctx->vid] = nullptr;
+        sessions.insert({sid, session});
+    }
 
     return sid;
 }

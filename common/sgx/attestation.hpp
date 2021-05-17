@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #ifndef __OUTSIDE_ENCLAVE__
 #include "attestation/attester.hpp"
 #endif
@@ -9,10 +10,7 @@
 #include "crypto/ecdh.hpp"
 #include "crypto/gcm.hpp"
 #include "crypto/sha256.hpp"
-#include "sgx/log.h"
 #include "sgx/session.hpp"
-
-extern std::map<uint32_t, std::shared_ptr<PSI::Session>> sessions;
 
 struct AttestationContext
 {
@@ -36,7 +34,7 @@ struct AttestationContext
         return hash.finish();
     }
 
-    auto complete_attestation()
+    auto complete_attestation() -> std::pair<uint32_t, sptr<PSI::Session>>
     {
         uint32_t sid = (vid << (sizeof(uint16_t) << 3)) | aid;
 
@@ -46,14 +44,7 @@ struct AttestationContext
         hash.update(ecdh.calc_secret(*rand_ctx));
         auto session_key = hash.finish();
 
-        if (sessions.find(sid) != sessions.end())
-        {
-            TRACE_ENCLAVE("session id collision: vid=%04x aid=%04x sid=%08x", vid, aid, sid);
-            abort();
-        }
-
-        sessions.insert({sid, std::make_shared<PSI::Session>(session_key)});
-        return sid;
+        return {sid, std::make_shared<PSI::Session>(session_key)};
     }
 };
 

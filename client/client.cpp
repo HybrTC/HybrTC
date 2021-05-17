@@ -102,8 +102,20 @@ auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
     }
 #endif
 
-    /* build crypto context and free verifier context */
-    return ctx.complete_attestation();
+    /* build crypto context */
+    auto [sid, session] = ctx.complete_attestation();
+
+    if (sessions.find(sid) != sessions.end())
+    {
+        TRACE_ENCLAVE("session id collision: vid=%04x aid=%04x sid=%08x", vid, aid, sid);
+        abort();
+    }
+    else
+    {
+        sessions.insert({sid, session});
+    }
+
+    return sid;
 }
 
 auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk) -> json
