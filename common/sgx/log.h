@@ -4,20 +4,10 @@
 #ifndef OE_SAMPLES_ATTESTATION_COMMON_LOG_H
 #define OE_SAMPLES_ATTESTATION_COMMON_LOG_H
 
-#include <cstddef>
 #include <cstdio>
-#include <sstream>
 #include <string>
-#include <thread>
 
 #include "config.hpp"
-
-static auto get_thread_id() -> std::string
-{
-    std::stringstream s;
-    s << std::hex << std::this_thread::get_id();
-    return s.str();
-}
 
 template <class T>
 static auto hexdump(const T& data) -> std::string
@@ -47,14 +37,19 @@ static auto hexdump(const T* data, size_t sz) -> std::string
 
 #ifdef PSI_ENABLE_TRACE_ENCLAVE
 
-#define TRACE_ENCLAVE(fmt, ...)       \
-    fprintf(                          \
-        stderr,                       \
-        ">>> [%s] %s(%d): " fmt "\n", \
-        get_thread_id().c_str(),      \
-        __FILE__,                     \
-        __LINE__,                     \
-        ##__VA_ARGS__)
+#include <cstddef>
+#include <sstream>
+#include <thread>
+
+static auto get_thread_id() -> std::string
+{
+    std::stringstream s;
+    s << std::hex << std::this_thread::get_id();
+    return s.str();
+}
+
+#define TRACE_ENCLAVE(fmt, ...) \
+    fprintf(stderr, ">>> [%s] %s(%d): " fmt "\n", get_thread_id().c_str(), __FILE__, __LINE__, ##__VA_ARGS__)
 
 #else
 
