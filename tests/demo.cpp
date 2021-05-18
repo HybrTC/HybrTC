@@ -1,7 +1,7 @@
-#include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <array>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -9,19 +9,22 @@
 #include <string>
 #include <thread>
 
+#include <CLI/CLI.hpp>
+
+#ifndef BINARY_DIR
+#error BINARY_DIR is not defined
+#endif
+
 /*
  * path generator
  */
 
-constexpr const char* FMT_SERVER_BIN = "%s/server/host/server";
-constexpr const char* FMT_ENCLAVE_SIGNED = "%s/server/enclave/enclave.signed";
-constexpr const char* FMT_CLIENT_BIN = "%s/client/client";
+#define xstr(s) str(s)
+#define str(s)  #s
 
-#define PATH_GENERATOR(prefix, format_string, buf) snprintf(&(buf)[0], (buf).size(), format_string, prefix)
-
-std::array<char, BUFSIZ> server_bin = {0};
-std::array<char, BUFSIZ> enclave_signed = {0};
-std::array<char, BUFSIZ> client_bin = {0};
+#define SERVER_BIN     xstr(BINARY_DIR) "/server/host/server"
+#define ENCLAVE_SIGNED xstr(BINARY_DIR) "/server/enclave/enclave.signed"
+#define CLIENT_BIN     xstr(BINARY_DIR) "/client/client"
 
 /*
  * endpoint generator
@@ -46,15 +49,16 @@ std::array<char, BUFSIZ> s1_2c_endpoint = {0};
 
 auto main(int argc, const char* argv[]) -> int
 {
-    if (argc < 2)
-    {
-        exit(EXIT_FAILURE);
-    }
+    /* pasrse command line argument */
 
-    const char* build_directory = argv[1];
-    PATH_GENERATOR(build_directory, FMT_SERVER_BIN, server_bin);
-    PATH_GENERATOR(build_directory, FMT_ENCLAVE_SIGNED, enclave_signed);
-    PATH_GENERATOR(build_directory, FMT_CLIENT_BIN, client_bin);
+    CLI::App app;
+
+    size_t log_data_size;
+    app.add_option("-l,--data-size", log_data_size, "logarithm of data set size")->required();
+
+    CLI11_PARSE(app, argc, argv);
+
+    /* generate parameters */
 
     ENDPOINT_GENERATOR(SERVER0_HOST, SERVER0_PORT_P, s0_2p_endpoint);
     ENDPOINT_GENERATOR(SERVER0_HOST, SERVER0_PORT_C, s0_2c_endpoint);
@@ -65,22 +69,25 @@ auto main(int argc, const char* argv[]) -> int
     pid_t server1_pid = 0;
     pid_t client_pid = 0;
 
+    auto data_size = std::to_string(log_data_size);
+
     if ((server0_pid = fork()) == 0)
     {
-        /*
-         * server 0 ${SERVER0_PORT_C} ${SERVER0_PORT_P}
-         * tcp://localhost:${SERVER1_PORT_P}
-         * ${CMAKE_BINARY_DIR}/server/enclave/enclave.signed
-         */
-
         execl(
-            server_bin.data(),
-            server_bin.data(),
+            SERVER_BIN,
+            SERVER_BIN,
+            "--server-id",
             "0",
+            "--data-size",
+            data_size.c_str(),
+            "--client-port",
             SERVER0_PORT_C,
+            "--peer-port",
             SERVER0_PORT_P,
+            "--peer-endpoint",
             s1_2p_endpoint.data(),
-            enclave_signed.data(),
+            "--enclave-path",
+            ENCLAVE_SIGNED,
             nullptr);
     }
     else
@@ -90,20 +97,21 @@ auto main(int argc, const char* argv[]) -> int
 
     if ((server1_pid = fork()) == 0)
     {
-        /*
-         * server 1 ${SERVER1_PORT_C} ${SERVER1_PORT_P}
-         * tcp://localhost:${SERVER0_PORT_P}
-         * ${CMAKE_BINARY_DIR}/server/enclave/enclave.signed
-         */
-
         execl(
-            server_bin.data(),
-            server_bin.data(),
+            SERVER_BIN,
+            SERVER_BIN,
+            "--server-id",
             "1",
+            "--data-size",
+            data_size.c_str(),
+            "--client-port",
             SERVER1_PORT_C,
+            "--peer-port",
             SERVER1_PORT_P,
+            "--peer-endpoint",
             s0_2p_endpoint.data(),
-            enclave_signed.data(),
+            "--enclave-path",
+            ENCLAVE_SIGNED,
             nullptr);
     }
     else
@@ -120,7 +128,7 @@ auto main(int argc, const char* argv[]) -> int
 
         std::this_thread::sleep_for(std::chrono::seconds(2));
 
-        execl(client_bin.data(), client_bin.data(), s0_2c_endpoint.data(), s1_2c_endpoint.data(), nullptr);
+        execl(CLIENT_BIN, CLIENT_BIN, s0_2c_endpoint.data(), s1_2c_endpoint.data(), nullptr);
     }
     else
     {

@@ -4,6 +4,8 @@
 #include <string>
 #include <thread>
 
+#include <CLI/CLI.hpp>
+
 #include "common/types.hpp"
 #include "psi_context.hpp"
 #include "utils/spdlog.hpp"
@@ -119,44 +121,44 @@ void peer_client(const char* peer_endpoint, context_t* io, PSIContext* context)
 
 auto main(int argc, const char* argv[]) -> int
 {
-    if (argc != 6)
-    {
-        fprintf(
-            stderr,
-            "Usage: %s <server_id> <client_port> <peer_port> <peer_endpoint> "
-            "<enclave_image_path>\n",
-            argv[0]);
-        return EXIT_FAILURE;
-    }
+    /* pasrse command line argument */
 
-    const int server_id = stoi(argv[1], nullptr, 0);
-    const int client_port = stoi(argv[2], nullptr, 0);
-    const int peer_port = stoi(argv[3], nullptr, 0);
-    const char* peer_endpoint = argv[4];
-    const char* enclave_image_path = argv[5];
+    CLI::App app;
+
+    bool server_id;
+    app.add_option("-i,--server-id", server_id, "server id: 0 or 1")->required();
+
+    size_t log_data_size;
+    app.add_option("-l,--data-size", log_data_size, "logarithm of data set size")->required();
+
+    int client_port;
+    app.add_option("-c,--client-port", client_port, "listening port for client to connect")->required();
+
+    int peer_port;
+    app.add_option("-p,--peer-port", peer_port, "listening port for peer to connect")->required();
+
+    std::string peer_endpoint;
+    app.add_option("-s,--peer-endpoint", peer_endpoint, "peer's endpoint")->required();
+
+    std::string enclave_image_path;
+    app.add_option("-e,--enclave-path", enclave_image_path, "path to the signed enclave image")
+        ->required()
+        ->check(CLI::ExistingFile);
+
+    CLI11_PARSE(app, argc, argv);
+
+    /* configure logger */
 
     const string pattern = fmt::format("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [s{}] [%t] %s:%# -%$ %v", server_id);
 
     spdlog::set_level(spdlog::level::debug);
     spdlog::set_pattern(pattern);
 
-    if (server_id != 0 && server_id != 1)
-    {
-        SPDLOG_ERROR("unexpected server id {}: it can only be 0 or 1", server_id);
-        exit(EXIT_FAILURE);
-    }
-    else
-    {
-        SPDLOG_INFO("server_id={} port={}/{} peer_endpoint={}", server_id, client_port, peer_port, peer_endpoint);
-    }
-
     /* initialize the zmq context with 2 IO thread */
     context_t context(1);
 
     /* initialize PSI context */
-    constexpr size_t data_size = (1 << PSI_DATA_SET_SIZE_LOG);
-    constexpr size_t max_key = (1 << PSI_DATA_KEY_RANGE_LOG);
-    PSIContext psi(enclave_image_path, data_size, max_key, bool(server_id));
+    PSIContext psi(enclave_image_path.c_str(), (1 << log_data_size), (1 << (log_data_size * 3 / 2)), server_id);
 
     /* start server */
     auto s_client = std::async(std::launch::async, client_servant, client_port, &context, &psi);
@@ -168,7 +170,7 @@ auto main(int argc, const char* argv[]) -> int
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     /* start client */
-    peer_client(peer_endpoint, &context, &psi);
+    peer_client(peer_endpoint.c_str(), &context, &psi);
 
     /* finish everything */
     s_peer.wait();

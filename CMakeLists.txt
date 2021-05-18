@@ -52,6 +52,9 @@ set(CPPZMQ_BUILD_TESTS
 add_subdirectory(3rd-party/libzmq)
 add_subdirectory(3rd-party/cppzmq)
 
+# CLI11
+add_subdirectory(3rd-party/CLI11)
+
 # options
 
 option(PSI_DATA_SET_SIZE_LOG "" 10)
@@ -98,13 +101,10 @@ endif ()
 if (PSI_VERBOSE)
   add_compile_definitions(
     PSI_SELECT_POLICY=${PSI_SELECT_POLICY}
-    PSI_AGGREGATE_POLICY=${PSI_AGGREGATE_POLICY}
-    PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG} VERBOSE=1)
+    PSI_AGGREGATE_POLICY=${PSI_AGGREGATE_POLICY} VERBOSE=1)
 else ()
-  add_compile_definitions(
-    PSI_SELECT_POLICY=${PSI_SELECT_POLICY}
-    PSI_AGGREGATE_POLICY=${PSI_AGGREGATE_POLICY}
-    PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG})
+  add_compile_definitions(PSI_SELECT_POLICY=${PSI_SELECT_POLICY}
+                          PSI_AGGREGATE_POLICY=${PSI_AGGREGATE_POLICY})
 endif ()
 
 # set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -118,4 +118,4 @@ add_subdirectory(tests)
 add_custom_target(
   rundemo
   DEPENDS demo client server sign
-  COMMAND demo ${CMAKE_BINARY_DIR})
+  COMMAND demo --data-size ${PSI_DATA_SET_SIZE_LOG})

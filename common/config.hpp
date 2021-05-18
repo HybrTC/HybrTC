@@ -12,16 +12,6 @@
 #endif
 
 /*
- * define the size of date set
- */
-
-#ifndef PSI_DATA_SET_SIZE_LOG
-#define PSI_DATA_SET_SIZE_LOG 12
-#endif
-
-#define PSI_DATA_KEY_RANGE_LOG (PSI_DATA_SET_SIZE_LOG) * 3 / 2
-
-/*
  * define the bitlen of paillier public key
  */
 

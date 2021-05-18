@@ -14,5 +14,11 @@ add_executable(server ${SERVER_SOURCE_FILES}
 # Needed for the generated file helloworld_u.h
 target_include_directories(server PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
-target_link_libraries(server openenclave::oehost ${LIBMBEDCRYPTO}
-                      spdlog::spdlog nlohmann_json::nlohmann_json cppzmq-static)
+target_link_libraries(
+  server
+  openenclave::oehost
+  ${LIBMBEDCRYPTO}
+  spdlog::spdlog
+  nlohmann_json::nlohmann_json
+  cppzmq-static
+  CLI11::CLI11)

@@ -241,8 +241,6 @@ auto main(int argc, const char* argv[]) -> int
 
     json output = json::object(
         {{"PSI_PAILLIER_PK_LEN", PSI_PAILLIER_PK_LEN},
-         {"PSI_DATA_SET_SIZE_LOG", PSI_DATA_SET_SIZE_LOG},
-         {"PSI_DATA_KEY_RANGE_LOG", PSI_DATA_KEY_RANGE_LOG},
          {"PSI_MELBOURNE_P", PSI_MELBOURNE_P},
          {"PSI_SELECT_POLICY", PSI_SELECT_POLICY},
          {"PSI_AGGREAGATE_SELECT", PSI_AGGREGATE_POLICY},
