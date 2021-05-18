@@ -1,8 +1,11 @@
+#include <cstddef>
 #include <cstring>
+#include <tuple>
 #include <utility>
 
 #include <nlohmann/json.hpp>
 
+#include "config.hpp"
 #include "crypto/bignum.hpp"
 #include "join_handler.hpp"
 
@@ -62,7 +65,7 @@ auto JoinHandler::match_filter(const v8& filter) -> v8
     return json::to_msgpack(hits);
 }
 
-auto JoinHandler::aggregate(const v8& data) -> v8
+void JoinHandler::build_result(const v8& data)
 {
     auto peer = json::from_msgpack(data);
 
@@ -78,34 +81,40 @@ auto JoinHandler::aggregate(const v8& data) -> v8
     }
 
     /*
-     * aggregate calculation
+     * match cuckoo hashing table
      */
-
-    auto result = json::array();
     for (const auto& pair : peer)
     {
         PRP::binary key_bin = pair[0];
         v8 val_bin = pair[1];
 
         const uint128_t& key = *reinterpret_cast<const uint128_t*>(key_bin.data());
-        mpi peer_val(val_bin.data(), val_bin.size());
-
         auto query_result = hashing.lookup(key);
 
-        for (auto val : query_result)
+        for (const auto& val : query_result)
         {
-#ifdef PSI_JOIN_COUNT
-            result.push_back(val);
-#else
-            result.push_back(json::array({pair[0], homo.add(peer_val, homo.encrypt(val, *rand_ctx)).to_vector()}));
-#endif
+            intersection.emplace_back(std::make_tuple(key, val_bin, val));
         }
     }
+}
 
-#ifdef PSI_JOIN_COUNT
-    auto ret = json::array({result.size(), rand_ctx->rand<size_t>()});
-    return json::to_msgpack(ret);
+auto JoinHandler::get_result() -> v8
+{
+#if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_JOIN_SUM
+    auto result = json::array();
+
+    for (auto& [key, peer_bin, this_raw] : intersection)
+    {
+        const auto& key_bin = *reinterpret_cast<const PRP::binary*>(&key);
+
+        mpi peer_val(peer_bin.data(), peer_bin.size());
+        mpi this_val(homo.encrypt(this_raw, *rand_ctx));
+
+        result.push_back(json::array({key_bin, homo.add(peer_val, this_val).to_vector()}));
+    }
 #else
-    return json::to_msgpack(result);
+    auto result = json::array({intersection.size(), rand_ctx->rand<size_t>()});
 #endif
+
+    return json::to_msgpack(result);
 }

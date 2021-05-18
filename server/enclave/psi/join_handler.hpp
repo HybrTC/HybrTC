@@ -1,6 +1,8 @@
 #pragma once
 
+#include <tuple>
 #include "bloom_filter.hpp"
+#include "common/uint128.hpp"
 #include "cuckoo_hashing.hpp"
 #include "prp.hpp"
 #include "select_handler.hpp"
@@ -19,6 +21,9 @@ class JoinHandler : public SelectHandler
     bool half_data = false;
     database_t left_data;
 
+    using result_t = std::vector<std::tuple<uint128_t, v8, u32>>;
+    result_t intersection;
+
   public:
     explicit JoinHandler(sptr<mbedtls::ctr_drbg> rand_ctx);
 
@@ -33,5 +38,7 @@ class JoinHandler : public SelectHandler
 
     auto match_filter(const v8& filter) -> v8;
 
-    auto aggregate(const v8& data) -> v8;
+    void build_result(const v8& data);
+
+    auto get_result() -> v8 override;
 };

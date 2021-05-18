@@ -202,7 +202,7 @@ auto main(int argc, const char* argv[]) -> int
     /* print out query result */
 
 #ifdef VERBOSE
-#ifdef PSI_JOIN_COUNT
+#if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_JOIN_COUNT
 
     auto result0 = p0[0].get<size_t>();
     SPDLOG_INFO("{}", result0);
@@ -244,55 +244,8 @@ auto main(int argc, const char* argv[]) -> int
          {"PSI_DATA_SET_SIZE_LOG", PSI_DATA_SET_SIZE_LOG},
          {"PSI_DATA_KEY_RANGE_LOG", PSI_DATA_KEY_RANGE_LOG},
          {"PSI_MELBOURNE_P", PSI_MELBOURNE_P},
-         {"PSI_DISABLE_SHUFFLE",
-#ifdef PSI_DISABLE_SHUFFLE
-          1
-#else
-          0
-#endif
-         },
-         {"PSI_SELECT_ODD",
-#ifdef PSI_SELECT_ODD
-          1
-#else
-          0
-#endif
-         },
-         {"PSI_SELECT_EVEN",
-#ifdef PSI_SELECT_EVEN
-          1
-#else
-          0
-#endif
-         },
-         {"PSI_SELECT_ALL",
-#ifdef PSI_SELECT_ALL
-          1
-#else
-          0
-#endif
-         },
-         {"PSI_SELECT_ONLY",
-#ifdef PSI_SELECT_ONLY
-          1
-#else
-          0
-#endif
-         },
-         {"PSI_JOIN_COUNT",
-#ifdef PSI_JOIN_COUNT
-          1
-#else
-          0
-#endif
-         },
-         {"PSI_JOIN_SUM",
-#ifdef PSI_JOIN_SUM
-          1
-#else
-          0
-#endif
-         },
+         {"PSI_SELECT_POLICY", PSI_SELECT_POLICY},
+         {"PSI_AGGREAGATE_SELECT", PSI_AGGREGATE_POLICY},
          {"time", records}});
 
     {

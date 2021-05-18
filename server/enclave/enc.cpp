@@ -1,10 +1,16 @@
 #include "common/types.hpp"
 #include "config.hpp"
 #include "enclave_context.hpp"
-#include "psi/join_handler.hpp"
-#include "psi/select_handler.hpp"
 
 #include "helloworld_t.h"
+
+#if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
+#include "psi/select_handler.hpp"
+sptr<SelectHandler> handler;
+#else
+#include "psi/join_handler.hpp"
+sptr<JoinHandler> handler;
+#endif
 
 sptr<EnclaveContext> global;
 
@@ -33,12 +39,6 @@ auto verifier_process_response(const u8* ibuf, size_t ilen) -> u32
     return global->verifier_process_response(ibuf, ilen);
 }
 
-#ifdef PSI_SELECT_ONLY
-sptr<SelectHandler> handler;
-#else
-sptr<JoinHandler> handler;
-#endif
-
 void set_client_query(
     u32 sid,
     const u8* ibuf,
@@ -59,7 +59,7 @@ void set_client_query(
 
 void get_select_result(u32 sid, u8** obuf, size_t* olen)
 {
-#ifdef PSI_SELECT_ONLY
+#if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
     global->dump_enc(sid, handler->get_result(), obuf, olen);
 #else
     (void)(sid);
@@ -72,15 +72,45 @@ void get_select_result(u32 sid, u8** obuf, size_t* olen)
 
 void build_bloom_filter(u32 sid, u8** obuf, size_t* olen)
 {
+#if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
     global->dump_enc(sid, handler->build_filter(), obuf, olen);
+#else
+    (void)(sid);
+    (void)(obuf);
+    (void)(olen);
+
+    abort();
+#endif
 }
 
 void match_bloom_filter(u32 sid, const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
 {
+#if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
     global->dump_enc(sid, handler->match_filter(global->session(sid).decrypt(ibuf, ilen)), obuf, olen);
+#else
+    (void)(sid);
+    (void)(ibuf);
+    (void)(ilen);
+    (void)(obuf);
+    (void)(olen);
+
+    abort();
+#endif
 }
 
 void aggregate(u32 peer_sid, u32 client_sid, const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
 {
-    global->dump_enc(client_sid, handler->aggregate(global->session(peer_sid).decrypt(ibuf, ilen)), obuf, olen);
+#if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
+    handler->build_result(global->session(peer_sid).decrypt(ibuf, ilen));
+    global->dump_enc(client_sid, handler->get_result(), obuf, olen);
+#else
+    (void)(peer_sid);
+    (void)(client_sid);
+    (void)(ibuf);
+    (void)(ilen);
+    (void)(obuf);
+    (void)(olen);
+
+    abort();
+#endif
 }

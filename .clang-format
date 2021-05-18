@@ -3,6 +3,7 @@ BasedOnStyle: LLVM
 Language: Cpp
 ColumnLimit: 120
 AlignAfterOpenBracket: AlwaysBreak
+AlignConsecutiveMacros: Consecutive
 AlignEscapedNewlinesLeft: true
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortFunctionsOnASingleLine: false

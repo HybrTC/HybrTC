@@ -52,25 +52,65 @@ set(CPPZMQ_BUILD_TESTS
 add_subdirectory(3rd-party/libzmq)
 add_subdirectory(3rd-party/cppzmq)
 
+# options
+
 option(PSI_DATA_SET_SIZE_LOG "" 10)
+option(PSI_VERBOSE "" OFF)
 
-# Test SELECT
-# add_compile_definitions(PSI_SELECT_ALL=1 PSI_SELECT_ONLY=1
-#                         PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG})
+option(PSI_SELECT_ALL_PASSTHROUGH "" OFF)
+option(PSI_SELECT_ALL_OBLIVIOUS "" OFF)
+option(PSI_SELECT_ODD_OBLIVIOUS "" OFF)
+option(PSI_SELECT_EVEN_OBLIVIOUS "" OFF)
 
-# Test JOIN
-add_compile_definitions(PSI_DISABLE_SHUFFLE=1 PSI_JOIN_COUNT=1
-                        PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG})
-# add_compile_definitions(PSI_DISABLE_SHUFFLE=1 PSI_JOIN_SUM=1
-#                         PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG})
+option(PSI_AGGREAGATE_SELECT "" OFF)
+option(PSI_AGGREAGATE_JOIN_SUM "" OFF)
+option(PSI_AGGREAGATE_JOIN_SUM "" OFF)
 
-# Test Query1
-# add_compile_definitions(PSI_SELECT_ODD=1 PSI_JOIN_SUM=1
-#                         PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG})
+# select policy
 
-# Test Query2
-# add_compile_definitions(PSI_SELECT_EVEN=1 PSI_JOIN_COUNT=1
-#                         PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG})
+if (PSI_SELECT_ALL_PASSTHROUGH)
+  set(PSI_SELECT_POLICY 0x00)
+endif ()
+
+if (PSI_SELECT_ALL_OBLIVIOUS)
+  set(PSI_SELECT_POLICY 0x10)
+endif ()
+
+if (PSI_SELECT_ODD_OBLIVIOUS)
+  set(PSI_SELECT_POLICY 0x11)
+endif ()
+
+if (PSI_SELECT_EVEN_OBLIVIOUS)
+  set(PSI_SELECT_POLICY 0x12)
+endif ()
+
+# aggregate policy
+
+if (PSI_AGGREAGATE_SELECT)
+  set(PSI_AGGREGATE_POLICY 0x00)
+endif ()
+
+if (PSI_AGGREAGATE_JOIN_COUNT)
+  set(PSI_AGGREGATE_POLICY 0x10)
+endif ()
+
+if (PSI_AGGREAGATE_JOIN_SUM)
+  set(PSI_AGGREGATE_POLICY 0x11)
+endif ()
+
+# generate compile definitions
+
+if (PSI_VERBOSE)
+  add_compile_definitions(
+    PSI_SELECT_POLICY=${PSI_SELECT_POLICY}
+    PSI_AGGREGATE_POLICY=${PSI_AGGREGATE_POLICY}
+    PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG} VERBOSE=1)
+else ()
+  add_compile_definitions(
+    PSI_SELECT_POLICY=${PSI_SELECT_POLICY}
+    PSI_AGGREGATE_POLICY=${PSI_AGGREGATE_POLICY}
+    PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG})
+endif ()
 
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 

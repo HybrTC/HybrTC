@@ -118,9 +118,7 @@ class PSIContext
         client_ctx.lock_build.unlock();
         client_ctx.lock_match.unlock();
 
-        // peer_ctx.result
-
-#ifdef PSI_SELECT_ONLY
+#if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
         buffer output;
         enclave.get_select_result(client_ctx.sid, output);
         peer_ctx.result = v8(output.data, output.data + output.size);

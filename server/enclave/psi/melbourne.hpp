@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "common/types.hpp"
+#include "config.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "crypto/gcm.hpp"
 
@@ -34,15 +35,11 @@ class MelbourneShuffle
         {
             r.tag &= ~UINT8_MAX;
 
-#ifdef PSI_SELECT_ODD
-            r.tag |= r.val & 1;
-#endif
-
-#ifdef PSI_SELECT_EVEN
-            r.tag |= (~r.val) & 1;
-#endif
-
-#ifdef PSI_SELECT_ALL
+#if PSI_SELECT_POLICY == PSI_SELECT_ODD_OBLIVIOUS
+            r.tag |= static_cast<uint8_t>(r.val % 2 == 1);
+#elif PSI_SELECT_POLICY == PSI_SELECT_EVEN_OBLIVIOUS
+            r.tag |= static_cast<uint8_t>(r.val % 2 != 1);
+#elif PSI_SELECT_POLICY == PSI_SELECT_ALL_OBLIVIOUS
             r.tag |= 1;
 #endif
         }

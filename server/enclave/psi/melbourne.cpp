@@ -6,12 +6,10 @@
 #include <random>
 #include <stdexcept>
 #include <utility>
-#include <vector>
 
 #include <openenclave/enclave.h>
 
 #include "common/types.hpp"
-#include "config.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "crypto/gcm.hpp"
 #include "sgx/log.h"
