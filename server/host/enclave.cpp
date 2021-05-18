@@ -33,10 +33,8 @@ SPIEnclave::SPIEnclave(const char* enclave_image_path, bool simulate)
         flags |= OE_ENCLAVE_FLAG_SIMULATE;
     }
 
-    ECALL_IN;
     oe_result_t result =
         oe_create_helloworld_enclave(enclave_image_path, OE_ENCLAVE_TYPE_AUTO, flags, nullptr, 0, &enclave_ptr);
-    ECALL_OUT;
 
     CHECK("oe_create_helloworld_enclave", result);
 }
