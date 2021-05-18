@@ -12,8 +12,8 @@ project("SGX-PSI" LANGUAGES C CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
-add_compile_options(-Og -g)
-# add_compile_options(-O3 -Wall -Wextra)
+# add_compile_options(-Og -g)
+add_compile_options(-O3 -Wall -Wextra)
 
 # Currently the `OpenEnclave` package depends on `project()`.
 find_package(OpenEnclave CONFIG REQUIRED)
