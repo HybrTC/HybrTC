@@ -9,7 +9,7 @@ class JoinHandler : public SelectHandler
 {
     constexpr static u32 FILTER_POWER_BITS = 24;
     constexpr static u32 NUMBER_OF_HASHES = 4;
-    constexpr static u32 CH_LOG_LENGTH = 16;
+    constexpr static u32 CH_LOG_LENGTH = 17;
     constexpr static u32 CH_LOG_DEPTH = 2;
 
     using HashSet = BloomFilter<FILTER_POWER_BITS, NUMBER_OF_HASHES, PRP::integer>;
