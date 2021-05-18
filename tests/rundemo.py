@@ -103,6 +103,9 @@ async def main(args):
     ENCLAVE_DIR: Path = args.build / "server/enclave"
 
     for select, aggregate, size in product(args.select, args.aggregate, args.size):
+        if select == "0x00" and aggregate == "0x00" and size == 20:
+            continue
+
         client = CLIENT_DIR / f"client-{select}-{aggregate}"
         server = SERVER_DIR / f"server-{select}-{aggregate}"
         enclave = ENCLAVE_DIR / f"enclave-{select}-{aggregate}.signed"
