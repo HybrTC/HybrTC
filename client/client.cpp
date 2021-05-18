@@ -202,7 +202,7 @@ auto main(int argc, const char* argv[]) -> int
 
     /* print out query result */
 
-#ifdef PSI_VERBOSE
+#if PSI_VERBOSE
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_JOIN_COUNT
 
     auto result0 = p0[0].get<size_t>();
