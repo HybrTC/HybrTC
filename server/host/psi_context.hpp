@@ -143,7 +143,7 @@ class PSIContext
      * peer routines
      */
 
-#ifndef PSI_SELECT_ONLY
+#if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
     auto prepare_compute_req() -> nlohmann::json
     {
         /* wait for client public key to be set */

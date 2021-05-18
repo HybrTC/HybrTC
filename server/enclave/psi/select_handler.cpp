@@ -16,7 +16,7 @@ SelectHandler::SelectHandler(sptr<ctr_drbg> rand_ctx) : rand_ctx(std::move(rand_
 
 void SelectHandler::load_data(const u32* data_key, const u32* data_val, size_t data_size)
 {
-#if PSI_DISABLE_SHUFFLE
+#if PSI_SELECT_POLICY == PSI_SELECT_ALL_PASSTHROUGH
     for (size_t i = 0; i < data_size; i++)
     {
         local_data.push_back(std::make_pair(data_key[i], data_val[i]));
@@ -29,7 +29,7 @@ void SelectHandler::load_data(const u32* data_key, const u32* data_val, size_t d
 
 auto SelectHandler::get_result() -> v8
 {
-#ifdef PSI_SELECT_ONLY
+#if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
     PRP prp;
 
     auto result = json::array();

@@ -58,7 +58,7 @@ auto client_servant(int port, context_t* io, PSIContext* context)
     return server.statistics();
 }
 
-#ifndef PSI_SELECT_ONLY
+#if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
 auto peer_servant(int port, context_t* io, PSIContext* context)
 {
     SPDLOG_DEBUG("starting {} at port {}", __FUNCTION__, port);
@@ -160,7 +160,7 @@ auto main(int argc, const char* argv[]) -> int
 
     /* configure logger */
 
-    const string pattern = fmt::format("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [s{}] [%t] %s:%# -%$ %v", server_id);
+    const string pattern = fmt::format("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [s{}] [%t] %s:%# -%$ %v", int(server_id));
 
     spdlog::set_level(spdlog::level::debug);
     spdlog::set_pattern(pattern);
@@ -177,7 +177,7 @@ auto main(int argc, const char* argv[]) -> int
     /* start server */
     auto s_client = std::async(std::launch::async, client_servant, client_port, &context, &psi);
 
-#ifndef PSI_SELECT_ONLY
+#if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
     auto s_peer = std::async(std::launch::async, peer_servant, peer_port, &context, &psi);
 
     /* wait for the server starting up */
@@ -197,17 +197,17 @@ auto main(int argc, const char* argv[]) -> int
     timer("done");
 
     json output = json::object(
-        {{"PSI_DATA_SET_SIZE_LOG", log_data_size},
-#ifndef PSI_SELECT_ONLY
-         {"c/p:sent", c_peer_sent},
-         {"c/p:recv", c_peer_recv},
-         {"s/p:sent", s_peer_sent},
-         {"s/p:recv", s_peer_recv},
+        {
+            {"PSI_DATA_SET_SIZE_LOG", log_data_size},
+#if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
+                {"c/p:sent", c_peer_sent}, {"c/p:recv", c_peer_recv}, {"s/p:sent", s_peer_sent},
+                {"s/p:recv", s_peer_recv},
 #endif
-         {"s/c:sent", s_client_sent},
-         {"s/c:recv", s_client_recv},
-         {"host_timer", timer.to_json()},
-         {"enclave_timer", psi.get_timer().to_json()}});
+                {"s/c:sent", s_client_sent}, {"s/c:recv", s_client_recv}, {"host_timer", timer.to_json()},
+            {
+                "enclave_timer", psi.get_timer().to_json()
+            }
+        });
 
     {
         auto fn =

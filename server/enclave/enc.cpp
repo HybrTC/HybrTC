@@ -52,6 +52,8 @@ void set_client_query(
     handler->set_public_key(global->session(sid).decrypt(ibuf, ilen));
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
     handler->set_half(half);
+#else
+    (void)(half);
 #endif
 
     handler->load_data(data_key, data_val, data_size);
