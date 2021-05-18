@@ -44,9 +44,9 @@ auto verifier_generate_challenge(VerifierContext& ctx, int vid) -> v8
     ctx.vid = vid;
 
     /* generate output object */
-    json json = json::object({{"vid", ctx.vid}, {"vpk", ctx.vpk}, {"format_settings", ctx.core.format_settings()}});
+    json request = json::object({{"vid", ctx.vid}, {"vpk", ctx.vpk}, {"format_settings", ctx.core.format_settings()}});
 
-    return json::to_msgpack(json);
+    return json::to_msgpack(request);
 }
 
 /*
