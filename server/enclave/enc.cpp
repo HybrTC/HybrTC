@@ -80,7 +80,8 @@ void set_client_query(
         local_data.push_back(std::make_pair(data_key[i], data_val[i]));
     }
 #else
-    local_data = melbourne_shuffle(data_key, data_val, data_size);
+    MelbourneShuffle shuffle(global->rand_ptr());
+    local_data = shuffle.shuffle(data_key, data_val, data_size);
 #endif
 
 #ifndef PSI_SELECT_ONLY

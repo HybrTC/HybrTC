@@ -27,6 +27,12 @@ void EnclaveContext::dump_enc(u32 sid, const v8& bytes, uint8_t** obuf, size_t* 
     dump(sessions[sid]->encrypt(bytes), obuf, olen);
 }
 
+// TODO(jiamin): a temporary workaround
+auto EnclaveContext::rand_ptr() -> sptr<mbedtls::ctr_drbg>
+{
+    return rand_ctx;
+}
+
 auto EnclaveContext::rand() -> mbedtls::ctr_drbg&
 {
     return *rand_ctx;

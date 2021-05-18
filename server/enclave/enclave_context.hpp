@@ -1,5 +1,8 @@
+#pragma once
+
 #include <cstddef>
 #include <memory>
+
 #include "crypto/ctr_drbg.hpp"
 #include "sgx/attestation.hpp"
 
@@ -17,6 +20,8 @@ class EnclaveContext
     static void dump(const v8& bytes, uint8_t** obuf, size_t* olen);
 
     void dump_enc(u32 sid, const v8& bytes, uint8_t** obuf, size_t* olen);
+
+    auto rand_ptr() -> sptr<mbedtls::ctr_drbg>;
 
     auto rand() -> mbedtls::ctr_drbg&;
 

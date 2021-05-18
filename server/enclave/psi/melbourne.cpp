@@ -1,10 +1,11 @@
-#include "melbourne.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <random>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include <openenclave/enclave.h>
@@ -15,9 +16,10 @@
 #include "crypto/gcm.hpp"
 #include "sgx/log.h"
 
-using mbedtls::aes_gcm_256;
+#include "melbourne.hpp"
 
-extern sptr<mbedtls::ctr_drbg> rand_ctx;
+using mbedtls::aes_gcm_256;
+using mbedtls::ctr_drbg;
 
 /*
  * pair comparator
@@ -33,6 +35,8 @@ auto operator<(const std::pair<F, S>& lhs, const std::pair<F, S>& rhs) -> bool
  */
 class UniformRandomBitGenerator
 {
+    sptr<ctr_drbg> rand_ctx;
+
   public:
     // types
     using result_type = size_t;
@@ -48,85 +52,31 @@ class UniformRandomBitGenerator
         return std::numeric_limits<result_type>::max();
     }
 
-    // constructors and seeding functions
-    // explicit linear_congruential_engine(result_type s = default_seed);
-    // template <class Sseq>
-    // explicit linear_congruential_engine(Sseq& q);
-    // void seed(result_type s = default_seed);
-    // template <class Sseq>
-    // void seed(Sseq& q);
+    // constructors
+    explicit UniformRandomBitGenerator(sptr<ctr_drbg> rand_ctx) : rand_ctx(std::move(rand_ctx))
+    {
+    }
 
     // generating functions
     auto operator()() -> result_type
     {
         return rand_ctx->rand<result_type>();
     };
-    // void discard(unsigned long long z);
 };
 
-/*
- * cipher generator
- */
-auto gen_cipher() -> aes_gcm_256
+MelbourneShuffle::MelbourneShuffle(sptr<ctr_drbg> rand_ctx) : rand_ctx(std::move(rand_ctx))
 {
     a8<aes_gcm_256::KEY_BYTES> key;
     oe_random(static_cast<void*>(&key[0]), key.size());
-    return aes_gcm_256(key);
+    cipher = std::make_shared<aes_gcm_256>(key);
 }
 
-/*
- * type utils
- */
-union plaintext
-{
-    struct
-    {
-        u64 tag;
-        u32 key;
-        u32 val;
-    } r;
-    a8<sizeof(u32) * 4> b;
-
-    plaintext(u32 key, u32 val)
-    {
-        r.tag = 0;
-        r.key = key;
-        r.val = val;
-    }
-
-    explicit plaintext()
-    {
-        r.tag = 0;
-        r.key = rand_ctx->rand<u32>();
-        r.val = rand_ctx->rand<u32>();
-    }
-
-    void mark()
-    {
-        r.tag &= ~UINT8_MAX;
-
-#ifdef PSI_SELECT_ODD
-        r.tag |= r.val & 1;
-#endif
-
-#ifdef PSI_SELECT_EVEN
-        r.tag |= (~r.val) & 1;
-#endif
-
-#ifdef PSI_SELECT_ALL
-        r.tag |= 1;
-#endif
-    }
-};
-
-constexpr size_t CIPHERTEXT_SIZE = sizeof(u32) + aes_gcm_256::IV_LEN + aes_gcm_256::TAG_LEN + sizeof(plaintext);
-using ciphertext = a8<CIPHERTEXT_SIZE>;
-
-/*
- * Melbourne Shuffle
- */
-auto read_bucket(const u32* keys, const u32* vals, size_t data_size, size_t bucket_size, size_t offset)
-    -> std::vector<plaintext>
+auto MelbourneShuffle::read_bucket(
+    const u32* keys,
+    const u32* vals,
+    size_t data_size,
+    size_t bucket_size,
+    size_t offset) -> std::vector<plaintext>
 {
     std::vector<plaintext> read_in;
     read_in.reserve(bucket_size);
@@ -144,13 +94,12 @@ auto read_bucket(const u32* keys, const u32* vals, size_t data_size, size_t buck
     return read_in;
 }
 
-auto pad_write_bucket(
+auto MelbourneShuffle::pad_write_bucket(
     size_t bucket_idx,
     std::vector<v8>& private_bucket,
     size_t& t_counter,
     size_t t_bucket_size,
     size_t p_bucket_size,
-    aes_gcm_256& cipher,
     ciphertext* t)
 {
     /* check if the shuffle fails */
@@ -171,8 +120,8 @@ auto pad_write_bucket(
     /* padding with dummy data */
     while (private_bucket.size() < p_bucket_size)
     {
-        plaintext o;
-        auto enc = cipher.encrypt(o.b.data(), o.b.size(), *rand_ctx);
+        plaintext o = dummy_record();
+        auto enc = cipher->encrypt(o.b.data(), o.b.size(), *rand_ctx);
         private_bucket.push_back(enc);
     }
 
@@ -190,7 +139,7 @@ auto pad_write_bucket(
     }
 }
 
-auto melbourne_shuffle(const u32* keys, const u32* vals, size_t data_size) -> database_t
+auto MelbourneShuffle::shuffle(const u32* keys, const u32* vals, size_t data_size) -> database_t
 {
     /*
      * split the input array
@@ -219,8 +168,7 @@ auto melbourne_shuffle(const u32* keys, const u32* vals, size_t data_size) -> da
      * initialize prng and cipher
      */
     std::uniform_int_distribution<size_t> dist(0, t_size);
-    UniformRandomBitGenerator urbg;
-    auto cipher = gen_cipher();
+    UniformRandomBitGenerator urbg(rand_ctx);
 
     /************************************************************
      * Distribution Phase                                       *
@@ -247,7 +195,7 @@ auto melbourne_shuffle(const u32* keys, const u32* vals, size_t data_size) -> da
             item.r.tag |= dist(urbg) << sizeof(u8);
 
             size_t bucket_idx = (item.r.tag >> sizeof(u8)) % bucket_cnt;
-            auto enc = cipher.encrypt(item.b.data(), item.b.size(), *rand_ctx);
+            auto enc = cipher->encrypt(item.b.data(), item.b.size(), *rand_ctx);
             private_memory[bucket_idx].push_back(enc);
         }
 
@@ -258,7 +206,7 @@ auto melbourne_shuffle(const u32* keys, const u32* vals, size_t data_size) -> da
         for (size_t bucket_idx = 0; bucket_idx < bucket_cnt; bucket_idx++)
         {
             pad_write_bucket(
-                bucket_idx, private_memory[bucket_idx], t_counter[bucket_idx], t_bucket_size, p_bucket_size, cipher, t);
+                bucket_idx, private_memory[bucket_idx], t_counter[bucket_idx], t_bucket_size, p_bucket_size, t);
         }
 
         private_memory.clear();
@@ -279,7 +227,7 @@ auto melbourne_shuffle(const u32* keys, const u32* vals, size_t data_size) -> da
     std::vector<std::pair<u64, std::pair<u32, u32>>> result;
     for (size_t i = 0; i < t_size; i++)
     {
-        auto msg = cipher.decrypt(t[i].data(), t[i].size());
+        auto msg = cipher->decrypt(t[i].data(), t[i].size());
         const plaintext& obj = *reinterpret_cast<const plaintext*>(msg.data());
         if ((obj.r.tag & UINT8_MAX) > 0)
         {
