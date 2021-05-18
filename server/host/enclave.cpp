@@ -21,8 +21,8 @@
 
 #define ECALL_OUT                                    \
     {                                                \
-        lock.unlock();                               \
         timer(fmt::format("{}:done", __FUNCTION__)); \
+        lock.unlock();                               \
     }
 
 SPIEnclave::SPIEnclave(const char* enclave_image_path, bool simulate)
