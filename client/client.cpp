@@ -238,7 +238,7 @@ auto main(int argc, const char* argv[]) -> int
         {{"PSI_PAILLIER_PK_LEN", PSI_PAILLIER_PK_LEN},
          {"PSI_MELBOURNE_P", PSI_MELBOURNE_P},
          {"PSI_SELECT_POLICY", PSI_SELECT_POLICY},
-         {"PSI_AGGREAGATE_SELECT", PSI_AGGREGATE_POLICY},
+         {"PSI_AGGREGATE_POLICY", PSI_AGGREGATE_POLICY},
          {"c/s0:sent", c0_sent},
          {"c/s0:recv", c0_recv},
          {"c/s1:sent", c1_sent},
