@@ -3,6 +3,7 @@
 #include <nlohmann/json.hpp>
 
 #include "enclave_context.hpp"
+#include "sgx/attestation.hpp"
 #include "sgx/session.hpp"
 
 using nlohmann::json;
@@ -38,11 +39,11 @@ auto EnclaveContext::rand() -> mbedtls::ctr_drbg&
     return *rand_ctx;
 }
 
-void EnclaveContext::new_session(u32 sid, sptr<PSI::Session> session)
+void EnclaveContext::new_session(u32 sid, sptr<PSI::Session> session, const AttestationContext& ctx)
 {
     if (sessions.find(sid) != sessions.end())
     {
-        TRACE_ENCLAVE("session id collision: vid=%04x aid=%04x sid=%08x", vid, aid, sid);
+        TRACE_ENCLAVE("session id collision: vid=%04x aid=%04x sid=%08x", ctx.vid, ctx.aid, sid);
         abort();
     }
     else
@@ -98,7 +99,7 @@ auto EnclaveContext::attester_generate_response(const u8* ibuf, size_t ilen, u8*
 
     /* build crypto context */
     auto [sid, session] = ctx.complete_attestation();
-    new_session(sid, session);
+    new_session(sid, session, ctx);
 
     return sid;
 }
@@ -138,7 +139,7 @@ auto EnclaveContext::verifier_process_response(const u8* ibuf, size_t ilen) -> u
 
     /* build crypto context and free verifier context */
     auto [sid, session] = ctx->complete_attestation();
-    new_session(sid, session);
+    new_session(sid, session, *ctx);
     verifiers[ctx->vid] = nullptr;
 
     return sid;

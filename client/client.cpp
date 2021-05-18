@@ -106,7 +106,7 @@ auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
 
     if (sessions.find(sid) != sessions.end())
     {
-        TRACE_ENCLAVE("session id collision: vid=%04x aid=%04x sid=%08x", vid, aid, sid);
+        TRACE_ENCLAVE("session id collision: vid=%04x aid=%04x sid=%08x", ctx.vid, ctx.aid, sid);
         abort();
     }
     else
