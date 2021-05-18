@@ -19,10 +19,8 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
                              ${CMAKE_CURRENT_BINARY_DIR}/helloworld_t.c)
 
     target_compile_definitions(
-      ${target}
-      PUBLIC OE_API_VERSION=2
-      PRIVATE PSI_SELECT_POLICY=${select_policy}
-              PSI_AGGREGATE_POLICY=${aggregate_policy})
+      ${target} PUBLIC OE_API_VERSION=2 PSI_SELECT_POLICY=${select_policy}
+                       PSI_AGGREGATE_POLICY=${aggregate_policy})
 
     # Need for the generated file helloworld_t.h
     target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})

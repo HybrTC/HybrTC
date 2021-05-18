@@ -29,8 +29,8 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
       CLI11::CLI11)
 
     target_compile_definitions(
-      ${target} PRIVATE PSI_SELECT_POLICY=${select_policy}
-                        PSI_AGGREGATE_POLICY=${aggregate_policy})
+      ${target} PUBLIC PSI_SELECT_POLICY=${select_policy}
+                       PSI_AGGREGATE_POLICY=${aggregate_policy})
 
   endforeach ()
 endforeach ()
