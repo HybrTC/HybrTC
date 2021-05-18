@@ -4,7 +4,11 @@
  * define logging option
  */
 
-#ifdef VERBOSE
+#ifndef PSI_VERBOSE
+#define PSI_VERBOSE 0
+#endif
+
+#if PSI_VERBOSE
 #define PSI_ENABLE_TRACE_ENCLAVE
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
 #else

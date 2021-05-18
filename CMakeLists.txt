@@ -57,28 +57,24 @@ add_subdirectory(3rd-party/CLI11)
 
 # options
 
-option(PSI_DATA_SET_SIZE_LOG "" 10)
-option(PSI_VERBOSE "" OFF)
+set(PSI_DATA_SET_SIZE_LOG 10)
+option(PSI_VERBOSE "" ON)
 
-option(PSI_SELECT_ALL_PASSTHROUGH "" OFF)
-option(PSI_SELECT_ALL_OBLIVIOUS "" OFF)
-option(PSI_SELECT_ODD_OBLIVIOUS "" ON)
+# option(PSI_SELECT_ALL_PASSTHROUGH "" ON)
+# option(PSI_SELECT_ALL_OBLIVIOUS "" ON)
+# option(PSI_SELECT_ODD_OBLIVIOUS "" ON)
 
-option(PSI_AGGREAGATE_SELECT "" OFF)
-option(PSI_AGGREAGATE_JOIN_SUM "" OFF)
-option(PSI_AGGREAGATE_JOIN_SUM "" OFF)
+# option(PSI_AGGREAGATE_SELECT "" ON)
+# option(PSI_AGGREAGATE_JOIN_COUNT "" ON)
+# option(PSI_AGGREAGATE_JOIN_SUM "" ON)
 
 # select policy
 
 if (PSI_SELECT_ALL_PASSTHROUGH)
   set(PSI_SELECT_POLICY 0x00)
-endif ()
-
-if (PSI_SELECT_ALL_OBLIVIOUS)
+elseif (PSI_SELECT_ALL_OBLIVIOUS)
   set(PSI_SELECT_POLICY 0x10)
-endif ()
-
-if (PSI_SELECT_ODD_OBLIVIOUS)
+else (PSI_SELECT_ODD_OBLIVIOUS)
   set(PSI_SELECT_POLICY 0x11)
 endif ()
 
@@ -86,26 +82,25 @@ endif ()
 
 if (PSI_AGGREAGATE_SELECT)
   set(PSI_AGGREGATE_POLICY 0x00)
-endif ()
-
-if (PSI_AGGREAGATE_JOIN_COUNT)
+elseif (PSI_AGGREAGATE_JOIN_COUNT)
   set(PSI_AGGREGATE_POLICY 0x10)
+else (PSI_AGGREAGATE_JOIN_SUM)
+  set(PSI_AGGREGATE_POLICY 0x11)
 endif ()
 
-if (PSI_AGGREAGATE_JOIN_SUM)
-  set(PSI_AGGREGATE_POLICY 0x11)
+# verbose
+
+if (PSI_VERBOSE)
+  set(PSI_VERBOSE 1)
+else ()
+  set(PSI_VERBOSE 0)
 endif ()
 
 # generate compile definitions
 
-if (PSI_VERBOSE)
-  add_compile_definitions(
-    PSI_SELECT_POLICY=${PSI_SELECT_POLICY}
-    PSI_AGGREGATE_POLICY=${PSI_AGGREGATE_POLICY} VERBOSE=1)
-else ()
-  add_compile_definitions(PSI_SELECT_POLICY=${PSI_SELECT_POLICY}
-                          PSI_AGGREGATE_POLICY=${PSI_AGGREGATE_POLICY})
-endif ()
+add_compile_definitions(
+  PSI_SELECT_POLICY=${PSI_SELECT_POLICY}
+  PSI_AGGREGATE_POLICY=${PSI_AGGREGATE_POLICY} PSI_VERBOSE=${PSI_VERBOSE})
 
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 
@@ -118,4 +113,4 @@ add_subdirectory(tests)
 add_custom_target(
   rundemo
   DEPENDS demo client server sign
-  COMMAND demo --data-size ${PSI_DATA_SET_SIZE_LOG})
+  COMMAND demo --data-size=${PSI_DATA_SET_SIZE_LOG})

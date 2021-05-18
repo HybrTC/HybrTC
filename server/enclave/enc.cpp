@@ -50,7 +50,7 @@ void set_client_query(
 {
     handler = std::make_shared<decltype(handler)::element_type>(global->rand_ptr());
     handler->set_public_key(global->session(sid).decrypt(ibuf, ilen));
-#ifndef PSI_SELECT_ONLY
+#if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
     handler->set_half(half);
 #endif
 
