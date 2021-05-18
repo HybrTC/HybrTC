@@ -37,19 +37,7 @@ static auto hexdump(const T* data, size_t sz) -> std::string
 
 #ifdef PSI_ENABLE_TRACE_ENCLAVE
 
-#include <cstddef>
-#include <sstream>
-#include <thread>
-
-static auto get_thread_id() -> std::string
-{
-    std::stringstream s;
-    s << std::hex << std::this_thread::get_id();
-    return s.str();
-}
-
-#define TRACE_ENCLAVE(fmt, ...) \
-    fprintf(stderr, ">>> [%s] %s(%d): " fmt "\n", get_thread_id().c_str(), __FILE__, __LINE__, ##__VA_ARGS__)
+#define TRACE_ENCLAVE(fmt, ...) fprintf(stderr, ">>> %s(%d): " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 
 #else
 
