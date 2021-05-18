@@ -5,12 +5,15 @@
 #include <thread>
 
 #include <CLI/CLI.hpp>
+#include <nlohmann/json.hpp>
 
 #include "common/types.hpp"
 #include "psi_context.hpp"
+#include "timer.hpp"
 #include "utils/spdlog.hpp"
 #include "utils/zmq.hpp"
 
+using nlohmann::json;
 using std::string;
 using zmq::context_t;
 using zmq::socket_t;
@@ -30,7 +33,7 @@ static auto attestation_servant(Socket& server, PSIContext& context) -> u32
     return response["sid"].get<u32>();
 }
 
-void client_servant(int port, context_t* io, PSIContext* context)
+auto client_servant(int port, context_t* io, PSIContext* context)
 {
     SPDLOG_DEBUG("starting {} at port {}", __FUNCTION__, port);
 
@@ -51,10 +54,12 @@ void client_servant(int port, context_t* io, PSIContext* context)
     assert(response["type"].get<MessageType>() == QueryResponse);
     server.send(response);
     SPDLOG_DEBUG("handle_query_request: response sent");
+
+    return server.statistics();
 }
 
 #ifndef PSI_SELECT_ONLY
-void peer_servant(int port, context_t* io, PSIContext* context)
+auto peer_servant(int port, context_t* io, PSIContext* context)
 {
     SPDLOG_DEBUG("starting {} at port {}", __FUNCTION__, port);
 
@@ -77,9 +82,11 @@ void peer_servant(int port, context_t* io, PSIContext* context)
         server.send(response);
         SPDLOG_DEBUG("handle_compute_req: response sent");
     }
+
+    return server.statistics();
 }
 
-void peer_client(const char* peer_endpoint, context_t* io, PSIContext* context)
+auto peer_client(const char* peer_endpoint, context_t* io, PSIContext* context)
 {
     SPDLOG_DEBUG("starting {} to {}", __FUNCTION__, peer_endpoint);
 
@@ -115,6 +122,8 @@ void peer_client(const char* peer_endpoint, context_t* io, PSIContext* context)
     auto sid = response["sid"].get<u32>();
     auto payload = response["payload"].get<v8>();
     context->process_compute_resp(sid, payload);
+
+    return client.statistics();
 }
 #endif
 
@@ -123,6 +132,11 @@ auto main(int argc, const char* argv[]) -> int
     /* pasrse command line argument */
 
     CLI::App app;
+
+    string enclave_image_path;
+    app.add_option("-e,--enclave-path", enclave_image_path, "path to the signed enclave image")
+        ->required()
+        ->check(CLI::ExistingFile);
 
     bool server_id;
     app.add_option("-i,--server-id", server_id, "server id: 0 or 1")->required();
@@ -139,10 +153,8 @@ auto main(int argc, const char* argv[]) -> int
     string peer_endpoint;
     app.add_option("-s,--peer-endpoint", peer_endpoint, "peer's endpoint")->required();
 
-    string enclave_image_path;
-    app.add_option("-e,--enclave-path", enclave_image_path, "path to the signed enclave image")
-        ->required()
-        ->check(CLI::ExistingFile);
+    string test_id;
+    app.add_option("--test-id", test_id, "test identifier");
 
     CLI11_PARSE(app, argc, argv);
 
@@ -159,6 +171,9 @@ auto main(int argc, const char* argv[]) -> int
     /* initialize PSI context */
     PSIContext psi(enclave_image_path.c_str(), (1 << log_data_size), (1 << (log_data_size * 3 / 2)), server_id);
 
+    Timer timer;
+    timer("start");
+
     /* start server */
     auto s_client = std::async(std::launch::async, client_servant, client_port, &context, &psi);
 
@@ -169,15 +184,41 @@ auto main(int argc, const char* argv[]) -> int
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     /* start client */
-    peer_client(peer_endpoint.c_str(), &context, &psi);
+    auto [c_peer_sent, c_peer_recv] = peer_client(peer_endpoint.c_str(), &context, &psi);
 
     /* finish everything */
-    s_peer.wait();
+    auto [s_peer_sent, s_peer_recv] = s_peer.get();
     SPDLOG_INFO("Server for peer closed");
 #endif
 
-    s_client.wait();
+    auto [s_client_sent, s_client_recv] = s_client.get();
     SPDLOG_INFO("Server for client closed");
+
+    timer("done");
+
+    json output = json::object(
+        {{"PSI_DATA_SET_SIZE_LOG", log_data_size},
+#ifndef PSI_SELECT_ONLY
+         {"c/p:sent", c_peer_sent},
+         {"c/p:recv", c_peer_recv},
+         {"s/p:sent", s_peer_sent},
+         {"s/p:recv", s_peer_recv},
+#endif
+         {"s/c:sent", s_client_sent},
+         {"s/c:recv", s_client_recv},
+         {"host_timer", timer.to_json()},
+         {"enclave_timer", psi.get_timer().to_json()}});
+
+    {
+        auto fn =
+            fmt::format("{:%Y%m%dT%H%M%S}-{}-server{}.json", fmt::localtime(time(nullptr)), test_id, int(server_id));
+
+        FILE* fp = std::fopen(fn.c_str(), "w");
+        fputs(output.dump().c_str(), fp);
+        fclose(fp);
+
+        SPDLOG_INFO("Benchmark written to {}", fn);
+    }
 
     return 0;
 }

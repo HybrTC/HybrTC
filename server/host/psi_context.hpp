@@ -11,6 +11,7 @@
 #include "enclave.hpp"
 #include "message_types.hpp"
 #include "prng.hpp"
+#include "timer.hpp"
 #include "utils/spdlog.hpp"
 
 constexpr size_t TEST_SIZE = (1 << 20);
@@ -55,6 +56,11 @@ class PSIContext
         client_ctx.lock_build.lock();
         client_ctx.lock_match.lock();
         peer_ctx.lock.lock();
+    }
+
+    auto get_timer() -> Timer&
+    {
+        return enclave.get_timer();
     }
 
     /*

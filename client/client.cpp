@@ -114,7 +114,7 @@ auto client(const string& server_addr, context_t* io, int id, const v8& pk) -> s
     uint32_t sid;
 
     /* attestation */
-    timer(fmt::format("c{}: initiate attestation", id));
+    timer(fmt::format("c/s{}: initiate attestation", id));
 
     {
         json request = {{"sid", -1}, {"type", AttestationRequest}, {"payload", verifier_generate_challenge(vctx, id)}};
@@ -128,7 +128,7 @@ auto client(const string& server_addr, context_t* io, int id, const v8& pk) -> s
         assert(sid == response["sid"].get<uint32_t>());
     }
 
-    timer(fmt::format("c{}: initiate query", id));
+    timer(fmt::format("c/s{}: initiate query", id));
 
     auto crypto = sessions[sid];
 
@@ -143,7 +143,7 @@ auto client(const string& server_addr, context_t* io, int id, const v8& pk) -> s
     assert(sid == response["sid"].get<uint32_t>());
     auto result = crypto->decrypt(response["payload"].get<v8>());
 
-    timer(fmt::format("c{}: result received", id));
+    timer(fmt::format("c/s{}: result received", id));
 
     auto [bytes_sent, bytes_received] = client.statistics();
 
@@ -239,19 +239,17 @@ auto main(int argc, const char* argv[]) -> int
          {"PSI_MELBOURNE_P", PSI_MELBOURNE_P},
          {"PSI_SELECT_POLICY", PSI_SELECT_POLICY},
          {"PSI_AGGREAGATE_SELECT", PSI_AGGREGATE_POLICY},
-         {"c0_sent", c0_sent},
-         {"c0_recv", c0_recv},
-         {"c1_sent", c1_sent},
-         {"c1_recv", c1_recv},
+         {"c/s0:sent", c0_sent},
+         {"c/s0:recv", c0_recv},
+         {"c/s1:sent", c1_sent},
+         {"c/s1:recv", c1_recv},
          {"time", timer.to_json()}});
 
     {
-        string output_str = output.dump();
-
         auto fn = fmt::format("{:%Y%m%dT%H%M%S}-{}-client.json", fmt::localtime(time(nullptr)), test_id);
 
         FILE* fp = std::fopen(fn.c_str(), "w");
-        fputs(output_str.c_str(), fp);
+        fputs(output.dump().c_str(), fp);
         fclose(fp);
 
         SPDLOG_INFO("Benchmark written to {}", fn);

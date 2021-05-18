@@ -7,6 +7,7 @@
 #include <openenclave/host.h>
 
 #include "common/types.hpp"
+#include "timer.hpp"
 
 struct buffer
 {
@@ -35,6 +36,8 @@ class SPIEnclave
         return enclave_ptr;
     }
 
+    Timer timer;
+
   public:
     SPIEnclave(const char* enclave_image_path, bool simulate);
 
@@ -44,6 +47,11 @@ class SPIEnclave
         {
             oe_terminate_enclave(enclave_ptr);
         }
+    }
+
+    auto get_timer() -> Timer&
+    {
+        return timer;
     }
 
     void verifier_generate_challenge(buffer& output);
