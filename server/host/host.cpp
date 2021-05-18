@@ -210,8 +210,7 @@ auto main(int argc, const char* argv[]) -> int
         });
 
     {
-        auto fn =
-            fmt::format("{:%Y%m%dT%H%M%S}-{}-server{}.json", fmt::localtime(time(nullptr)), test_id, int(server_id));
+        auto fn = fmt::format("{}-server{}.json", test_id, int(server_id));
 
         FILE* fp = std::fopen(fn.c_str(), "w");
         fputs(output.dump().c_str(), fp);

@@ -66,40 +66,53 @@ set(PSI_AGGREAGATE_JOIN_SUM 0x11)
 
 # options
 
-set(PSI_DATA_SET_SIZE_LOG 10)
-set(PSI_VERBOSE "" ON)
-
-set(PSI_SELECT_POLICY ${PSI_SELECT_ALL_PASSTHROUGH})
-# set(PSI_SELECT_POLICY ${PSI_SELECT_ALL_OBLIVIOUS})
-# set(PSI_SELECT_POLICY ${PSI_SELECT_ODD_OBLIVIOUS})
-
-# set(PSI_AGGREGATE_POLICY ${PSI_AGGREAGATE_SELECT})
-# set(PSI_AGGREGATE_POLICY ${PSI_AGGREAGATE_JOIN_COUNT})
-set(PSI_AGGREGATE_POLICY ${PSI_AGGREAGATE_JOIN_SUM})
+set(PSI_VERBOSE "" OFF)
 
 # verbose
 
-if (PSI_VERBOSE)
+if (${PSI_VERBOSE})
   set(PSI_VERBOSE 1)
 else ()
   set(PSI_VERBOSE 0)
 endif ()
 
-# generate compile definitions
+set(PSI_DATA_SET_SIZE_LOG 10;12;14;16;18;20)
+message(STATUS "PSI_DATA_SET_SIZE_LOG=${PSI_DATA_SET_SIZE_LOG}")
 
-add_compile_definitions(
-  PSI_SELECT_POLICY=${PSI_SELECT_POLICY}
-  PSI_AGGREGATE_POLICY=${PSI_AGGREGATE_POLICY} PSI_VERBOSE=${PSI_VERBOSE})
+set(PSI_SELECT_POLICY ${PSI_SELECT_ALL_PASSTHROUGH} ${PSI_SELECT_ALL_OBLIVIOUS}
+                      ${PSI_SELECT_ODD_OBLIVIOUS})
+message(STATUS "PSI_SELECT_POLICY=${PSI_SELECT_POLICY}")
+
+set(PSI_AGGREGATE_POLICY ${PSI_AGGREAGATE_SELECT} ${PSI_AGGREAGATE_JOIN_COUNT}
+                         ${PSI_AGGREAGATE_JOIN_SUM})
+message(STATUS "PSI_AGGREGATE_POLICY=${PSI_AGGREGATE_POLICY}")
+
+add_compile_definitions(PSI_VERBOSE=${PSI_VERBOSE})
+message(STATUS "PSI_VERBOSE=${PSI_VERBOSE}")
 
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 
 include_directories(${CMAKE_SOURCE_DIR}/common)
 
-add_subdirectory(server)
 add_subdirectory(client)
-add_subdirectory(tests)
+add_subdirectory(server)
+# add_subdirectory(tests)
+
+set(targets)
+foreach (select_policy IN LISTS PSI_SELECT_POLICY)
+  foreach (aggregate_policy IN LISTS PSI_AGGREGATE_POLICY)
+
+    list(APPEND targets client-${select_policy}-${aggregate_policy}
+         server-${select_policy}-${aggregate_policy}
+         sign-${select_policy}-${aggregate_policy})
+
+  endforeach ()
+endforeach ()
 
 add_custom_target(
   rundemo
-  DEPENDS demo client server sign
-  COMMAND demo --data-size=${PSI_DATA_SET_SIZE_LOG})
+  DEPENDS ${targets}
+  COMMAND
+    python3 ${CMAKE_SOURCE_DIR}/tests/rundemo.py --binary-dir
+    ${CMAKE_BINARY_DIR} --select-policy ${PSI_SELECT_POLICY} --aggregate-policy
+    ${PSI_AGGREGATE_POLICY} --data-size ${PSI_DATA_SET_SIZE_LOG} --repeat 2)

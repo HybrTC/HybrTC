@@ -21,11 +21,22 @@ add_custom_command(
   COMMAND openssl genrsa -out private.pem -3 3072
   COMMAND openssl rsa -in private.pem -pubout -out public.pem)
 
-# Sign enclave
-add_custom_command(
-  OUTPUT enclave/enclave.signed
-  DEPENDS enclave enclave/helloworld.conf private.pem
-  COMMAND openenclave::oesign sign -e $<TARGET_FILE:enclave> -c ${ENCLAVE_CONF}
-          -k private.pem)
+foreach (select_policy IN LISTS PSI_SELECT_POLICY)
+  foreach (aggregate_policy IN LISTS PSI_AGGREGATE_POLICY)
 
-add_custom_target(sign ALL DEPENDS enclave/enclave.signed)
+    set(target enclave/enclave-${select_policy}-${aggregate_policy}.signed)
+
+    # Sign enclave
+    add_custom_command(
+      OUTPUT ${target}
+      DEPENDS enclave enclave/helloworld.conf private.pem
+      COMMAND
+        openenclave::oesign sign -e
+        $<TARGET_FILE:enclave-${select_policy}-${aggregate_policy}> -c
+        ${ENCLAVE_CONF} -k private.pem)
+
+    add_custom_target(sign-${select_policy}-${aggregate_policy} ALL
+                      DEPENDS ${target})
+
+  endforeach ()
+endforeach ()

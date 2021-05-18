@@ -246,7 +246,7 @@ auto main(int argc, const char* argv[]) -> int
          {"time", timer.to_json()}});
 
     {
-        auto fn = fmt::format("{:%Y%m%dT%H%M%S}-{}-client.json", fmt::localtime(time(nullptr)), test_id);
+        auto fn = fmt::format("{}-client.json", test_id);
 
         FILE* fp = std::fopen(fn.c_str(), "w");
         fputs(output.dump().c_str(), fp);
