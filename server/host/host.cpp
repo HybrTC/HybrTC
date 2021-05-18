@@ -16,16 +16,16 @@ using std::string;
 using zmq::context_t;
 using zmq::socket_t;
 
-static auto attestation_servant(socket_t& server, PSIContext& context) -> u32
+static auto attestation_servant(Socket& server, PSIContext& context) -> u32
 {
-    auto request = recv(server);
+    auto request = server.recv();
     SPDLOG_DEBUG("handle_attestation_req: request received");
     assert(request["type"].get<MessageType>() == AttestationRequest);
     auto payload = request["payload"].get<v8>();
 
     auto response = context.handle_attestation_req(payload);
     assert(response["type"].get<MessageType>() == AttestationResponse);
-    send(server, response);
+    server.send(response);
     SPDLOG_DEBUG("handle_attestation_req: response sent");
 
     return response["sid"].get<u32>();
@@ -35,14 +35,14 @@ void client_servant(int port, context_t* io, PSIContext* context)
 {
     SPDLOG_DEBUG("starting {} at port {}", __FUNCTION__, port);
 
-    /* construct a router socket and bind to interface */
-    socket_t server = listen(*io, port);
+    /* construct a response socket and bind to interface */
+    auto server = Socket::listen(*io, port);
 
     /* attestation */
     context->set_client_sid(attestation_servant(server, *context));
 
     /* compute query */
-    auto request = recv(server);
+    auto request = server.recv();
     SPDLOG_DEBUG("handle_query_request: request received");
     assert(request["type"].get<MessageType>() == QueryRequest);
     auto sid = request["sid"].get<u32>();
@@ -50,7 +50,7 @@ void client_servant(int port, context_t* io, PSIContext* context)
 
     auto response = context->handle_query_request(sid, payload);
     assert(response["type"].get<MessageType>() == QueryResponse);
-    send(server, response);
+    server.send(response);
     SPDLOG_DEBUG("handle_query_request: response sent");
 }
 
@@ -59,15 +59,15 @@ void peer_servant(int port, context_t* io, PSIContext* context)
 {
     SPDLOG_DEBUG("starting {} at port {}", __FUNCTION__, port);
 
-    /* construct a router socket and bind to interface */
-    auto server = listen(*io, port);
+    /* construct a response socket and bind to interface */
+    auto server = Socket::listen(*io, port);
 
     /* attestation */
     context->set_peer_isid(attestation_servant(server, *context));
 
     /* compute query */
     {
-        auto request = recv(server);
+        auto request = server.recv();
         SPDLOG_DEBUG("handle_compute_req: request received");
         assert(request["type"].get<MessageType>() == ComputeRequest);
         auto sid = request["sid"].get<u32>();
@@ -75,7 +75,7 @@ void peer_servant(int port, context_t* io, PSIContext* context)
 
         auto response = context->handle_compute_req(sid, payload);
         assert(response["type"].get<MessageType>() == ComputeResponse);
-        send(server, response);
+        server.send(response);
         SPDLOG_DEBUG("handle_compute_req: response sent");
     }
 }
@@ -85,16 +85,16 @@ void peer_client(const char* peer_endpoint, context_t* io, PSIContext* context)
     SPDLOG_DEBUG("starting {} to {}", __FUNCTION__, peer_endpoint);
 
     /* construct a request socket and connect to interface */
-    auto client = connect(*io, peer_endpoint);
+    auto client = Socket::connect(*io, peer_endpoint);
 
     /* attestation */
     {
         auto request = context->prepare_attestation_req();
         assert(request["type"].get<MessageType>() == AttestationRequest);
-        send(client, request);
+        client.send(request);
         SPDLOG_DEBUG("prepare_attestation_req: request sent");
 
-        auto response = recv(client);
+        auto response = client.recv();
         SPDLOG_DEBUG("process_attestation_resp: response received");
         assert(response["type"].get<MessageType>() == AttestationResponse);
         auto sid = response["sid"].get<u32>();
@@ -106,11 +106,11 @@ void peer_client(const char* peer_endpoint, context_t* io, PSIContext* context)
     SPDLOG_DEBUG("prepare_compute_req");
     auto request = context->prepare_compute_req();
     assert(request["type"].get<MessageType>() == ComputeRequest);
-    send(client, request);
+    client.send(request);
     SPDLOG_DEBUG("prepare_compute_req: request sent");
 
     /* get match result and aggregate */
-    auto response = recv(client);
+    auto response = client.recv();
     SPDLOG_DEBUG("process_compute_resp: response received");
     assert(response["type"].get<MessageType>() == ComputeResponse);
     auto sid = response["sid"].get<u32>();

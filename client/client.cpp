@@ -1,10 +1,9 @@
-#include <sys/syscall.h>
-#include <unistd.h>
+
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <ctime>
 #include <future>
 #include <iostream>
 #include <string>
@@ -12,6 +11,7 @@
 
 #include <CLI/CLI.hpp>
 #include <nlohmann/json.hpp>
+#include <tuple>
 
 #define __OUTSIDE_ENCLAVE__
 
@@ -22,6 +22,7 @@
 #include "message_types.hpp"
 #include "paillier.hpp"
 #include "sgx/attestation.hpp"
+#include "timer.hpp"
 #include "utils/spdlog.hpp"
 #include "utils/zmq.hpp"
 
@@ -29,24 +30,7 @@ using nlohmann::json;
 
 std::shared_ptr<mbedtls::ctr_drbg> rand_ctx;
 std::map<uint32_t, std::shared_ptr<PSI::Session>> sessions;
-
-struct time_record
-{
-    clock_t timestamp;
-    int64_t thread_id;
-    std::string name;
-
-    explicit time_record(const char* name) : timestamp(clock()), thread_id(syscall(__NR_gettid)), name(name)
-    {
-    }
-
-    auto to_json() -> json
-    {
-        return json::object({{"clock", timestamp}, {"thread", thread_id}, {"name", name}});
-    }
-};
-
-std::vector<time_record> benchmark_records;
+Timer timer;
 
 /*
  * output:  vid, this_pk, format_setting
@@ -118,50 +102,53 @@ auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
     return sid;
 }
 
-auto client(const std::string& server_addr, zmq::context_t* io, int id, const v8& pk) -> json
+auto client(const std::string& server_addr, zmq::context_t* io, int id, const v8& pk)
+    -> std::tuple<json, size_t, size_t>
 {
     SPDLOG_DEBUG(__PRETTY_FUNCTION__);
 
     /* construct a request socket and connect to interface */
-    zmq::socket_t client = connect(*io, server_addr.c_str());
+    auto client = Socket::connect(*io, server_addr.c_str());
     VerifierContext vctx(rand_ctx);
     uint32_t sid;
 
     /* attestation */
-    benchmark_records.emplace_back("initiate attestation");
+    timer(fmt::format("c{}: initiate attestation", id));
 
     {
         json request = {{"sid", -1}, {"type", AttestationRequest}, {"payload", verifier_generate_challenge(vctx, id)}};
         assert(request["type"].get<MessageType>() == AttestationRequest);
-        send(client, request);
+        client.send(request);
 
-        json response = recv(client);
+        json response = client.recv();
         assert(response["type"].get<MessageType>() == AttestationResponse);
         auto payload = response["payload"].get<v8>();
         sid = verifier_process_response(vctx, payload);
         assert(sid == response["sid"].get<uint32_t>());
     }
 
-    benchmark_records.emplace_back("initiate query");
+    timer(fmt::format("c{}: initiate query", id));
 
     auto crypto = sessions[sid];
 
     /* set public key */
     json request = {{"sid", sid}, {"type", QueryRequest}, {"payload", crypto->encrypt(pk)}};
     assert(request["type"].get<MessageType>() == QueryRequest);
-    send(client, request);
+    client.send(request);
 
     /* get match result and aggregate */
-    json response = recv(client);
+    json response = client.recv();
     assert(response["type"].get<MessageType>() == QueryResponse);
     assert(sid == response["sid"].get<uint32_t>());
     auto result = crypto->decrypt(response["payload"].get<v8>());
 
-    benchmark_records.emplace_back("result received");
+    timer(fmt::format("c{}: result received", id));
+
+    auto [bytes_sent, bytes_received] = client.statistics();
 
     client.close();
 
-    return json::from_msgpack(result);
+    return std::make_tuple(json::from_msgpack(result), bytes_sent, bytes_received);
 }
 
 auto main(int argc, const char* argv[]) -> int
@@ -175,6 +162,9 @@ auto main(int argc, const char* argv[]) -> int
 
     std::string s1_endpoint;
     app.add_option("--s1-endpoint", s1_endpoint, "server 1's endpoint")->required();
+
+    std::string test_id;
+    app.add_option("--test-id", test_id, "test identifier");
 
     CLI11_PARSE(app, argc, argv);
 
@@ -197,17 +187,17 @@ auto main(int argc, const char* argv[]) -> int
     /* initialize the zmq context with a single IO thread */
     zmq::context_t context{1};
 
-    benchmark_records.emplace_back("start");
+    timer("start");
 
     /* start client */
     auto c0 = std::async(std::launch::async, client, endpoint[0], &context, 0, pubkey);
     auto c1 = std::async(std::launch::async, client, endpoint[1], &context, 1, pubkey);
 
     /* wait for the result */
-    auto p0 = c0.get();
-    auto p1 = c1.get();
+    auto [p0, c0_sent, c0_recv] = c0.get();
+    auto [p1, c1_sent, c1_recv] = c1.get();
 
-    benchmark_records.emplace_back("done");
+    timer("done");
 
     /* print out query result */
 
@@ -243,27 +233,21 @@ auto main(int argc, const char* argv[]) -> int
 #endif
 #endif
 
-    json records = json::array();
-    for (auto r : benchmark_records)
-    {
-        records.push_back(r.to_json());
-    }
-
     json output = json::object(
         {{"PSI_PAILLIER_PK_LEN", PSI_PAILLIER_PK_LEN},
          {"PSI_MELBOURNE_P", PSI_MELBOURNE_P},
          {"PSI_SELECT_POLICY", PSI_SELECT_POLICY},
          {"PSI_AGGREAGATE_SELECT", PSI_AGGREGATE_POLICY},
-         {"time", records}});
+         {"c0_sent", c0_sent},
+         {"c0_recv", c0_recv},
+         {"c1_sent", c1_sent},
+         {"c1_recv", c1_recv},
+         {"time", timer.to_json()}});
 
     {
         std::string output_str = output.dump();
 
-        auto h = mbedtls::sha256();
-        h.update(output_str);
-        auto h_str = hexdump(h.finish());
-
-        auto fn = fmt::format("{:%Y%m%dT%H%M%S}-{}.json", fmt::localtime(time(nullptr)), h_str);
+        auto fn = fmt::format("{:%Y%m%dT%H%M%S}-{}-client.json", fmt::localtime(time(nullptr)), test_id);
 
         FILE* fp = std::fopen(fn.c_str(), "w");
         fputs(output_str.c_str(), fp);
@@ -271,6 +255,9 @@ auto main(int argc, const char* argv[]) -> int
 
         SPDLOG_INFO("Benchmark written to {}", fn);
     }
+
+    context.shutdown();
+    context.close();
 
     return 0;
 }
