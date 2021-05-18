@@ -1,3 +1,4 @@
+#include <mbedtls/ctr_drbg.h>
 #include <openenclave/enclave.h>
 #include <nlohmann/json.hpp>
 
@@ -5,6 +6,14 @@
 #include "sgx/session.hpp"
 
 using nlohmann::json;
+
+EnclaveContext::EnclaveContext() : rand_ctx(std::make_shared<mbedtls::ctr_drbg>())
+{
+    v8 custom;
+    custom.resize(MBEDTLS_CTR_DRBG_KEYSIZE);
+    oe_random(&custom[0], custom.size());
+    rand_ctx->seed(custom);
+}
 
 void EnclaveContext::dump(const v8& bytes, uint8_t** obuf, size_t* olen)
 {
@@ -62,7 +71,7 @@ auto EnclaveContext::attester_generate_response(const u8* ibuf, size_t ilen, u8*
     AttesterContext ctx(rand_ctx);
 
     /* set attester id; generate and dump ephemeral public key */
-    mbedtls_ctr_drbg_random(rand_ctx.get(), u8p(&ctx.aid), sizeof(ctx.aid));
+    ctx.aid = rand_ctx->rand<decltype(ctx.aid)>();
 
     /* deserialize and handle input */
     auto input = json::from_msgpack(ibuf, ibuf + ilen);

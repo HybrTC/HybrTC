@@ -12,9 +12,7 @@ class EnclaveContext
     void new_session(u32 sid, sptr<PSI::Session> session);
 
   public:
-    EnclaveContext() : rand_ctx(std::make_shared<mbedtls::ctr_drbg>())
-    {
-    }
+    EnclaveContext();
 
     void dump(const v8& bytes, uint8_t** obuf, size_t* olen);
 

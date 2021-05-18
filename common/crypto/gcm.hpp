@@ -38,8 +38,8 @@ class gcm : public internal::resource<mbedtls_gcm_context, mbedtls_gcm_init, mbe
         v8 output(input_size + sizeof(ciphertext), 0);
         ciphertext& enc = *reinterpret_cast<ciphertext*>(&output[0]);
 
-        mbedtls_ctr_drbg_random(ctr_drbg.get(), u8p(&enc.id), sizeof(enc.id));
-        mbedtls_ctr_drbg_random(ctr_drbg.get(), enc.iv, IV_LEN);
+        enc.id = ctr_drbg.rand<decltype(enc.id)>();
+        ctr_drbg.fill(enc.iv, IV_LEN);
 
         mbedtls_gcm_crypt_and_tag(
             get(),

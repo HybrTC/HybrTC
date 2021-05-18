@@ -2,6 +2,7 @@
 
 #include <array>
 
+#include "common/types.hpp"
 #include "entropy.hpp"
 #include "internal/resource.hpp"
 
@@ -16,9 +17,11 @@ class ctr_drbg : public internal::resource<mbedtls_ctr_drbg_context, mbedtls_ctr
   public:
     explicit ctr_drbg()
     {
-        std::array<uint8_t, MBEDTLS_CTR_DRBG_KEYSIZE> custom = {0};
-        // oe_random(&custom[0], custom.size());
+        seed({0});
+    }
 
+    void seed(const v8& custom)
+    {
         mbedtls_ctr_drbg_seed(get(), mbedtls_entropy_func, ent.get(), custom.data(), custom.size());
     }
 
@@ -28,6 +31,11 @@ class ctr_drbg : public internal::resource<mbedtls_ctr_drbg_context, mbedtls_ctr
         I num;
         mbedtls_ctr_drbg_random(get(), u8p(&num), sizeof(num));
         return num;
+    }
+
+    void fill(u8* buf, size_t len)
+    {
+        mbedtls_ctr_drbg_random(get(), buf, len);
     }
 };
 
