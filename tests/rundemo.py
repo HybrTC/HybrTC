@@ -112,7 +112,9 @@ async def main(args):
         assert enclave.exists()
 
         for i in range(args.repeat):
-            print(f"select={select} aggregate={aggregate} size={size} {i}/{args.repeat}")
+            print("************************************************************")
+            print(f"*    select={select} aggregate={aggregate} size={size} {i}/{args.repeat}")
+            print("************************************************************")
             await test(client, server, enclave, size)
 
 
