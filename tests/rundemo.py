@@ -10,10 +10,6 @@ from signal import SIGKILL
 from uuid import uuid1
 
 
-def prefix():
-    return datetime.now().strftime("%Y%m%dT%H%M%S")
-
-
 SERVER0_HOST = "localhost"
 SERVER0_PORT_P = "5000"
 SERVER0_PORT_C = "5001"
@@ -39,6 +35,12 @@ NET_TOPO = {
     },
 }
 
+pid = {
+    "server0": -1,
+    "server1": -1,
+    "client": -1,
+}
+
 
 async def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
     cmd = [
@@ -50,6 +52,7 @@ async def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
 
     print(*cmd)
     proc = await asyncio.create_subprocess_exec(*cmd)
+    pid["client"] = proc.pid
 
     await proc.wait()
 
@@ -71,6 +74,7 @@ async def run_server(server_path, test_id, server_id, data_size, enclave_path, c
 
     print(*cmd)
     proc = await asyncio.create_subprocess_exec(*cmd)
+    pid[f"server{server_id}"] = proc.pid
 
     await proc.wait()
 
@@ -79,7 +83,7 @@ async def run_server(server_path, test_id, server_id, data_size, enclave_path, c
 
 
 async def test(client: Path, server: Path, enclave: Path, data_size: int):
-    test_id = prefix()
+    test_id = datetime.now().strftime("%Y%m%dT%H%M%S")
 
     procs = {
         "server0": run_server(server, test_id, 0, data_size, enclave, **NET_TOPO["server0"]),
@@ -92,9 +96,12 @@ async def test(client: Path, server: Path, enclave: Path, data_size: int):
     except BaseException as e:
         arguments = {"client": client, "server": server, "enclave": enclave, "data_size": data_size}
         print(arguments)
-        os.kill(0, SIGKILL)
-
-        raise e
+        print(e)
+        for p in pid.values():
+            try:
+                os.kill(p, SIGKILL)
+            except ProcessLookupError:
+                pass
 
 
 async def main(args):
@@ -103,7 +110,7 @@ async def main(args):
     ENCLAVE_DIR: Path = args.build / "server/enclave"
 
     for select, aggregate, size in product(args.select, args.aggregate, args.size):
-        if select == "0x00" and aggregate == "0x00" and size == 20:
+        if aggregate == "0x00" and size == 20:
             continue
 
         client = CLIENT_DIR / f"client-{select}-{aggregate}"

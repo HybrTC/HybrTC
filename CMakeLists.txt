@@ -12,7 +12,8 @@ project("SGX-PSI" LANGUAGES C CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
-add_compile_options(-O3 -Wall -Wextra)
+add_compile_options(-Og -g)
+# add_compile_options(-O3 -Wall -Wextra)
 
 # Currently the `OpenEnclave` package depends on `project()`.
 find_package(OpenEnclave CONFIG REQUIRED)
@@ -72,7 +73,7 @@ set(PSI_VERBOSE "" OFF)
 
 # set(PSI_SELECT_POLICY ${PSI_SELECT_ALL_PASSTHROUGH})
 
-# set(PSI_AGGREGATE_POLICY ${PSI_AGGREAGATE_SELECT})
+# set(PSI_AGGREGATE_POLICY ${PSI_AGGREAGATE_JOIN_SUM})
 
 set(PSI_DATA_SET_SIZE_LOG 10;12;14;16;18;20)
 

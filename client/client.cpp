@@ -149,7 +149,7 @@ auto client(const string& server_addr, context_t* io, int id, const v8& pk) -> s
 
     client.close();
 
-    return std::make_tuple(json::from_msgpack(result), bytes_sent, bytes_received);
+    return std::make_tuple(result, bytes_sent, bytes_received);
 }
 
 auto main(int argc, const char* argv[]) -> int
@@ -195,14 +195,18 @@ auto main(int argc, const char* argv[]) -> int
     auto c1 = std::async(std::launch::async, client, endpoint[1], &context, 1, pubkey);
 
     /* wait for the result */
-    auto [p0, c0_sent, c0_recv] = c0.get();
-    auto [p1, c1_sent, c1_recv] = c1.get();
+    auto [v0, c0_sent, c0_recv] = c0.get();
+    auto [v1, c1_sent, c1_recv] = c1.get();
 
     timer("done");
 
     /* print out query result */
 
 #if PSI_VERBOSE
+
+    auto p0 = json::from_msgpack(v0);
+    auto p1 = json::from_msgpack(v1);
+
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_JOIN_COUNT
 
     auto result0 = p0[0].get<size_t>();

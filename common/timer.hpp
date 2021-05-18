@@ -3,6 +3,7 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <ctime>
+#include <mutex>
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,11 +30,14 @@ class Timer
     };
 
     std::vector<time_record> store;
+    std::mutex lock;
 
   public:
-    void operator()(std::string str)
+    void operator()(const std::string& str)
     {
-        store.emplace_back(std::move(str));
+        lock.lock();
+        store.emplace_back(str);
+        lock.unlock();
     }
 
     auto to_json() -> nlohmann::json
