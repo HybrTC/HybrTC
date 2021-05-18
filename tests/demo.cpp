@@ -128,7 +128,14 @@ auto main(int argc, const char* argv[]) -> int
 
         std::this_thread::sleep_for(std::chrono::seconds(2));
 
-        execl(CLIENT_BIN, CLIENT_BIN, s0_2c_endpoint.data(), s1_2c_endpoint.data(), nullptr);
+        execl(
+            CLIENT_BIN,
+            CLIENT_BIN,
+            "--s0-endpoint",
+            s0_2c_endpoint.data(),
+            "--s1-endpoint",
+            s1_2c_endpoint.data(),
+            nullptr);
     }
     else
     {

@@ -10,6 +10,7 @@
 #include <string>
 #include <thread>
 
+#include <CLI/CLI.hpp>
 #include <nlohmann/json.hpp>
 
 #define __OUTSIDE_ENCLAVE__
@@ -117,12 +118,12 @@ auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
     return sid;
 }
 
-auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk) -> json
+auto client(const std::string& server_addr, zmq::context_t* io, int id, const v8& pk) -> json
 {
     SPDLOG_DEBUG(__PRETTY_FUNCTION__);
 
     /* construct a request socket and connect to interface */
-    zmq::socket_t client = connect(*io, server_addr);
+    zmq::socket_t client = connect(*io, server_addr.c_str());
     VerifierContext vctx(rand_ctx);
     uint32_t sid;
 
@@ -165,19 +166,28 @@ auto client(const char* server_addr, zmq::context_t* io, int id, const v8& pk) -
 
 auto main(int argc, const char* argv[]) -> int
 {
+    /* pasrse command line argument */
+
+    CLI::App app;
+
+    std::string s0_endpoint;
+    app.add_option("--s0-endpoint", s0_endpoint, "server 0's endpoint")->required();
+
+    std::string s1_endpoint;
+    app.add_option("--s1-endpoint", s1_endpoint, "server 1's endpoint")->required();
+
+    CLI11_PARSE(app, argc, argv);
+
+    /* configure logger */
+
     spdlog::set_level(spdlog::level::trace);
     spdlog::set_pattern("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [c] [%t] %s:%# -%$ %v");
 
-    if (argc != 3)
-    {
-        fprintf(stderr, "Usage: %s <endpoint1> <endpoint2>\n", argv[0]);
-        return EXIT_FAILURE;
-    }
-
-    const std::array<const char*, 2> endpoint = {argv[1], argv[2]};
+    const std::array<std::string, 2> endpoint = {s0_endpoint, s1_endpoint};
     SPDLOG_INFO("server endpoint: {} {}", endpoint[0], endpoint[1]);
 
     /* prepare public key */
+
     rand_ctx = std::make_shared<mbedtls::ctr_drbg>();
 
     PSI::Paillier homo_crypto;
