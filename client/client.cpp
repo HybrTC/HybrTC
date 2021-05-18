@@ -27,6 +27,8 @@
 #include "utils/zmq.hpp"
 
 using nlohmann::json;
+using std::string;
+using zmq::context_t;
 
 std::shared_ptr<mbedtls::ctr_drbg> rand_ctx;
 std::map<uint32_t, std::shared_ptr<PSI::Session>> sessions;
@@ -102,8 +104,7 @@ auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
     return sid;
 }
 
-auto client(const std::string& server_addr, zmq::context_t* io, int id, const v8& pk)
-    -> std::tuple<json, size_t, size_t>
+auto client(const string& server_addr, context_t* io, int id, const v8& pk) -> std::tuple<json, size_t, size_t>
 {
     SPDLOG_DEBUG(__PRETTY_FUNCTION__);
 
@@ -157,13 +158,13 @@ auto main(int argc, const char* argv[]) -> int
 
     CLI::App app;
 
-    std::string s0_endpoint;
+    string s0_endpoint;
     app.add_option("--s0-endpoint", s0_endpoint, "server 0's endpoint")->required();
 
-    std::string s1_endpoint;
+    string s1_endpoint;
     app.add_option("--s1-endpoint", s1_endpoint, "server 1's endpoint")->required();
 
-    std::string test_id;
+    string test_id;
     app.add_option("--test-id", test_id, "test identifier");
 
     CLI11_PARSE(app, argc, argv);
@@ -173,7 +174,7 @@ auto main(int argc, const char* argv[]) -> int
     spdlog::set_level(spdlog::level::trace);
     spdlog::set_pattern("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [c] [%t] %s:%# -%$ %v");
 
-    const std::array<std::string, 2> endpoint = {s0_endpoint, s1_endpoint};
+    const std::array<string, 2> endpoint = {s0_endpoint, s1_endpoint};
     SPDLOG_INFO("server endpoint: {} {}", endpoint[0], endpoint[1]);
 
     /* prepare public key */
@@ -185,7 +186,7 @@ auto main(int argc, const char* argv[]) -> int
     auto pubkey = homo_crypto.dump_pubkey();
 
     /* initialize the zmq context with a single IO thread */
-    zmq::context_t context{1};
+    context_t context{1};
 
     timer("start");
 
@@ -214,8 +215,8 @@ auto main(int argc, const char* argv[]) -> int
 
     for (auto pair : p0)
     {
-        std::array<uint8_t, sizeof(uint128_t)> key_bin = pair[0];
-        std::vector<uint8_t> val_bin = pair[1];
+        a8<sizeof(uint128_t)> key_bin = pair[0];
+        v8 val_bin = pair[1];
         auto dec = homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size())).to_unsigned<uint64_t>();
 
         SPDLOG_INFO("{:sn} {:016x}", spdlog::to_hex(key_bin), dec);
@@ -223,8 +224,8 @@ auto main(int argc, const char* argv[]) -> int
 
     for (auto pair : p1)
     {
-        std::array<uint8_t, sizeof(uint128_t)> key_bin = pair[0];
-        std::vector<uint8_t> val_bin = pair[1];
+        a8<sizeof(uint128_t)> key_bin = pair[0];
+        v8 val_bin = pair[1];
         auto dec = homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size())).to_unsigned<uint64_t>();
 
         SPDLOG_INFO("{:sn} {:016x}", spdlog::to_hex(key_bin), dec);
@@ -245,7 +246,7 @@ auto main(int argc, const char* argv[]) -> int
          {"time", timer.to_json()}});
 
     {
-        std::string output_str = output.dump();
+        string output_str = output.dump();
 
         auto fn = fmt::format("{:%Y%m%dT%H%M%S}-{}-client.json", fmt::localtime(time(nullptr)), test_id);
 

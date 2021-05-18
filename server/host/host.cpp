@@ -11,7 +11,6 @@
 #include "utils/spdlog.hpp"
 #include "utils/zmq.hpp"
 
-using std::stoi;
 using std::string;
 using zmq::context_t;
 using zmq::socket_t;
@@ -137,10 +136,10 @@ auto main(int argc, const char* argv[]) -> int
     int peer_port;
     app.add_option("-p,--peer-port", peer_port, "listening port for peer to connect")->required();
 
-    std::string peer_endpoint;
+    string peer_endpoint;
     app.add_option("-s,--peer-endpoint", peer_endpoint, "peer's endpoint")->required();
 
-    std::string enclave_image_path;
+    string enclave_image_path;
     app.add_option("-e,--enclave-path", enclave_image_path, "path to the signed enclave image")
         ->required()
         ->check(CLI::ExistingFile);
