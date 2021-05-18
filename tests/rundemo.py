@@ -1,8 +1,12 @@
+#! /usr/bin/env python3.8
+
 import argparse
-import subprocess
+import asyncio
+import os
+from datetime import datetime
 from itertools import product
 from pathlib import Path
-from datetime import datetime
+from signal import SIGKILL
 from uuid import uuid1
 
 
@@ -18,7 +22,7 @@ SERVER1_HOST = "localhost"
 SERVER1_PORT_P = "6000"
 SERVER1_PORT_C = "6001"
 
-NETWORK_TOPOLOGY = {
+NET_TOPO = {
     "server0": {
         "client_port": SERVER0_PORT_C,
         "peer_port": SERVER0_PORT_P,
@@ -36,44 +40,58 @@ NETWORK_TOPOLOGY = {
 }
 
 
-def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
-    return subprocess.Popen(
-        [str(client_path), f"--s0-endpoint={s0_endpoint}", f"--s1-endpoint={s1_endpoint}", f"--test-id={test_id}"],
+async def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
+    proc = await asyncio.create_subprocess_exec(
+        str(client_path),
+        f"--s0-endpoint={s0_endpoint}",
+        f"--s1-endpoint={s1_endpoint}",
+        f"--test-id={test_id}",
     )
 
+    await proc.wait()
 
-def run_server(server_path, test_id, server_id, data_size, enclave_path, client_port, peer_port, peer_endpoint):
-    return subprocess.Popen(
-        [
-            str(server_path),
-            f"--enclave-path={enclave_path}",
-            f"--server-id={server_id}",
-            f"--data-size={data_size}",
-            f"--client-port={client_port}",
-            f"--peer-port={peer_port}",
-            f"--peer-endpoint={peer_endpoint}",
-            f"--test-id={test_id}",
-        ],
+    if proc.returncode != 0:
+        raise RuntimeError(f"Client returns {proc.returncode}")
+
+
+async def run_server(server_path, test_id, server_id, data_size, enclave_path, client_port, peer_port, peer_endpoint):
+    proc = await asyncio.create_subprocess_exec(
+        str(server_path),
+        f"--enclave-path={enclave_path}",
+        f"--server-id={server_id}",
+        f"--data-size={data_size}",
+        f"--client-port={client_port}",
+        f"--peer-port={peer_port}",
+        f"--peer-endpoint={peer_endpoint}",
+        f"--test-id={test_id}",
     )
 
+    await proc.wait()
 
-def test(client: Path, server: Path, enclave: Path, data_size: int):
+    if proc.returncode != 0:
+        raise RuntimeError(f"Server{server_id} returns {proc.returncode}")
+
+
+async def test(client: Path, server: Path, enclave: Path, data_size: int):
     test_id = prefix()
 
-    processes = {
-        "client": run_client(client, test_id, **NETWORK_TOPOLOGY["client"]),
-        "server0": run_server(server, test_id, 0, data_size, enclave, **NETWORK_TOPOLOGY["server0"]),
-        "server1": run_server(server, test_id, 1, data_size, enclave, **NETWORK_TOPOLOGY["server1"]),
+    procs = {
+        "server0": run_server(server, test_id, 0, data_size, enclave, **NET_TOPO["server0"]),
+        "server1": run_server(server, test_id, 1, data_size, enclave, **NET_TOPO["server1"]),
+        "client": run_client(client, test_id, **NET_TOPO["client"]),
     }
 
-    for name, proc in processes.items():
-        proc.wait()
-        if proc.returncode != 0:
-            arguments = {"client": client, "server": server, "enclave": enclave, "data_size": data_size}
-            raise RuntimeError(f"{arguments} / {name} => {proc.returncode}")
+    try:
+        await asyncio.gather(*procs.values())
+    except BaseException as e:
+        arguments = {"client": client, "server": server, "enclave": enclave, "data_size": data_size}
+        print(arguments)
+        os.kill(0, SIGKILL)
+
+        raise e
 
 
-def main(args):
+async def main(args):
     CLIENT_DIR: Path = args.build / "client"
     SERVER_DIR: Path = args.build / "server/host"
     ENCLAVE_DIR: Path = args.build / "server/enclave"
@@ -89,7 +107,7 @@ def main(args):
 
         for i in range(args.repeat):
             print(f"select={select} aggregate={aggregate} size={size} {i}/{args.repeat}")
-            test(client, server, enclave, size)
+            await test(client, server, enclave, size)
 
 
 if __name__ == "__main__":
@@ -103,4 +121,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(args)
+    asyncio.run(main(args))
