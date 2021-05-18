@@ -37,8 +37,6 @@ class MelbourneShuffle
 
 #if PSI_SELECT_POLICY == PSI_SELECT_ODD_OBLIVIOUS
             r.tag |= static_cast<uint8_t>(r.val % 2 == 1);
-#elif PSI_SELECT_POLICY == PSI_SELECT_EVEN_OBLIVIOUS
-            r.tag |= static_cast<uint8_t>(r.val % 2 != 1);
 #elif PSI_SELECT_POLICY == PSI_SELECT_ALL_OBLIVIOUS
             r.tag |= 1;
 #endif
