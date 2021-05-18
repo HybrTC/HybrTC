@@ -255,8 +255,5 @@ auto main(int argc, const char* argv[]) -> int
         SPDLOG_INFO("Benchmark written to {}", fn);
     }
 
-    context.shutdown();
-    context.close();
-
     return 0;
 }
