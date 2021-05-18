@@ -66,7 +66,7 @@ set(PSI_AGGREAGATE_JOIN_SUM 0x11)
 
 # options
 
-set(PSI_VERBOSE "" OFF)
+set(PSI_VERBOSE "" ON)
 
 # verbose
 
@@ -155,4 +155,4 @@ add_custom_target(
   COMMAND
     python3 ${CMAKE_SOURCE_DIR}/tests/rundemo.py --binary-dir
     ${CMAKE_BINARY_DIR} --select-policy ${PSI_SELECT_POLICY} --aggregate-policy
-    ${PSI_AGGREGATE_POLICY} --data-size ${PSI_DATA_SET_SIZE_LOG} --repeat 2)
+    ${PSI_AGGREGATE_POLICY} --data-size ${PSI_DATA_SET_SIZE_LOG} --repeat 1)

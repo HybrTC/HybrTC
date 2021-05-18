@@ -62,11 +62,11 @@ class SPIEnclave
 
     void set_client_query(uint32_t sid, const v8& input, bool half, const v32& keys, const v32& values);
 
-    void get_select_result(uint32_t sid, buffer& obuf);
-
     void build_bloom_filter(uint32_t sid, buffer& bloom_filter);
 
     void match_bloom_filter(uint32_t sid, const v8& input, buffer& output);
 
-    void aggregate(uint32_t peer_sid, uint32_t client_sid, const v8& input, buffer& output);
+    void aggregate(uint32_t sid, const v8& input);
+
+    void get_result(uint32_t sid, buffer& obuf);
 };

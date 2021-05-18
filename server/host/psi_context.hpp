@@ -33,7 +33,6 @@ class PSIContext
     {
         uint32_t isid;
         uint32_t osid;
-        v8 result;
         std::mutex lock;
     } peer_ctx;
 
@@ -125,18 +124,18 @@ class PSIContext
         client_ctx.lock_build.unlock();
         client_ctx.lock_match.unlock();
 
-#if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
-        buffer output;
-        enclave.get_select_result(client_ctx.sid, output);
-        peer_ctx.result = v8(output.data, output.data + output.size);
-#else
-        /* waiting for peer to return the result */
+#if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
+        /* waiting for peer to build the result */
         SPDLOG_DEBUG("Locking peer_ctx.lock");
         peer_ctx.lock.lock();
 #endif
 
+        buffer output;
+        enclave.get_result(client_ctx.sid, output);
+        auto result = v8(output.data, output.data + output.size);
+
         /* build and return query result */
-        return {{"sid", sid}, {"type", QueryResponse}, {"payload", peer_ctx.result}};
+        return {{"sid", sid}, {"type", QueryResponse}, {"payload", result}};
     }
 
     /*
@@ -175,9 +174,7 @@ class PSIContext
     {
         assert(sid == peer_ctx.osid);
 
-        buffer output;
-        enclave.aggregate(sid, client_ctx.sid, payload, output);
-        peer_ctx.result = v8(output.data, output.data + output.size);
+        enclave.aggregate(sid, payload);
 
         /*
          * result prepared, ready for client to take

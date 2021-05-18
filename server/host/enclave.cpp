@@ -84,14 +84,6 @@ void SPIEnclave::set_client_query(uint32_t sid, const v8& input, bool half, cons
 
     CHECK("set_client_query", result);
 }
-void SPIEnclave::get_select_result(uint32_t sid, buffer& obuf)
-{
-    ECALL_IN;
-    oe_result_t result = ::get_select_result(enclave(), sid, &obuf.data, &obuf.size);
-    ECALL_OUT;
-
-    CHECK("get_select_result", result);
-}
 
 void SPIEnclave::build_bloom_filter(uint32_t sid, buffer& bloom_filter)
 {
@@ -111,12 +103,20 @@ void SPIEnclave::match_bloom_filter(uint32_t sid, const v8& input, buffer& outpu
     CHECK("match_bloom_filter", result);
 }
 
-void SPIEnclave::aggregate(uint32_t peer_sid, uint32_t client_sid, const v8& input, buffer& output)
+void SPIEnclave::aggregate(uint32_t sid, const v8& input)
 {
     ECALL_IN;
-    oe_result_t result =
-        ::aggregate(enclave(), peer_sid, client_sid, input.data(), input.size(), &output.data, &output.size);
+    oe_result_t result = ::aggregate(enclave(), sid, input.data(), input.size());
     ECALL_OUT;
 
     CHECK("aggregate", result);
+}
+
+void SPIEnclave::get_result(uint32_t sid, buffer& obuf)
+{
+    ECALL_IN;
+    oe_result_t result = ::get_result(enclave(), sid, &obuf.data, &obuf.size);
+    ECALL_OUT;
+
+    CHECK("get_result", result);
 }

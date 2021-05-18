@@ -59,19 +59,6 @@ void set_client_query(
     handler->load_data(data_key, data_val, data_size);
 }
 
-void get_select_result(u32 sid, u8** obuf, size_t* olen)
-{
-#if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
-    global->dump_enc(sid, handler->get_result(), obuf, olen);
-#else
-    (void)(sid);
-    (void)(obuf);
-    (void)(olen);
-
-    abort();
-#endif
-}
-
 void build_bloom_filter(u32 sid, u8** obuf, size_t* olen)
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
@@ -100,19 +87,20 @@ void match_bloom_filter(u32 sid, const u8* ibuf, size_t ilen, u8** obuf, size_t*
 #endif
 }
 
-void aggregate(u32 peer_sid, u32 client_sid, const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
+void aggregate(u32 sid, const u8* ibuf, size_t ilen)
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-    handler->build_result(global->session(peer_sid).decrypt(ibuf, ilen));
-    global->dump_enc(client_sid, handler->get_result(), obuf, olen);
+    handler->build_result(global->session(sid).decrypt(ibuf, ilen));
 #else
-    (void)(peer_sid);
-    (void)(client_sid);
+    (void)(sid);
     (void)(ibuf);
     (void)(ilen);
-    (void)(obuf);
-    (void)(olen);
 
     abort();
 #endif
+}
+
+void get_result(u32 sid, u8** obuf, size_t* olen)
+{
+    global->dump_enc(sid, handler->get_result(), obuf, olen);
 }
