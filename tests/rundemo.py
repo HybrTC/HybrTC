@@ -41,12 +41,15 @@ NET_TOPO = {
 
 
 async def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
-    proc = await asyncio.create_subprocess_exec(
+    cmd = [
         str(client_path),
         f"--s0-endpoint={s0_endpoint}",
         f"--s1-endpoint={s1_endpoint}",
         f"--test-id={test_id}",
-    )
+    ]
+
+    print(*cmd)
+    proc = await asyncio.create_subprocess_exec(*cmd)
 
     await proc.wait()
 
@@ -55,7 +58,7 @@ async def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
 
 
 async def run_server(server_path, test_id, server_id, data_size, enclave_path, client_port, peer_port, peer_endpoint):
-    proc = await asyncio.create_subprocess_exec(
+    cmd = [
         str(server_path),
         f"--enclave-path={enclave_path}",
         f"--server-id={server_id}",
@@ -64,7 +67,10 @@ async def run_server(server_path, test_id, server_id, data_size, enclave_path, c
         f"--peer-port={peer_port}",
         f"--peer-endpoint={peer_endpoint}",
         f"--test-id={test_id}",
-    )
+    ]
+
+    print(*cmd)
+    proc = await asyncio.create_subprocess_exec(*cmd)
 
     await proc.wait()
 
