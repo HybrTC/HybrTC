@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cstddef>
 #include <future>
 #include <string>
 #include <thread>
@@ -153,7 +154,9 @@ auto main(int argc, const char* argv[]) -> int
     context_t context(1);
 
     /* initialize PSI context */
-    PSIContext psi(enclave_image_path, bool(server_id));
+    constexpr size_t data_size = (1 << PSI_DATA_SET_SIZE_LOG);
+    constexpr size_t max_key = (1 << PSI_DATA_KEY_RANGE_LOG);
+    PSIContext psi(enclave_image_path, data_size, max_key, bool(server_id));
 
     /* start server */
     auto s_client = std::async(std::launch::async, client_servant, client_port, &context, &psi);

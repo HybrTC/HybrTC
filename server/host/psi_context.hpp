@@ -39,14 +39,15 @@ class PSIContext
     bool half;
 
   public:
-    explicit PSIContext(const char* enclave_image_path, bool half) : enclave(enclave_image_path, false), half(half)
+    explicit PSIContext(const char* enclave_image_path, size_t data_size, size_t max_key, bool half)
+        : enclave(enclave_image_path, false), half(half)
     {
         /* generate random dataset */
         PRNG<uint32_t> prng;
 
-        for (size_t i = 0; i < (1 << PSI_DATA_SET_SIZE_LOG); i++)
+        for (size_t i = 0; i < data_size; i++)
         {
-            data_keys.push_back(prng() % (1 << PSI_DATA_KEY_RANGE_LOG));
+            data_keys.push_back(prng() % max_key);
             data_vals.push_back(prng());
         }
 
