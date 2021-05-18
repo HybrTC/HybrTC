@@ -96,7 +96,47 @@ include_directories(${CMAKE_SOURCE_DIR}/common)
 
 add_subdirectory(client)
 add_subdirectory(server)
-# add_subdirectory(tests)
+add_subdirectory(tests)
+
+# user cmake to run single test
+
+set(SERVER0_HOST "localhost")
+set(SERVER0_PORT_P "5000")
+set(SERVER0_PORT_C "5001")
+set(SERVER1_HOST "localhost")
+set(SERVER1_PORT_P "6000")
+set(SERVER1_PORT_C "6001")
+
+foreach (select_policy IN LISTS PSI_SELECT_POLICY)
+  foreach (aggregate_policy IN LISTS PSI_AGGREGATE_POLICY)
+
+    set(client
+        "${CMAKE_BINARY_DIR}/client/client-${select_policy}-${aggregate_policy}"
+    )
+    set(server
+        "${CMAKE_BINARY_DIR}/server/host/server-${select_policy}-${aggregate_policy}"
+    )
+    set(enclave
+        "${CMAKE_BINARY_DIR}/server/enclave/enclave-${select_policy}-${aggregate_policy}.signed"
+    )
+
+    add_custom_target(
+      run-${select_policy}-${aggregate_policy}
+      DEPENDS ${client} ${server} ${enclave}
+      COMMAND
+        ${client} "--s0-endpoint=tcp://${SERVER0_HOST}:${SERVER0_PORT_C}"
+        "--s1-endpoint=tcp://${SERVER1_HOST}:${SERVER1_PORT_C}" & ${server}
+        "--enclave-path=${enclave}" "--server-id=0" "--data-size=10"
+        "--client-port=${SERVER0_PORT_C}" "--peer-port=${SERVER0_PORT_P}"
+        "--peer-endpoint=tcp://${SERVER1_HOST}:${SERVER1_PORT_P}" & ${server}
+        "--enclave-path=${enclave}" "--server-id=1" "--data-size=10"
+        "--client-port=${SERVER1_PORT_C}" "--peer-port=${SERVER1_PORT_P}"
+        "--peer-endpoint=tcp://${SERVER0_HOST}:${SERVER0_PORT_P}")
+
+  endforeach ()
+endforeach ()
+
+# use python to run in batch
 
 set(targets)
 foreach (select_policy IN LISTS PSI_SELECT_POLICY)

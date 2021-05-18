@@ -1,7 +1,3 @@
-add_executable(demo demo.cpp)
-target_compile_definitions(demo PRIVATE BINARY_DIR=${CMAKE_BINARY_DIR})
-target_link_libraries(demo PRIVATE CLI11::CLI11)
-
 add_executable(clocks_per_sec clocks_per_sec.cpp)
 
 if (BUID_TEST_CUCKOOHASHING)

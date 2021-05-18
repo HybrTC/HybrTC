@@ -38,7 +38,7 @@ NETWORK_TOPOLOGY = {
 
 def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
     return subprocess.Popen(
-        [str(client_path), f"--s0-endpoint={s0_endpoint}", f"--s1-endpoint={s1_endpoint}", f"--test-id={test_id}"]
+        [str(client_path), f"--s0-endpoint={s0_endpoint}", f"--s1-endpoint={s1_endpoint}", f"--test-id={test_id}"],
     )
 
 
@@ -53,21 +53,24 @@ def run_server(server_path, test_id, server_id, data_size, enclave_path, client_
             f"--peer-port={peer_port}",
             f"--peer-endpoint={peer_endpoint}",
             f"--test-id={test_id}",
-        ]
+        ],
     )
 
 
 def test(client: Path, server: Path, enclave: Path, data_size: int):
     test_id = prefix()
 
-    proc = {
+    processes = {
         "client": run_client(client, test_id, **NETWORK_TOPOLOGY["client"]),
         "server0": run_server(server, test_id, 0, data_size, enclave, **NETWORK_TOPOLOGY["server0"]),
         "server1": run_server(server, test_id, 1, data_size, enclave, **NETWORK_TOPOLOGY["server1"]),
     }
 
-    for p in proc.values():
-        p.wait()
+    for name, proc in processes.items():
+        proc.wait()
+        if proc.returncode != 0:
+            arguments = {"client": client, "server": server, "enclave": enclave, "data_size": data_size}
+            raise RuntimeError(f"{arguments} / {name} => {proc.returncode}")
 
 
 def main(args):
@@ -84,7 +87,9 @@ def main(args):
         assert server.exists()
         assert enclave.exists()
 
-        test(client, server, enclave, size)
+        for i in range(args.repeat):
+            print(f"select={select} aggregate={aggregate} size={size} {i}/{args.repeat}")
+            test(client, server, enclave, size)
 
 
 if __name__ == "__main__":

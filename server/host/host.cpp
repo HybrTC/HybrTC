@@ -153,7 +153,7 @@ auto main(int argc, const char* argv[]) -> int
     string peer_endpoint;
     app.add_option("-s,--peer-endpoint", peer_endpoint, "peer's endpoint")->required();
 
-    string test_id;
+    string test_id = fmt::format("{:%Y%m%dT%H%M%S}", fmt::localtime(time(nullptr)));
     app.add_option("--test-id", test_id, "test identifier");
 
     CLI11_PARSE(app, argc, argv);

@@ -164,7 +164,7 @@ auto main(int argc, const char* argv[]) -> int
     string s1_endpoint;
     app.add_option("--s1-endpoint", s1_endpoint, "server 1's endpoint")->required();
 
-    string test_id;
+    string test_id = fmt::format("{:%Y%m%dT%H%M%S}", fmt::localtime(time(nullptr)));
     app.add_option("--test-id", test_id, "test identifier");
 
     CLI11_PARSE(app, argc, argv);
