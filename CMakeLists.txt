@@ -122,4 +122,4 @@ add_custom_target(
   COMMAND
     python3.8 ${CMAKE_SOURCE_DIR}/tests/rundemo.py --binary-dir
     ${CMAKE_BINARY_DIR} --select-policy ${PSI_SELECT_POLICY} --aggregate-policy
-    ${PSI_AGGREGATE_POLICY} --data-size ${PSI_DATA_SET_SIZE_LOG} --repeat 1)
+    ${PSI_AGGREGATE_POLICY} --data-size ${PSI_DATA_SET_SIZE_LOG} --repeat 5)
