@@ -2,7 +2,7 @@
 
 #include <sys/syscall.h>
 #include <unistd.h>
-#include <ctime>
+#include <chrono>
 #include <mutex>
 #include <string>
 #include <utility>
@@ -10,22 +10,26 @@
 
 #include <nlohmann/json.hpp>
 
+#include "utils/spdlog.hpp"
+
 class Timer
 {
     struct time_record
     {
-        clock_t timestamp;
+        std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<int64_t, std::nano>> timestamp;
         int64_t thread_id;
         std::string name;
 
         explicit time_record(std::string name)
-            : timestamp(clock()), thread_id(syscall(__NR_gettid)), name(std::move(name))
+            : timestamp(std::chrono::steady_clock::now()), thread_id(syscall(__NR_gettid)), name(std::move(name))
         {
+            SPDLOG_DEBUG("time_record {} {} {}", this->name, thread_id, timestamp.time_since_epoch().count());
         }
 
         auto to_json() -> nlohmann::json
         {
-            return nlohmann::json::object({{"clock", timestamp}, {"thread", thread_id}, {"name", name}});
+            return nlohmann::json::object(
+                {{"clock", timestamp.time_since_epoch().count()}, {"thread", thread_id}, {"name", name}});
         }
     };
 
