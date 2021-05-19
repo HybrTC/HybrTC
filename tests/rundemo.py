@@ -7,8 +7,8 @@ from datetime import datetime
 from itertools import product
 from pathlib import Path
 from signal import SIGKILL
+from time import sleep
 from uuid import uuid1
-
 
 SERVER0_HOST = "localhost"
 SERVER0_PORT_P = "5000"
@@ -36,9 +36,9 @@ NET_TOPO = {
 }
 
 pid = {
-    "server0": -1,
-    "server1": -1,
-    "client": -1,
+    "server0": 0,
+    "server1": 0,
+    "client": 0,
 }
 
 
@@ -51,6 +51,8 @@ async def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
     ]
 
     print(*cmd)
+
+    sleep(1)
     proc = await asyncio.create_subprocess_exec(*cmd)
     pid["client"] = proc.pid
 
