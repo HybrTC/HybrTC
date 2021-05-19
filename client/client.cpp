@@ -104,7 +104,7 @@ auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
     return sid;
 }
 
-auto client(const string& server_addr, context_t* io, int id, const v8& pk) -> std::tuple<json, size_t, size_t>
+auto client(const string& server_addr, context_t* io, int id, const v8& pk) -> std::tuple<v8, size_t, size_t>
 {
     SPDLOG_DEBUG(__PRETTY_FUNCTION__);
 
