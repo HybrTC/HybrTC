@@ -15,25 +15,27 @@ find_file(
 add_subdirectory(enclave)
 add_subdirectory(host)
 
-# Generate key
-add_custom_command(
-  OUTPUT private.pem public.pem
-  COMMAND openssl genrsa -out private.pem -3 3072
-  COMMAND openssl rsa -in private.pem -pubout -out public.pem)
-
 foreach (select_policy IN LISTS PSI_SELECT_POLICY)
   foreach (aggregate_policy IN LISTS PSI_AGGREGATE_POLICY)
 
     set(target enclave/enclave-${select_policy}-${aggregate_policy}.signed)
+    set(prvkey prvkey-${select_policy}-${aggregate_policy}.pem)
+    set(pubkey pubkey-${select_policy}-${aggregate_policy}.pem)
+
+    # Generate key
+    add_custom_command(
+      OUTPUT ${prvkey} ${pubkey}
+      COMMAND openssl genrsa -out ${prvkey} -3 3072
+      COMMAND openssl rsa -in ${prvkey} -pubout -out ${pubkey})
 
     # Sign enclave
     add_custom_command(
       OUTPUT ${target}
-      DEPENDS enclave enclave/helloworld.conf private.pem
+      DEPENDS enclave enclave/helloworld.conf ${prvkey}
       COMMAND
         openenclave::oesign sign -e
         $<TARGET_FILE:enclave-${select_policy}-${aggregate_policy}> -c
-        ${ENCLAVE_CONF} -k private.pem)
+        ${ENCLAVE_CONF} -k ${prvkey})
 
     add_custom_target(sign-${select_policy}-${aggregate_policy} ALL
                       DEPENDS ${target})

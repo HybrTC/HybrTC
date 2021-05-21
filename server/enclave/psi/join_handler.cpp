@@ -100,6 +100,10 @@ void JoinHandler::build_result(const v8& data)
 
 auto JoinHandler::get_result() -> v8
 {
+#if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
+    abort();
+#endif
+
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_JOIN_SUM
     auto result = json::array();
 

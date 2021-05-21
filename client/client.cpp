@@ -152,6 +152,44 @@ auto client(const string& server_addr, context_t* io, int id, const v8& pk) -> s
     return std::make_tuple(result, bytes_sent, bytes_received);
 }
 
+void output_result(PSI::Paillier& homo_crypto, const json& obj)
+{
+#if PSI_VERBOSE
+
+#if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_JOIN_COUNT
+
+    (void)(homo_crypto);
+
+    auto count = obj[0].get<size_t>();
+    SPDLOG_INFO("{}", count);
+
+#else
+
+    for (auto pair : obj)
+    {
+        a8<sizeof(uint128_t)> key_bin = pair[0];
+
+#if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
+        (void)(homo_crypto);
+        auto val = pair[1].get<uint64_t>();
+#else
+        v8 val_bin = pair[1];
+        auto val = homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size())).to_unsigned<uint64_t>();
+#endif
+
+        SPDLOG_INFO("{:sn} {:016x}", spdlog::to_hex(key_bin), val);
+    }
+
+#endif
+
+#else
+
+    (void)(homo_crypto);
+    (void)(obj);
+
+#endif
+}
+
 auto main(int argc, const char* argv[]) -> int
 {
     /* pasrse command line argument */
@@ -201,43 +239,10 @@ auto main(int argc, const char* argv[]) -> int
     timer("done");
 
     /* print out query result */
+    output_result(homo_crypto, json::from_msgpack(v0));
+    output_result(homo_crypto, json::from_msgpack(v1));
 
-#if PSI_VERBOSE
-
-    auto p0 = json::from_msgpack(v0);
-    auto p1 = json::from_msgpack(v1);
-
-#if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_JOIN_COUNT
-
-    auto result0 = p0[0].get<size_t>();
-    SPDLOG_INFO("{}", result0);
-
-    auto result1 = p1[0].get<size_t>();
-    SPDLOG_INFO("{}", result1);
-
-#else
-
-    for (auto pair : p0)
-    {
-        a8<sizeof(uint128_t)> key_bin = pair[0];
-        v8 val_bin = pair[1];
-        auto dec = homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size())).to_unsigned<uint64_t>();
-
-        SPDLOG_INFO("{:sn} {:016x}", spdlog::to_hex(key_bin), dec);
-    }
-
-    for (auto pair : p1)
-    {
-        a8<sizeof(uint128_t)> key_bin = pair[0];
-        v8 val_bin = pair[1];
-        auto dec = homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size())).to_unsigned<uint64_t>();
-
-        SPDLOG_INFO("{:sn} {:016x}", spdlog::to_hex(key_bin), dec);
-    }
-
-#endif
-#endif
-
+    /* dump statistics*/
     json output = json::object(
         {{"PSI_PAILLIER_PK_LEN", PSI_PAILLIER_PK_LEN},
          {"PSI_MELBOURNE_P", PSI_MELBOURNE_P},

@@ -37,10 +37,7 @@ auto SelectHandler::get_result() -> v8
     for (auto& [k, v] : local_data)
     {
         uint128_t key = prp(k);
-        auto enc = homo.encrypt(v, *rand_ctx).to_vector();
-        assert(!enc.empty());
-
-        result.push_back(json::array({*reinterpret_cast<const PRP::binary*>(&key), enc}));
+        result.push_back(json::array({*reinterpret_cast<const PRP::binary*>(&key), v}));
     }
 
     return json::to_msgpack(result);
