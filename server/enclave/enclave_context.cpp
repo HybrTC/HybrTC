@@ -65,10 +65,15 @@ void EnclaveContext::new_session(u32 sid, sptr<PSI::Session> session, const Atte
 auto EnclaveContext::session(u32 session_id) -> PSI::Session&
 {
     session_lock.lock();
-    auto ret = sessions[session_id];
+    auto it = sessions.find(session_id);
     session_lock.unlock();
 
-    return *ret;
+    if (it == sessions.end())
+    {
+        TRACE_ENCLAVE("cannot find session: sid=%08x", session_id);
+    }
+
+    return *it->second;
 }
 
 void EnclaveContext::verifier_generate_challenge(u8** obuf, size_t* olen)
