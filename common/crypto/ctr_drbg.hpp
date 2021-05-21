@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 
 #include "common/types.hpp"
 #include "entropy.hpp"
@@ -31,6 +32,12 @@ class ctr_drbg : public internal::resource<mbedtls_ctr_drbg_context, mbedtls_ctr
         I num;
         mbedtls_ctr_drbg_random(get(), u8p(&num), sizeof(num));
         return num;
+    }
+
+    template <size_t N>
+    void fill(a8<N>& buf)
+    {
+        fill(&buf[0], buf.size());
     }
 
     void fill(u8* buf, size_t len)
