@@ -1,7 +1,6 @@
 #include <cstdint>
 
 #include "enclave.hpp"
-#include "spdlog/fmt/bundled/core.h"
 #include "utils/spdlog.hpp"
 
 #include "helloworld_u.h"
