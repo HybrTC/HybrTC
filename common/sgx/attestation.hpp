@@ -52,7 +52,7 @@ struct AttestationContext
         hash.update(ecdh.calc_secret());
         auto session_key = hash.finish();
 
-        return {sid, std::make_shared<PSI::Session>(session_key, rand_ctx)};
+        return {sid, std::make_shared<PSI::Session>(session_key)};
     }
 };
 

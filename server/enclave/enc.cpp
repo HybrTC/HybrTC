@@ -56,7 +56,7 @@ void set_client_query(
     (void)(ilen);
     (void)(half);
 #else
-    handler->set_public_key(global->session(sid).decrypt(ibuf, ilen));
+    handler->set_public_key(global->session(sid).cipher().decrypt(ibuf, ilen));
     handler->set_half(half);
 #endif
 
@@ -79,7 +79,7 @@ void build_bloom_filter(u32 sid, u8** obuf, size_t* olen)
 void match_bloom_filter(u32 sid, const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-    global->dump_enc(sid, handler->match_filter(global->session(sid).decrypt(ibuf, ilen)), obuf, olen);
+    global->dump_enc(sid, handler->match_filter(global->session(sid).cipher().decrypt(ibuf, ilen)), obuf, olen);
 #else
     (void)(sid);
     (void)(ibuf);
@@ -94,7 +94,7 @@ void match_bloom_filter(u32 sid, const u8* ibuf, size_t ilen, u8** obuf, size_t*
 void aggregate(u32 sid, const u8* ibuf, size_t ilen)
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-    handler->build_result(global->session(sid).decrypt(ibuf, ilen));
+    handler->build_result(global->session(sid).cipher().decrypt(ibuf, ilen));
 #else
     (void)(sid);
     (void)(ibuf);

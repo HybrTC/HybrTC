@@ -130,10 +130,10 @@ auto client(const string& server_addr, context_t* io, int id, const v8& pk) -> s
 
     timer(fmt::format("c/s{}: initiate query", id));
 
-    auto crypto = sessions[sid];
+    auto session = sessions[sid];
 
     /* set public key */
-    json request = {{"sid", sid}, {"type", QueryRequest}, {"payload", crypto->encrypt(pk)}};
+    json request = {{"sid", sid}, {"type", QueryRequest}, {"payload", session->cipher().encrypt(pk, *rand_ctx)}};
     assert(request["type"].get<MessageType>() == QueryRequest);
     client.send(request);
 
@@ -141,7 +141,7 @@ auto client(const string& server_addr, context_t* io, int id, const v8& pk) -> s
     json response = client.recv();
     assert(response["type"].get<MessageType>() == QueryResponse);
     assert(sid == response["sid"].get<uint32_t>());
-    auto result = crypto->decrypt(response["payload"].get<v8>());
+    auto result = session->cipher().decrypt(response["payload"].get<v8>());
 
     timer(fmt::format("c/s{}: result received", id));
 

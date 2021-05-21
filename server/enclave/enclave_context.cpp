@@ -1,5 +1,6 @@
 #include <mbedtls/ctr_drbg.h>
 #include <openenclave/enclave.h>
+#include <cstddef>
 #include <nlohmann/json.hpp>
 
 #include "enclave_context.hpp"
@@ -25,7 +26,13 @@ void EnclaveContext::dump(const v8& bytes, uint8_t** obuf, size_t* olen)
 
 void EnclaveContext::dump_enc(u32 sid, const v8& bytes, uint8_t** obuf, size_t* olen)
 {
-    dump(sessions[sid]->encrypt(bytes), obuf, olen);
+    auto cipher = sessions[sid]->cipher();
+    size_t len = cipher.encrypt_size(bytes.size());
+
+    *olen = len;
+    *obuf = u8p(oe_host_malloc(len));
+
+    cipher.encrypt(*obuf, *olen, bytes.data(), bytes.size(), *rand_ctx);
 }
 
 // TODO(jiamin): a temporary workaround

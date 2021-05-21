@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <stdexcept>
 
 #include "common/types.hpp"
@@ -23,8 +25,8 @@ class gcm : public internal::resource<mbedtls_gcm_context, mbedtls_gcm_init, mbe
     struct ciphertext
     {
         uint32_t id;
-        uint8_t tag[TAG_LEN];
-        uint8_t iv[IV_LEN];
+        a8<TAG_LEN> tag;
+        a8<IV_LEN> iv;
         uint8_t ciphertext[];
     };
 
@@ -33,28 +35,53 @@ class gcm : public internal::resource<mbedtls_gcm_context, mbedtls_gcm_init, mbe
         mbedtls_gcm_setkey(get(), cipher, key.data(), keybits);
     }
 
-    auto encrypt(const uint8_t* input, size_t input_size, ctr_drbg& ctr_drbg) -> v8
+    auto encrypt_size(size_t ilen) -> size_t
     {
-        v8 output(input_size + sizeof(ciphertext), 0);
-        ciphertext& enc = *reinterpret_cast<ciphertext*>(&output[0]);
+        return ilen + sizeof(ciphertext);
+    }
+
+    auto encrypt(const v8& input, ctr_drbg& ctr_drbg) -> v8
+    {
+        return encrypt(input.data(), input.size(), ctr_drbg);
+    }
+
+    auto encrypt(const uint8_t* ibuf, size_t ilen, ctr_drbg& ctr_drbg) -> v8
+    {
+        v8 output(encrypt_size(ilen), 0);
+        encrypt(&output[0], output.size(), ibuf, ilen, ctr_drbg);
+
+        return output;
+    }
+
+    auto encrypt(uint8_t* obuf, size_t olen, const uint8_t* ibuf, size_t ilen, ctr_drbg& ctr_drbg)
+    {
+        ciphertext& enc = *reinterpret_cast<ciphertext*>(obuf);
+
+        if (olen < encrypt_size(ilen))
+        {
+            throw std::length_error("the buffer given is not long enough");
+        }
 
         enc.id = ctr_drbg.rand<decltype(enc.id)>();
-        ctr_drbg.fill(enc.iv, IV_LEN);
+        ctr_drbg.fill(enc.iv);
 
         mbedtls_gcm_crypt_and_tag(
             get(),
             MBEDTLS_GCM_ENCRYPT,
-            input_size,
-            enc.iv,
+            ilen,
+            enc.iv.data(),
             IV_LEN,
             nullptr,
             0,
-            input,
+            ibuf,
             enc.ciphertext,
             TAG_LEN,
-            enc.tag);
+            u8p(&enc.tag[0]));
+    }
 
-        return output;
+    auto decrypt(const v8& input) -> v8
+    {
+        return decrypt(input.data(), input.size());
     }
 
     auto decrypt(const uint8_t* input, size_t input_size) -> v8
@@ -63,7 +90,16 @@ class gcm : public internal::resource<mbedtls_gcm_context, mbedtls_gcm_init, mbe
         v8 output(input_size - sizeof(ciphertext));
 
         int result = mbedtls_gcm_auth_decrypt(
-            get(), output.size(), enc.iv, IV_LEN, nullptr, 0, enc.tag, TAG_LEN, enc.ciphertext, &output[0]);
+            get(),
+            output.size(),
+            enc.iv.data(),
+            IV_LEN,
+            nullptr,
+            0,
+            enc.tag.data(),
+            TAG_LEN,
+            enc.ciphertext,
+            &output[0]);
 
         if (result != 0)
         {
