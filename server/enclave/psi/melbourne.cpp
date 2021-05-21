@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <map>
 #include <memory>
 #include <random>
 #include <stdexcept>
@@ -222,17 +223,16 @@ auto MelbourneShuffle::shuffle(const u32* keys, const u32* vals, size_t data_siz
      * Clean-up Phase                                          *
      ***********************************************************/
 
-    std::vector<std::pair<u64, std::pair<u32, u32>>> result;
+    std::map<u64, std::pair<u32, u32>> result;
     for (size_t i = 0; i < t_size; i++)
     {
         auto msg = cipher->decrypt(t[i].data(), t[i].size());
         const plaintext& obj = *reinterpret_cast<const plaintext*>(msg.data());
         if ((obj.r.tag & UINT8_MAX) > 0)
         {
-            result.emplace_back(std::make_pair(obj.r.tag >> sizeof(u8), std::make_pair(obj.r.key, obj.r.val)));
+            result.insert(std::make_pair(obj.r.tag >> sizeof(u8), std::make_pair(obj.r.key, obj.r.val)));
         }
     }
-    std::sort(result.begin(), result.end());
 
     /* free external memory */
     oe_host_free(t);
