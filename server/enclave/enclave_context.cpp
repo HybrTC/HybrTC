@@ -26,7 +26,7 @@ void EnclaveContext::dump(const v8& bytes, uint8_t** obuf, size_t* olen)
 
 void EnclaveContext::dump_enc(u32 sid, const v8& bytes, uint8_t** obuf, size_t* olen)
 {
-    auto cipher = sessions[sid]->cipher();
+    auto cipher = session(sid).cipher();
     size_t len = cipher.encrypt_size(bytes.size());
 
     *olen = len;
@@ -48,8 +48,10 @@ auto EnclaveContext::rand() -> mbedtls::ctr_drbg&
 
 void EnclaveContext::new_session(u32 sid, sptr<PSI::Session> session, const AttestationContext& ctx)
 {
+    session_lock.lock();
     if (sessions.find(sid) != sessions.end())
     {
+        (void)(ctx);
         TRACE_ENCLAVE("session id collision: vid=%04x aid=%04x sid=%08x", ctx.vid, ctx.aid, sid);
         abort();
     }
@@ -57,11 +59,16 @@ void EnclaveContext::new_session(u32 sid, sptr<PSI::Session> session, const Atte
     {
         sessions.insert({sid, std::move(session)});
     }
+    session_lock.unlock();
 }
 
 auto EnclaveContext::session(u32 session_id) -> PSI::Session&
 {
-    return *sessions[session_id];
+    session_lock.lock();
+    auto ret = sessions[session_id];
+    session_lock.unlock();
+
+    return *ret;
 }
 
 void EnclaveContext::verifier_generate_challenge(u8** obuf, size_t* olen)
@@ -71,7 +78,10 @@ void EnclaveContext::verifier_generate_challenge(u8** obuf, size_t* olen)
 
     /* set verifier id; generate and dump ephemeral public key */
     ctx->vid = verifiers.size();
+
+    verifier_lock.lock();
     verifiers.push_back(ctx);
+    verifier_lock.unlock();
 
     /* generate output object */
     auto json = json::object({{"vid", ctx->vid}, {"vpk", ctx->vpk}, {"format_settings", ctx->core.format_settings()}});

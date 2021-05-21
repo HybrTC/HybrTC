@@ -29,7 +29,6 @@ struct buffer
 class SPIEnclave
 {
     oe_enclave_t* enclave_ptr = nullptr;
-    std::mutex lock;
 
     auto enclave() -> oe_enclave_t*
     {

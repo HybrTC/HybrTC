@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <mutex>
 
 #include "crypto/ctr_drbg.hpp"
 #include "sgx/attestation.hpp"
@@ -11,6 +12,9 @@ class EnclaveContext
     std::vector<sptr<VerifierContext>> verifiers;
     std::map<u32, sptr<PSI::Session>> sessions;
     sptr<mbedtls::ctr_drbg> rand_ctx;
+
+    std::mutex verifier_lock;
+    std::mutex session_lock;
 
     void new_session(u32 sid, sptr<PSI::Session> session, const AttestationContext& ctx);
 

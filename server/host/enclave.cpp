@@ -15,14 +15,12 @@
 
 #define ECALL_IN                                      \
     {                                                 \
-        lock.lock();                                  \
         timer(fmt::format("{}:start", __FUNCTION__)); \
     }
 
 #define ECALL_OUT                                    \
     {                                                \
         timer(fmt::format("{}:done", __FUNCTION__)); \
-        lock.unlock();                               \
     }
 
 SPIEnclave::SPIEnclave(const char* enclave_image_path, bool simulate)
