@@ -54,7 +54,10 @@ class Verifier
             return Claims(nullptr, 0);
         }
 
-        return Claims(claims, claims_length);
+        auto claim_store = Claims(claims, claims_length);
+        oe_free_claims(claims, claims_length);
+
+        return claim_store;
     }
 
     ~Verifier()

@@ -1,46 +1,40 @@
 #pragma once
 
 #include <cstring>
+#include <map>
 #include <memory>
+#include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include <openenclave/attestation/custom_claims.h>
 #include <openenclave/attestation/verifier.h>
 
+#include "common/types.hpp"
+#include "sgx/log.h"
+
 class Claims
 {
-    oe_claim_t* claims;
-    size_t claims_length;
-
-    constexpr static oe_claim_t nan{.name = nullptr, .value = nullptr, .value_size = 0};
+    std::map<std::string, v8> claim_store;
 
   public:
-    Claims(const Claims&) = delete;
-
-    Claims(oe_claim_t* claims, size_t claims_length) : claims(claims), claims_length(claims_length)
-    {
-    }
-
-    auto find(const char* name) const -> const oe_claim_t&
+    Claims(oe_claim_t* claims, size_t claims_length)
     {
         for (size_t i = 0; i < claims_length; i++)
         {
-            if (strcmp(claims[i].name, name) == 0)
-            {
-                return claims[i];
-            }
+            claim_store.insert({claims[i].name, v8(claims[i].value, claims[i].value + claims[i].value_size)});
         }
-        return nan;
     }
 
-    [[nodiscard]] auto custom_claims_buffer() const -> const oe_claim_t&
+    [[nodiscard]] auto custom_claims_buffer() const -> const v8&
     {
-        return find(OE_CLAIM_CUSTOM_CLAIMS_BUFFER);
-    }
+        auto it = claim_store.find(OE_CLAIM_CUSTOM_CLAIMS_BUFFER);
+        if (it == claim_store.end())
+        {
+            throw std::runtime_error("Cannot find OE_CLAIM_CUSTOM_CLAIMS_BUFFER");
+        }
 
-    ~Claims()
-    {
-        oe_free_claims(claims, claims_length);
+        return it->second;
     }
 };
