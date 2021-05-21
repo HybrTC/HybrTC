@@ -4,6 +4,7 @@
 
 #include "common/type_check.hpp"
 #include "hash.hpp"
+#include "sgx/log.h"
 
 /**
  * @brief Bloom Filter
@@ -68,6 +69,7 @@ class BloomFilter
     {
         if (bitmap.size() < FILTER_BYTES)
         {
+            TRACE_ENCLAVE("the bitmap given is not long enough");
             abort();
         }
     }

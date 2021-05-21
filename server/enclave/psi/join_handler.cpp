@@ -32,7 +32,7 @@ void JoinHandler::load_data(const u32* data_key, const u32* data_val, size_t dat
     }
 }
 
-auto JoinHandler::build_filter() -> const v8&
+auto JoinHandler::build_filter() -> v8
 {
     HashSet bloom_filter;
 

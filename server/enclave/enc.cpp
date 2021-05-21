@@ -3,6 +3,7 @@
 #include "enclave_context.hpp"
 
 #include "helloworld_t.h"
+#include "sgx/log.h"
 
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
 #include "psi/select_handler.hpp"
@@ -66,12 +67,14 @@ void set_client_query(
 void build_bloom_filter(u32 sid, u8** obuf, size_t* olen)
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-    global->dump_enc(sid, handler->build_filter(), obuf, olen);
+    auto output = handler->build_filter();
+    global->dump_enc(sid, output, obuf, olen);
 #else
     (void)(sid);
     (void)(obuf);
     (void)(olen);
 
+    TRACE_ENCLAVE("UNREACHABLE CODE");
     abort();
 #endif
 }
@@ -79,7 +82,9 @@ void build_bloom_filter(u32 sid, u8** obuf, size_t* olen)
 void match_bloom_filter(u32 sid, const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-    global->dump_enc(sid, handler->match_filter(global->session(sid).cipher().decrypt(ibuf, ilen)), obuf, olen);
+    auto input = global->session(sid).cipher().decrypt(ibuf, ilen);
+    auto output = handler->match_filter(input);
+    global->dump_enc(sid, output, obuf, olen);
 #else
     (void)(sid);
     (void)(ibuf);
@@ -87,6 +92,7 @@ void match_bloom_filter(u32 sid, const u8* ibuf, size_t ilen, u8** obuf, size_t*
     (void)(obuf);
     (void)(olen);
 
+    TRACE_ENCLAVE("UNREACHABLE CODE");
     abort();
 #endif
 }
@@ -100,6 +106,7 @@ void aggregate(u32 sid, const u8* ibuf, size_t ilen)
     (void)(ibuf);
     (void)(ilen);
 
+    TRACE_ENCLAVE("UNREACHABLE CODE");
     abort();
 #endif
 }
