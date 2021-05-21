@@ -53,7 +53,7 @@ async def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
 
     print(datetime.now().isoformat(), *cmd)
 
-    sleep(4)
+    # sleep(4)
     proc = await asyncio.create_subprocess_exec(*cmd)
     pid["client"] = proc.pid
 
@@ -110,19 +110,19 @@ async def main(args):
     SERVER_DIR: Path = args.build / "server/host"
     ENCLAVE_DIR: Path = args.build / "server/enclave"
 
-    for select, aggregate, size in product(args.select, args.aggregate, args.size):
-        if aggregate == "0x00" and size == 20:
-            continue
+    for i in range(args.repeat):
+        for select, aggregate, size in product(args.select, args.aggregate, args.size):
+            if aggregate == "0x00" and size == 20:
+                continue
 
-        client = CLIENT_DIR / f"client-{select}-{aggregate}"
-        server = SERVER_DIR / f"server-{select}-{aggregate}"
-        enclave = ENCLAVE_DIR / f"enclave-{select}-{aggregate}.signed"
+            client = CLIENT_DIR / f"client-{select}-{aggregate}"
+            server = SERVER_DIR / f"server-{select}-{aggregate}"
+            enclave = ENCLAVE_DIR / f"enclave-{select}-{aggregate}.signed"
 
-        assert client.exists()
-        assert server.exists()
-        assert enclave.exists()
+            assert client.exists()
+            assert server.exists()
+            assert enclave.exists()
 
-        for i in range(args.repeat):
             print("************************************************************")
             print(f"*    select={select} aggregate={aggregate} size={size} {i}/{args.repeat}")
             print("************************************************************")
