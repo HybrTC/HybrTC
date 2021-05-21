@@ -37,7 +37,9 @@ auto attester_generate_response(const u8* ibuf, size_t ilen, u8** obuf, size_t* 
 
 auto verifier_process_response(const u8* ibuf, size_t ilen) -> u32
 {
-    return global->verifier_process_response(ibuf, ilen);
+    auto sid = global->verifier_process_response(ibuf, ilen);
+    TRACE_ENCLAVE("sid generated: %08x", sid);
+    return sid;
 }
 
 void set_client_query(

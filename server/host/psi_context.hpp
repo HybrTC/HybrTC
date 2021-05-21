@@ -102,12 +102,10 @@ class PSIContext
             {"sid", sid}, {"type", AttestationResponse}, {"payload", v8(response.data, response.data + response.size)}};
     }
 
-    auto process_attestation_resp(uint32_t sid, const v8& response) -> uint32_t
+    auto process_attestation_resp(const v8& response) -> uint32_t
     {
-        (void)(sid);
-        uint32_t sid_ = enclave.verifier_process_response(response);
-        assert(sid == sid_);
-        return sid_;
+        auto sid = enclave.verifier_process_response(response);
+        return sid;
     }
 
     /*

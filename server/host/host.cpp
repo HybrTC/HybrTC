@@ -1,6 +1,7 @@
 #include <chrono>
 #include <cstddef>
 #include <future>
+#include <stdexcept>
 #include <string>
 #include <thread>
 
@@ -9,6 +10,7 @@
 
 #include "common/types.hpp"
 #include "psi_context.hpp"
+#include "spdlog/spdlog.h"
 #include "timer.hpp"
 #include "utils/spdlog.hpp"
 #include "utils/zmq.hpp"
@@ -41,19 +43,26 @@ auto client_servant(int port, context_t* io, PSIContext* context)
     auto server = Socket::listen(*io, port);
 
     /* attestation */
-    context->set_client_sid(attestation_servant(server, *context));
+    auto sid = attestation_servant(server, *context);
+    context->set_client_sid(sid);
+    SPDLOG_DEBUG("server session from client: sid={:08x}", sid);
 
     /* compute query */
-    auto request = server.recv();
-    SPDLOG_DEBUG("handle_query_request: request received");
-    assert(request["type"].get<MessageType>() == QueryRequest);
-    auto sid = request["sid"].get<u32>();
-    auto payload = request["payload"].get<v8>();
+    {
+        auto request = server.recv();
+        SPDLOG_DEBUG("handle_query_request: request received");
+        assert(request["type"].get<MessageType>() == QueryRequest);
+        if (request["sid"].get<u32>() != sid)
+        {
+            throw std::runtime_error("session id doesn't match");
+        }
+        auto payload = request["payload"].get<v8>();
 
-    auto response = context->handle_query_request(sid, payload);
-    assert(response["type"].get<MessageType>() == QueryResponse);
-    server.send(response);
-    SPDLOG_DEBUG("handle_query_request: response sent");
+        auto response = context->handle_query_request(sid, payload);
+        assert(response["type"].get<MessageType>() == QueryResponse);
+        server.send(response);
+        SPDLOG_DEBUG("handle_query_request: response sent");
+    }
 
     return server.statistics();
 }
@@ -67,14 +76,19 @@ auto peer_servant(int port, context_t* io, PSIContext* context)
     auto server = Socket::listen(*io, port);
 
     /* attestation */
-    context->set_peer_isid(attestation_servant(server, *context));
+    auto sid = attestation_servant(server, *context);
+    context->set_peer_isid(sid);
+    SPDLOG_DEBUG("server session from peer: sid={:08x}", sid);
 
     /* compute query */
     {
         auto request = server.recv();
         SPDLOG_DEBUG("handle_compute_req: request received");
         assert(request["type"].get<MessageType>() == ComputeRequest);
-        auto sid = request["sid"].get<u32>();
+        if (request["sid"].get<u32>() != sid)
+        {
+            throw std::runtime_error("session id doesn't match");
+        }
         auto payload = request["payload"].get<v8>();
 
         auto response = context->handle_compute_req(sid, payload);
@@ -94,34 +108,44 @@ auto peer_client(const char* peer_endpoint, context_t* io, PSIContext* context)
     auto client = Socket::connect(*io, peer_endpoint);
 
     /* attestation */
-    {
-        auto request = context->prepare_attestation_req();
-        assert(request["type"].get<MessageType>() == AttestationRequest);
-        client.send(request);
-        SPDLOG_DEBUG("prepare_attestation_req: request sent");
+    auto request = context->prepare_attestation_req();
+    assert(request["type"].get<MessageType>() == AttestationRequest);
+    client.send(request);
+    SPDLOG_DEBUG("prepare_attestation_req: request sent");
 
-        auto response = client.recv();
-        SPDLOG_DEBUG("process_attestation_resp: response received");
-        assert(response["type"].get<MessageType>() == AttestationResponse);
-        auto sid = response["sid"].get<u32>();
-        auto payload = response["payload"].get<v8>();
-        context->set_peer_osid(context->process_attestation_resp(sid, payload));
+    auto response = client.recv();
+    SPDLOG_DEBUG("process_attestation_resp: response received");
+    assert(response["type"].get<MessageType>() == AttestationResponse);
+    auto payload = response["payload"].get<v8>();
+    auto sid = context->process_attestation_resp(payload);
+    if (response["sid"].get<u32>() != sid)
+    {
+        throw std::runtime_error("the sid received and generated don't match");
     }
 
+    context->set_peer_osid(sid);
+    SPDLOG_DEBUG("server session to peer: sid={:08x}", sid);
+
     /* build and send bloom filter */
-    SPDLOG_DEBUG("prepare_compute_req");
-    auto request = context->prepare_compute_req();
-    assert(request["type"].get<MessageType>() == ComputeRequest);
-    client.send(request);
-    SPDLOG_DEBUG("prepare_compute_req: request sent");
+    {
+        auto request = context->prepare_compute_req();
+        assert(request["type"].get<MessageType>() == ComputeRequest);
+        client.send(request);
+        SPDLOG_DEBUG("prepare_compute_req: request sent");
+    }
 
     /* get match result and aggregate */
-    auto response = client.recv();
-    SPDLOG_DEBUG("process_compute_resp: response received");
-    assert(response["type"].get<MessageType>() == ComputeResponse);
-    auto sid = response["sid"].get<u32>();
-    auto payload = response["payload"].get<v8>();
-    context->process_compute_resp(sid, payload);
+    {
+        auto response = client.recv();
+        SPDLOG_DEBUG("process_compute_resp: response received");
+        assert(response["type"].get<MessageType>() == ComputeResponse);
+        if (response["sid"].get<u32>() != sid)
+        {
+            throw std::runtime_error("session id doesn't match");
+        }
+        auto payload = response["payload"].get<v8>();
+        context->process_compute_resp(sid, payload);
+    }
 
     return client.statistics();
 }

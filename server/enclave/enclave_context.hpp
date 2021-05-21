@@ -13,7 +13,7 @@ class EnclaveContext
     std::map<u32, sptr<PSI::Session>> sessions;
     sptr<mbedtls::ctr_drbg> rand_ctx;
 
-    std::mutex verifier_lock;
+    std::mutex attestation_lock;
     std::mutex session_lock;
 
     void new_session(u32 sid, sptr<PSI::Session> session, const AttestationContext& ctx);
