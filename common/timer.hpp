@@ -10,7 +10,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "utils/spdlog.hpp"
+// #include "utils/spdlog.hpp"
 
 class Timer
 {
@@ -23,7 +23,7 @@ class Timer
         explicit time_record(std::string name)
             : timestamp(std::chrono::steady_clock::now()), thread_id(syscall(__NR_gettid)), name(std::move(name))
         {
-            SPDLOG_DEBUG("time_record {} {} {}", this->name, thread_id, timestamp.time_since_epoch().count());
+            // SPDLOG_DEBUG("time_record {} {} {}", this->name, thread_id, timestamp.time_since_epoch().count());
         }
 
         auto to_json() -> nlohmann::json
