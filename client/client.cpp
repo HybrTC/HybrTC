@@ -39,7 +39,6 @@ Timer timer;
  */
 auto verifier_generate_challenge(VerifierContext& ctx, int vid) -> v8
 {
-    SPDLOG_DEBUG(__PRETTY_FUNCTION__);
     /* set verifier id; generate and dump ephemeral public key */
     ctx.vid = vid;
 
@@ -55,7 +54,6 @@ auto verifier_generate_challenge(VerifierContext& ctx, int vid) -> v8
  */
 auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
 {
-    SPDLOG_DEBUG(__PRETTY_FUNCTION__);
     /* deserialize and handle input */
     auto input = json::from_msgpack(ibuf);
 
@@ -65,28 +63,6 @@ auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
 
     /* set vpk in ecdh context */
     ctx.ecdh.read_public(ctx.apk);
-
-#if 0
-    /* verify evidence */
-    auto claims = ctx.core.verify_evidence(evidence).custom_claims_buffer();
-
-    /* compare claims: (1) size (2) compare content in constant time */
-    auto claims_ = ctx.build_claims();
-    if (claims_.size() != claims.value_size)
-    {
-        return -1;
-    }
-
-    unsigned result = 0;
-    for (size_t i = 0; i < claims_.size() && i < claims.value_size; i++)
-    {
-        result += (claims_[i] ^ claims.value[i]);
-    }
-    if (result != 0)
-    {
-        return -1;
-    }
-#endif
 
     /* build crypto context */
     auto [sid, session] = ctx.complete_attestation();
@@ -106,8 +82,6 @@ auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
 
 auto client(const string& server_addr, context_t* io, int id, const v8& pk) -> std::tuple<v8, size_t, size_t>
 {
-    SPDLOG_DEBUG(__PRETTY_FUNCTION__);
-
     /* construct a request socket and connect to interface */
     auto client = Socket::connect(*io, server_addr.c_str());
     VerifierContext vctx(rand_ctx);
@@ -131,6 +105,7 @@ auto client(const string& server_addr, context_t* io, int id, const v8& pk) -> s
     timer(fmt::format("c/s{}: initiate query", id));
 
     auto session = sessions[sid];
+    SPDLOG_DEBUG("client session to s{}: sid={:08x}", id, sid);
 
     /* set public key */
     json request = {{"sid", sid}, {"type", QueryRequest}, {"payload", session->cipher().encrypt(pk, *rand_ctx)}};
