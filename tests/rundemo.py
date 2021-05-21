@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import os
+from time import ctime
 from datetime import datetime
 from itertools import product
 from pathlib import Path
@@ -50,9 +51,9 @@ async def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
         f"--test-id={test_id}",
     ]
 
-    print(*cmd)
+    print(datetime.now().isoformat(), *cmd)
 
-    sleep(1)
+    sleep(4)
     proc = await asyncio.create_subprocess_exec(*cmd)
     pid["client"] = proc.pid
 
@@ -74,7 +75,7 @@ async def run_server(server_path, test_id, server_id, data_size, enclave_path, c
         f"--test-id={test_id}",
     ]
 
-    print(*cmd)
+    print(datetime.now().isoformat(), *cmd)
     proc = await asyncio.create_subprocess_exec(*cmd)
     pid[f"server{server_id}"] = proc.pid
 
@@ -87,14 +88,12 @@ async def run_server(server_path, test_id, server_id, data_size, enclave_path, c
 async def test(client: Path, server: Path, enclave: Path, data_size: int):
     test_id = datetime.now().strftime("%Y%m%dT%H%M%S")
 
-    procs = {
-        "server0": run_server(server, test_id, 0, data_size, enclave, **NET_TOPO["server0"]),
-        "server1": run_server(server, test_id, 1, data_size, enclave, **NET_TOPO["server1"]),
-        "client": run_client(client, test_id, **NET_TOPO["client"]),
-    }
-
     try:
-        await asyncio.gather(*procs.values())
+        await asyncio.gather(
+            run_server(server, test_id, 0, data_size, enclave, **NET_TOPO["server0"]),
+            run_server(server, test_id, 1, data_size, enclave, **NET_TOPO["server1"]),
+            run_client(client, test_id, **NET_TOPO["client"]),
+        )
     except BaseException as e:
         arguments = {"client": client, "server": server, "enclave": enclave, "data_size": data_size}
         print(arguments)
