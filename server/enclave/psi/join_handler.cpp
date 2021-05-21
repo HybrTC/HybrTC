@@ -32,7 +32,7 @@ void JoinHandler::load_data(const u32* data_key, const u32* data_val, size_t dat
     }
 }
 
-auto JoinHandler::build_filter() -> v8
+auto JoinHandler::build_filter() -> const v8&
 {
     HashSet bloom_filter;
 
@@ -49,15 +49,13 @@ auto JoinHandler::match_filter(const v8& filter) -> v8
     HashSet bloom_filter(filter);
     auto hits = json::array();
 
-    database_t& db = half_data ? left_data : local_data;
-    for (auto& [k, v] : db)
+    const database_t& db = half_data ? left_data : local_data;
+    for (const auto& [k, v] : db)
     {
         uint128_t key = prp(k);
         if (bloom_filter.lookup(key))
         {
             auto enc = homo.encrypt(v, *rand_ctx).to_vector();
-            assert(!enc.empty());
-
             hits.push_back(json::array({*reinterpret_cast<const PRP::binary*>(&key), enc}));
         }
     }
