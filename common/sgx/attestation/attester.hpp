@@ -8,7 +8,6 @@
 #include <openenclave/attestation/attester.h>
 #include <openenclave/attestation/sgx/evidence.h>
 
-#include "claims.hpp"
 #include "common/types.hpp"
 
 class Attester
