@@ -27,7 +27,7 @@ struct AttestationContext
     v8 vpk; // verifier's pk
     v8 apk; // attester's pk
 
-    explicit AttestationContext(sptr<mbedtls::ctr_drbg> rand_ctx)
+    explicit AttestationContext(const sptr<mbedtls::ctr_drbg>& rand_ctx)
         : rand_ctx(rand_ctx), ecdh(mbedtls::MBEDTLS_ECP_DP_SECP256R1, rand_ctx)
     {
     }
@@ -61,7 +61,7 @@ struct AttesterContext : public AttestationContext
 {
     Attester core = Attester(&format_id);
 
-    explicit AttesterContext(sptr<mbedtls::ctr_drbg> rand_ctx) : AttestationContext(std::move(rand_ctx))
+    explicit AttesterContext(const sptr<mbedtls::ctr_drbg>& rand_ctx) : AttestationContext(rand_ctx)
     {
         this->apk = this->ecdh.make_public();
     }
@@ -72,7 +72,7 @@ struct VerifierContext : public AttestationContext
 {
     Verifier core = Verifier(&format_id);
 
-    explicit VerifierContext(sptr<mbedtls::ctr_drbg> rand_ctx) : AttestationContext(std::move(rand_ctx))
+    explicit VerifierContext(const sptr<mbedtls::ctr_drbg>& rand_ctx) : AttestationContext(rand_ctx)
     {
         this->vpk = this->ecdh.make_public();
     }
