@@ -1,7 +1,6 @@
 #! /usr/bin/env python3.8
 
 import argparse
-import asyncio
 import os
 from time import ctime
 from datetime import datetime
@@ -10,6 +9,7 @@ from pathlib import Path
 from signal import SIGKILL
 from time import sleep
 from uuid import uuid1
+
 
 SERVER0_HOST = "localhost"
 SERVER0_PORT_P = "5000"
@@ -36,14 +36,8 @@ NET_TOPO = {
     },
 }
 
-pid = {
-    "server0": 0,
-    "server1": 0,
-    "client": 0,
-}
 
-
-async def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
+def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
     cmd = [
         str(client_path),
         f"--s0-endpoint={s0_endpoint}",
@@ -51,19 +45,16 @@ async def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
         f"--test-id={test_id}",
     ]
 
-    print(datetime.now().isoformat(), *cmd)
+    pid = os.fork()
+    if pid > 0:
+        print(f"[{datetime.now().isoformat()}] [{pid}]", *cmd)
+        return pid
 
-    # sleep(4)
-    proc = await asyncio.create_subprocess_exec(*cmd)
-    pid["client"] = proc.pid
-
-    await proc.wait()
-
-    if proc.returncode != 0:
-        raise RuntimeError(f"Client returns {proc.returncode}")
+    sleep(4)
+    os.execv(cmd[0], cmd)
 
 
-async def run_server(server_path, test_id, server_id, data_size, enclave_path, client_port, peer_port, peer_endpoint):
+def run_server(server_path, test_id, server_id, data_size, enclave_path, client_port, peer_port, peer_endpoint):
     cmd = [
         str(server_path),
         f"--enclave-path={enclave_path}",
@@ -75,37 +66,55 @@ async def run_server(server_path, test_id, server_id, data_size, enclave_path, c
         f"--test-id={test_id}",
     ]
 
-    print(datetime.now().isoformat(), *cmd)
-    proc = await asyncio.create_subprocess_exec(*cmd)
-    pid[f"server{server_id}"] = proc.pid
+    pid = os.fork()
+    if pid > 0:
+        print(f"[{datetime.now().isoformat()}] [{pid}]", *cmd)
+        return pid
 
-    await proc.wait()
-
-    if proc.returncode != 0:
-        raise RuntimeError(f"Server{server_id} returns {proc.returncode}")
+    os.execv(cmd[0], cmd)
 
 
-async def test(client: Path, server: Path, enclave: Path, data_size: int):
+def test(client: Path, server: Path, enclave: Path, data_size: int):
     test_id = datetime.now().strftime("%Y%m%dT%H%M%S")
 
-    try:
-        await asyncio.gather(
-            run_server(server, test_id, 0, data_size, enclave, **NET_TOPO["server0"]),
-            run_server(server, test_id, 1, data_size, enclave, **NET_TOPO["server1"]),
-            run_client(client, test_id, **NET_TOPO["client"]),
-        )
-    except BaseException as e:
+    procs = {
+        run_server(server, test_id, 0, data_size, enclave, **NET_TOPO["server0"]): "Server0",
+        run_server(server, test_id, 1, data_size, enclave, **NET_TOPO["server1"]): "Server1",
+        run_client(client, test_id, **NET_TOPO["client"]): "Client",
+    }
+
+    print(procs)
+
+    while len(procs) > 0:
+        (pid, status) = os.wait()
+        name = procs[pid]
+        del procs[pid]
+
+        if os.WIFEXITED(status):
+            if os.WEXITSTATUS(status) == 0:
+                print(name, "exited with return code 0")
+                continue
+            else:
+                print(name, "exited with return code", os.WEXITSTATUS(status))
+
+        if os.WCOREDUMP(status):
+            print(name, "exited with WCOREDUMP")
+
+        if os.WIFSIGNALED(status):
+            print(name, "exited with WIFSIGNALED", os.WTERMSIG(status))
+
         arguments = {"client": client, "server": server, "enclave": enclave, "data_size": data_size}
         print(arguments)
-        print(e)
-        for p in pid.values():
+        for p in pid.keys():
             try:
                 os.kill(p, SIGKILL)
             except ProcessLookupError:
                 pass
 
+        return
 
-async def main(args):
+
+def main(args):
     CLIENT_DIR: Path = args.build / "client"
     SERVER_DIR: Path = args.build / "server/host"
     ENCLAVE_DIR: Path = args.build / "server/enclave"
@@ -124,9 +133,9 @@ async def main(args):
             assert enclave.exists()
 
             print("************************************************************")
-            print(f"*    select={select} aggregate={aggregate} size={size} {i}/{args.repeat}")
+            print(f"*    {i}/{args.repeat} # select={select} aggregate={aggregate} size={size}")
             print("************************************************************")
-            await test(client, server, enclave, size)
+            test(client, server, enclave, size)
 
 
 if __name__ == "__main__":
@@ -140,4 +149,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    asyncio.run(main(args))
+    main(args)
