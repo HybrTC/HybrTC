@@ -37,7 +37,7 @@ static auto attestation_servant(Socket& server, PSIContext& context) -> u32
 
 auto client_servant(int port, context_t* io, PSIContext* context)
 {
-    SPDLOG_DEBUG("starting {} at port {}", __FUNCTION__, port);
+    SPDLOG_INFO("starting {} at port {}", __FUNCTION__, port);
 
     /* construct a response socket and bind to interface */
     auto server = Socket::listen(*io, port);
@@ -70,7 +70,7 @@ auto client_servant(int port, context_t* io, PSIContext* context)
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
 auto peer_servant(int port, context_t* io, PSIContext* context)
 {
-    SPDLOG_DEBUG("starting {} at port {}", __FUNCTION__, port);
+    SPDLOG_INFO("starting {} at port {}", __FUNCTION__, port);
 
     /* construct a response socket and bind to interface */
     auto server = Socket::listen(*io, port);
@@ -102,7 +102,7 @@ auto peer_servant(int port, context_t* io, PSIContext* context)
 
 auto peer_client(const char* peer_endpoint, context_t* io, PSIContext* context)
 {
-    SPDLOG_DEBUG("starting {} to {}", __FUNCTION__, peer_endpoint);
+    SPDLOG_INFO("starting {} to {}", __FUNCTION__, peer_endpoint);
 
     /* construct a request socket and connect to interface */
     auto client = Socket::connect(*io, peer_endpoint);

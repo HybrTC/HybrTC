@@ -71,6 +71,7 @@ auto EnclaveContext::session(u32 session_id) -> PSI::Session&
         TRACE_ENCLAVE("cannot find session: sid=%08x", session_id);
         for (auto& [key, _] : sessions)
         {
+            (void)(key);
             TRACE_ENCLAVE("existing session: sid=%08x", key);
         }
         abort();
