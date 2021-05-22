@@ -37,6 +37,10 @@ NET_TOPO = {
 }
 
 
+def prefix(pid):
+    return f"[{datetime.now().isoformat()}] [{pid}]"
+
+
 def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
     cmd = [
         str(client_path),
@@ -47,7 +51,7 @@ def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
 
     pid = os.fork()
     if pid > 0:
-        print(f"[{datetime.now().isoformat()}] [{pid}]", *cmd)
+        print(prefix(pid), *cmd)
         return pid
 
     sleep(4)
@@ -68,7 +72,7 @@ def run_server(server_path, test_id, server_id, data_size, enclave_path, client_
 
     pid = os.fork()
     if pid > 0:
-        print(f"[{datetime.now().isoformat()}] [{pid}]", *cmd)
+        print(prefix(pid), *cmd)
         return pid
 
     os.execv(cmd[0], cmd)
@@ -83,29 +87,31 @@ def test(client: Path, server: Path, enclave: Path, data_size: int):
         run_client(client, test_id, **NET_TOPO["client"]): "Client",
     }
 
-    print(procs)
-
     while len(procs) > 0:
         (pid, status) = os.wait()
+        if pid not in procs:
+            print("unknown process", pid)
+            continue
+
         name = procs[pid]
         del procs[pid]
 
         if os.WIFEXITED(status):
             if os.WEXITSTATUS(status) == 0:
-                print(name, "exited with return code 0")
+                print(prefix(pid), name, "exited with return code 0")
                 continue
             else:
-                print(name, "exited with return code", os.WEXITSTATUS(status))
+                print(prefix(pid), name, "exited with return code", os.WEXITSTATUS(status))
 
         if os.WCOREDUMP(status):
-            print(name, "exited with WCOREDUMP")
+            print(prefix(pid), name, "exited with WCOREDUMP")
 
         if os.WIFSIGNALED(status):
-            print(name, "exited with WIFSIGNALED", os.WTERMSIG(status))
+            print(prefix(pid), name, "exited with WIFSIGNALED", os.WTERMSIG(status))
 
         arguments = {"client": client, "server": server, "enclave": enclave, "data_size": data_size}
-        print(arguments)
-        for p in pid.keys():
+        print(prefix(pid), arguments)
+        for p in procs.keys():
             try:
                 os.kill(p, SIGKILL)
             except ProcessLookupError:
@@ -119,8 +125,12 @@ def main(args):
     SERVER_DIR: Path = args.build / "server/host"
     ENCLAVE_DIR: Path = args.build / "server/enclave"
 
-    for i in range(args.repeat):
-        for select, aggregate, size in product(args.select, args.aggregate, args.size):
+    test_suite = list(product(args.size, args.select, args.aggregate))
+    total = len(test_suite)
+    repeat = args.repeat
+
+    for i in range(repeat):
+        for idx, (size, select, aggregate) in enumerate(test_suite):
             if aggregate == "0x00" and size == 20:
                 continue
 
@@ -133,7 +143,7 @@ def main(args):
             assert enclave.exists()
 
             print("************************************************************")
-            print(f"*    {i}/{args.repeat} # select={select} aggregate={aggregate} size={size}")
+            print(f"*    {i}/{repeat} # {idx}/{total} # size={size} select={select} aggregate={aggregate}")
             print("************************************************************")
             test(client, server, enclave, size)
 
