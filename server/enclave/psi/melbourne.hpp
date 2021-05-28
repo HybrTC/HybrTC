@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <utility>
 
 #include "common/types.hpp"
@@ -11,9 +12,7 @@ using database_t = std::vector<std::pair<u32, u32>>;
 
 class MelbourneShuffle
 {
-    sptr<mbedtls::ctr_drbg> rand_ctx;
-    sptr<mbedtls::aes_gcm_256> cipher;
-
+  public:
     union plaintext
     {
         struct
@@ -47,7 +46,6 @@ class MelbourneShuffle
         sizeof(u32) + mbedtls::aes_gcm_256::IV_LEN + mbedtls::aes_gcm_256::TAG_LEN + sizeof(plaintext);
     using ciphertext = a8<CIPHERTEXT_SIZE>;
 
-  public:
     explicit MelbourneShuffle(sptr<mbedtls::ctr_drbg> rand_ctx);
 
     auto dummy_record() -> plaintext
@@ -55,16 +53,21 @@ class MelbourneShuffle
         return plaintext(rand_ctx->rand<u32>(), rand_ctx->rand<u32>());
     }
 
-    static auto read_bucket(const u32* keys, const u32* vals, size_t data_size, size_t bucket_size, size_t offset)
-        -> std::vector<plaintext>;
+    void read_bucket(const u32* keys, const u32* vals, size_t data_size, size_t bucket_size, size_t offset);
 
     auto pad_write_bucket(
         size_t bucket_idx,
-        std::vector<v8>& private_bucket,
-        size_t& t_counter,
+        std::vector<size_t>& private_bucket,
         size_t t_bucket_size,
         size_t p_bucket_size,
         ciphertext* t);
 
     auto shuffle(const u32* keys, const u32* vals, size_t size) -> database_t;
+
+  private:
+    sptr<mbedtls::ctr_drbg> rand_ctx;
+    sptr<mbedtls::aes_gcm_256> cipher;
+
+    std::vector<size_t> t_counter;
+    std::vector<plaintext> read_in;
 };

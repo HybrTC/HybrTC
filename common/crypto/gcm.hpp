@@ -53,6 +53,13 @@ class gcm : public internal::resource<mbedtls_gcm_context, mbedtls_gcm_init, mbe
         return output;
     }
 
+    template <size_t N>
+    auto encrypt(a8<N + sizeof(ciphertext)>& output, const a8<N>& input, ctr_drbg& ctr_drbg)
+    {
+        output.fill(0);
+        encrypt(&output[0], output.size(), input.data(), input.size(), ctr_drbg);
+    }
+
     auto encrypt(uint8_t* obuf, size_t olen, const uint8_t* ibuf, size_t ilen, ctr_drbg& ctr_drbg)
     {
         ciphertext& enc = *reinterpret_cast<ciphertext*>(obuf);

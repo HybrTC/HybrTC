@@ -191,7 +191,7 @@ if __name__ == "__main__":
 
     data["SIZE"] = data["s0:PSI_DATA_SET_SIZE_LOG"]
     data = data.fillna(0)
-    # data = drop_outliner(data, ATTRIBUTES, FEATURES_COMM + FEATURES_TIME, 3)
+    data = drop_outliner(data, ATTRIBUTES, FEATURES_COMM + FEATURES_TIME, 3)
 
     df_comm = data[ATTRIBUTES + FEATURES_COMM].copy()
     stat_comm = df_comm.groupby(ATTRIBUTES).mean()
@@ -200,3 +200,4 @@ if __name__ == "__main__":
     stat_time = df_time.groupby(ATTRIBUTES).mean()
 
     print(df[["s0:c:set_client_query", "s1:c:set_client_query"]] / 1000000)
+    print(stat_time[["s0:c:set_client_query", "s1:c:set_client_query"]] / 1000000)
