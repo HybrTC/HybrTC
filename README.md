@@ -1,4 +1,4 @@
-# SGX-PSI
+# HybrTC
 
 Mail us at hybrtc@googlegroups.com if you have any query.
 
