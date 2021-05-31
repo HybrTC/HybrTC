@@ -1,5 +1,3 @@
-add_executable(clocks_per_sec clocks_per_sec.cpp)
-
 if (BUID_TEST_CUCKOOHASHING)
 
   foreach (LEN RANGE 8 21)
