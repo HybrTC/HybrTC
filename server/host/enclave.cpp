@@ -14,12 +14,14 @@
 
 #define ECALL_IN                                      \
     {                                                 \
+        SPDLOG_DEBUG("{}:start", __FUNCTION__);       \
         timer(fmt::format("{}:start", __FUNCTION__)); \
     }
 
 #define ECALL_OUT                                    \
     {                                                \
         timer(fmt::format("{}:done", __FUNCTION__)); \
+        SPDLOG_DEBUG("{}:done", __FUNCTION__);       \
     }
 
 SPIEnclave::SPIEnclave(const char* enclave_image_path, bool simulate)
