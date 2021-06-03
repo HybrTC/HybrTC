@@ -189,8 +189,7 @@ auto MelbourneShuffle::shuffle(const u32* keys, const u32* vals, size_t data_siz
             auto r = dist(urbg);
 
             read_in[i].mark();
-            read_in[i].r.tag |= r << sizeof(u8);
-
+            read_in[i].r.tag |= r << mbedtls::BITS_PER_BYTE;
             private_memory[r % bucket_cnt].push_back(i);
         }
 
