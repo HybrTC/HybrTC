@@ -97,7 +97,7 @@ auto MelbourneShuffle::pad_write_bucket(
 {
 #ifdef PSI_ENABLE_TRACE_ENCLAVE
     /* check if the shuffle fails */
-    if (t_counter + private_bucket.size() > t_bucket_size)
+    if (t_counter[bucket_idx] + private_bucket.size() > t_bucket_size)
     {
         TRACE_ENCLAVE("melbourne_shuffle: overwrite a bucket "
                       "in intermediate memory");
