@@ -199,5 +199,5 @@ if __name__ == "__main__":
     df_time = data[ATTRIBUTES + FEATURES_TIME].copy()
     stat_time = df_time.groupby(ATTRIBUTES).mean()
 
-    print(df[["s0:c:set_client_query", "s1:c:set_client_query"]] / 1000000)
-    print(stat_time[["s0:c:set_client_query", "s1:c:set_client_query"]] / 1000000)
+    print(stat_comm)
+    print(stat_time / 1000000)
