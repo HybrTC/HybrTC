@@ -113,7 +113,7 @@ auto MelbourneShuffle::pad_write_bucket(
 #endif
 
     size_t base = t_bucket_size * bucket_idx;
-    size_t target = base + p_bucket_size;
+    size_t target = t_counter[bucket_idx] + p_bucket_size;
 
     /* write out */
     for (auto& idx : private_bucket)
