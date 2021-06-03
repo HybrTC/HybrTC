@@ -64,6 +64,18 @@ class CuckooHashing
             return false;
         }
 
+        // see if there's a seat
+        for (uint32_t hi = hash_index; hi < HN; hi++)
+        {
+            std::vector<ET>& bin = table[hi][hashes[hi] % L];
+
+            if (bin.size() < D)
+            {
+                bin.emplace_back(key, value);
+                return true;
+            }
+        }
+
         for (uint32_t hi = hash_index; hi < HN; hi++)
         {
             uint32_t bi = hashes[hi] % L;
@@ -71,7 +83,7 @@ class CuckooHashing
 
             if (bin.size() >= D)
             {
-                evict(hi, bi);
+                evict(hi, bi); // this may modify the size of bin
             }
 
             if (bin.size() < D)
