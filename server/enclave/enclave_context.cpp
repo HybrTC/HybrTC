@@ -87,10 +87,8 @@ void EnclaveContext::verifier_generate_challenge(u8** obuf, size_t* olen)
     auto ctx = std::make_shared<VerifierContext>(rand_ctx);
 
     /* set verifier id; generate and dump ephemeral public key */
-    attestation_lock.lock();
     ctx->vid = verifiers.size();
     verifiers.push_back(ctx);
-    attestation_lock.unlock();
 
     /* generate output object */
     auto json = json::object({{"vid", ctx->vid}, {"vpk", ctx->vpk}, {"format_settings", ctx->core.format_settings()}});
@@ -104,9 +102,7 @@ auto EnclaveContext::attester_generate_response(const u8* ibuf, size_t ilen, u8*
     AttesterContext ctx(rand_ctx);
 
     /* set attester id; generate and dump ephemeral public key */
-    attestation_lock.lock();
     ctx.aid = rand_ctx->rand<decltype(ctx.aid)>();
-    attestation_lock.unlock();
 
     /* deserialize and handle input */
     auto input = json::from_msgpack(ibuf, ibuf + ilen);
@@ -137,12 +133,10 @@ auto EnclaveContext::verifier_process_response(const u8* ibuf, size_t ilen) -> u
     /* deserialize and handle input */
     auto input = json::from_msgpack(ibuf, ibuf + ilen);
 
-    attestation_lock.lock();
     auto ctx = verifiers[input["vid"].get<uint16_t>()]; // load verifier context
     ctx->aid = input["aid"].get<uint16_t>();            // set attester id
     ctx->apk = input["apk"].get<v8>();                  // set attester pubkey
     auto evidence = input["evidence"].get<v8>();        // load attestation evidence
-    attestation_lock.unlock();
 
     /* set vpk in ecdh context */
     ctx->ecdh.read_public(ctx->apk);

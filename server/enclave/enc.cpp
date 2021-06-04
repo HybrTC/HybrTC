@@ -1,3 +1,4 @@
+#include <mutex>
 #include "common/types.hpp"
 #include "config.hpp"
 #include "enclave_context.hpp"
@@ -15,30 +16,46 @@ sptr<JoinHandler> handler;
 
 sptr<EnclaveContext> global;
 
+static struct
+{
+    std::mutex init;
+    std::mutex attester;
+    std::mutex verifier;
+} locks;
+
 static void init()
 {
+    locks.init.lock();
     if (global == nullptr)
     {
         global = std::make_shared<EnclaveContext>();
     }
+    locks.init.unlock();
 }
 
 void verifier_generate_challenge(u8** obuf, size_t* olen)
 {
     init();
+    locks.verifier.lock();
     global->verifier_generate_challenge(obuf, olen);
+    locks.verifier.unlock();
 }
 
 auto attester_generate_response(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen) -> u32
 {
     init();
-    return global->attester_generate_response(ibuf, ilen, obuf, olen);
+    locks.attester.lock();
+    auto sid = global->attester_generate_response(ibuf, ilen, obuf, olen);
+    locks.attester.unlock();
+    return sid;
 }
 
 auto verifier_process_response(const u8* ibuf, size_t ilen) -> u32
 {
+    locks.verifier.lock();
     auto sid = global->verifier_process_response(ibuf, ilen);
     TRACE_ENCLAVE("sid generated: %08x", sid);
+    locks.verifier.unlock();
     return sid;
 }
 
