@@ -111,13 +111,23 @@ def test(client: Path, server: Path, enclave: Path, data_size: int):
 
         arguments = {"client": client, "server": server, "enclave": enclave, "data_size": data_size}
         print(prefix(pid), arguments)
+
         for p in procs.keys():
             try:
                 os.kill(p, SIGKILL)
             except ProcessLookupError:
                 pass
 
-        return
+        break
+
+    output_file = [
+        f"{test_id}-client.json",
+        f"{test_id}-server0.json",
+        f"{test_id}-server1.json",
+    ]
+
+    if not all(map(Path.exists, map(Path, output_file))):
+        exit(-1)
 
 
 def main(args):
