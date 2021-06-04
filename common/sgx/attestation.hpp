@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <utility>
 
+#include <openenclave/attestation/sgx/evidence.h>
+
 #ifndef __OUTSIDE_ENCLAVE__
 #include "attestation/attester.hpp"
 #endif
@@ -16,7 +18,7 @@
 
 struct AttestationContext
 {
-    constexpr static oe_uuid_t format_id{OE_FORMAT_UUID_SGX_LOCAL_ATTESTATION};
+    constexpr static oe_uuid_t format_id{OE_FORMAT_UUID_SGX_ECDSA};
 
     sptr<mbedtls::ctr_drbg> rand_ctx;
     mbedtls::ecdh ecdh;
