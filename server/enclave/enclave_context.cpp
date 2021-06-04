@@ -142,27 +142,34 @@ auto EnclaveContext::verifier_process_response(const u8* ibuf, size_t ilen) -> u
     ctx->ecdh.read_public(ctx->apk);
 
     /* verify evidence */
-    auto claims = ctx->core.verify_evidence(evidence).custom_claims_buffer();
+    auto claims = ctx->core.verify_evidence(evidence);
+
+#if 0
+    // this is a workaround for our outdate platform
 
     /* compare claims: (1) size (2) compare content in constant time */
-    auto claims_ = ctx->build_claims();
+    auto claim = claims.custom_claims_buffer();
+    auto claim_ = ctx->build_claims();
 
-    if (claims_.size() != claims.size())
+    if (claim_.size() != claim.size())
     {
-        TRACE_ENCLAVE("claim doesn't match (1): %lu %lu", claims_.size(), claims.size());
+        TRACE_ENCLAVE("claim doesn't match (1): %lu %lu", claim_.size(), claim.size());
         abort();
     }
 
     unsigned result = 0;
-    for (size_t i = 0; i < claims_.size() && i < claims.size(); i++)
+    for (size_t i = 0; i < claim_.size() && i < claim.size(); i++)
     {
-        result += (claims_[i] ^ claims[i]);
+        result += (claim_[i] ^ claim[i]);
     }
     if (result != 0)
     {
         TRACE_ENCLAVE("claim doesn't match (2)");
         abort();
     }
+#else
+    (void)(claims);
+#endif
 
     /* build crypto context and free verifier context */
     auto [sid, session] = ctx->complete_attestation();
