@@ -1,4 +1,5 @@
-file(GLOB CLIENT_SRCS *.cpp)
+file(GLOB CLIENT_SRCS *.cpp
+     ${CMAKE_SOURCE_DIR}/common/sgx/attestation/verifier.cpp)
 
 foreach (select_policy IN LISTS PSI_SELECT_POLICY)
   foreach (aggregate_policy IN LISTS PSI_AGGREGATE_POLICY)

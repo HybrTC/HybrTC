@@ -8,7 +8,8 @@ add_custom_command(
   COMMAND openenclave::oeedger8r --trusted ${ENCLAVE_EDL} --search-path
           ${OE_INCLUDEDIR} --search-path ${OE_INCLUDEDIR}/openenclave/edl/sgx)
 
-file(GLOB ENCLAVE_SOURCE_FILES *.cpp psi/*.cpp)
+file(GLOB ENCLAVE_SOURCE_FILES *.cpp psi/*.cpp
+     ${CMAKE_SOURCE_DIR}/common/sgx/attestation/*.cpp)
 
 foreach (select_policy IN LISTS PSI_SELECT_POLICY)
   foreach (aggregate_policy IN LISTS PSI_AGGREGATE_POLICY)
