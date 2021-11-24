@@ -17,10 +17,7 @@ class resource
   public:
     resource()
     {
-        if (init != nullptr)
-        {
-            init(&ctx);
-        }
+        init(&ctx);
     }
 
     resource(const resource&) = delete;
@@ -37,10 +34,7 @@ class resource
 
     ~resource()
     {
-        if (clean != nullptr)
-        {
-            clean(&ctx);
-        }
+        clean(&ctx);
     }
 };
 } // namespace internal
