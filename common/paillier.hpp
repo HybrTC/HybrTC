@@ -82,12 +82,12 @@ class Paillier
 
     struct prvkey_t
     {
-        mpi λ;
-        mpi μ;
+        mpi lambda;
+        mpi mu;
 
         void complete(const pubkey_t& pub)
         {
-            μ = ((pub.g.exp_mod(λ, pub.n_sq) - 1) / pub.n).invmod(pub.n);
+            mu = ((pub.g.exp_mod(lambda, pub.n_sq) - 1) / pub.n).invmod(pub.n);
         }
     };
 
@@ -126,7 +126,7 @@ class Paillier
         pubkey.bits = nbits;
         pubkey.complete();
 
-        prvkey.λ = mpi::lcm(P - 1, Q - 1);
+        prvkey.lambda = mpi::lcm(P - 1, Q - 1);
         prvkey.complete(pubkey);
     }
 
@@ -165,7 +165,7 @@ class Paillier
 
     [[nodiscard]] auto decrypt(const mpi& ciphertext) const -> mpi
     {
-        return ((((ciphertext.exp_mod(prvkey.λ, pubkey.n_sq)) - 1) / pubkey.n) * prvkey.μ) % pubkey.n;
+        return ((((ciphertext.exp_mod(prvkey.lambda, pubkey.n_sq)) - 1) / pubkey.n) * prvkey.mu) % pubkey.n;
     }
 
     [[nodiscard]] auto add(const mpi& A, const mpi& B) const -> mpi
