@@ -1,21 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <string>
-
-struct Message
-{
-    uint32_t session_id;
-    uint32_t message_type;
-    uint32_t payload_len;
-    uint8_t payload[]; // NOLINT(modernize-avoid-c-arrays)
-
-    Message() = delete;
-    static auto create(uint32_t session_id, uint32_t message_type, uint32_t payload_len) -> std::shared_ptr<Message>;
-};
-
-using MessagePtr = std::shared_ptr<Message>;
 
 class SocketConnection;
 
@@ -49,12 +36,12 @@ class SocketConnection : Socket
   public:
     SocketConnection(const char* host, uint16_t port);
 
-    void send(const Message& msg);
-    void send(uint32_t session_id, uint32_t message_type, uint32_t payload_len, const void* payload);
+    void send(uint32_t data, bool more = false);
+    void send(const void* data, size_t size);
 
-    auto recv() -> MessagePtr;
+    auto recv(void* buffer, size_t size) -> size_t;
+
     [[nodiscard]] auto statistics() const -> std::pair<size_t, size_t>;
-
     [[nodiscard]] auto get_peer_address() const -> const char*
     {
         return peer_address.c_str();

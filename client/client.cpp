@@ -19,10 +19,10 @@
 #include "config.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "crypto/sha256.hpp"
-#include "message_types.hpp"
 #include "paillier.hpp"
 #include "sgx/attestation.hpp"
 #include "timer.hpp"
+#include "type/message.hpp"
 #include "utils/communication.hpp"
 #include "utils/spdlog.hpp"
 

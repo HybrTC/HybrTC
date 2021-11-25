@@ -2,7 +2,7 @@
 
 #include <array>
 #include <cerrno>
-#include <cstdarg>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -41,18 +41,6 @@ union sockaddr_u
     struct sockaddr addr;
     struct sockaddr_in in;
 };
-
-auto Message::create(uint32_t session_id, uint32_t message_type, uint32_t payload_len) -> MessagePtr
-{
-    void* buf = calloc(sizeof(Message) + payload_len, 1);
-
-    Message& msg = *reinterpret_cast<Message*>(buf);
-    msg.session_id = session_id;
-    msg.message_type = message_type;
-    msg.payload_len = payload_len;
-
-    return MessagePtr(&msg, free);
-}
 
 Socket::Socket()
 {
@@ -171,41 +159,34 @@ static auto check_send_len(ssize_t len) -> bool
     }
 }
 
-void SocketConnection::send(const Message& msg)
+void SocketConnection::send(std::uint32_t data, bool more)
 {
-    ssize_t len = ::send(sockfd, reinterpret_cast<const uint8_t*>(&msg), sizeof(Message) + msg.payload_len, 0);
+    ssize_t len = ::send(sockfd, reinterpret_cast<uint8_t*>(&data), sizeof(data), more ? MSG_MORE : 0);
     if (check_send_len(len))
     {
         bytes_sent += len;
     }
 }
 
-void SocketConnection::send(uint32_t session_id, uint32_t message_type, uint32_t payload_len, const void* payload)
+void SocketConnection::send(const void* data, size_t size)
 {
-    for (uint32_t val : {session_id, message_type, payload_len})
-    {
-        ssize_t len = ::send(sockfd, reinterpret_cast<uint8_t*>(&val), sizeof(val), MSG_MORE);
-        if (check_send_len(len))
-        {
-            bytes_sent += len;
-        }
-    }
-
-    ssize_t len = ::send(sockfd, payload, payload_len, 0);
+    ssize_t len = ::send(sockfd, data, size, 0);
     if (check_send_len(len))
     {
         bytes_sent += len;
     }
 }
 
-static auto recvall(int fd, void* buf, size_t n) -> size_t
+// Receive utilities
+
+auto SocketConnection::recv(void* buffer, size_t size) -> size_t
 {
-    auto* ptr = static_cast<uint8_t*>(buf);
+    auto* ptr = static_cast<uint8_t*>(buffer);
 
     size_t received = 0;
-    while (received < n)
+    while (received < size)
     {
-        ssize_t len = recv(fd, ptr + received, n - received, MSG_WAITALL);
+        ssize_t len = ::recv(sockfd, ptr + received, size - received, MSG_WAITALL);
 
         if (len < 0)
         {
@@ -223,40 +204,6 @@ static auto recvall(int fd, void* buf, size_t n) -> size_t
     }
 
     return received;
-}
-
-// Receive utilities
-
-auto SocketConnection::recv() -> MessagePtr
-{
-    size_t len;
-
-    struct
-    {
-        uint32_t session_id;
-        uint32_t message_type;
-        uint32_t payload_len;
-    } hdr;
-    len = recvall(sockfd, &hdr, sizeof(hdr));
-    if (len == 0)
-    {
-        return nullptr;
-    }
-    bytes_received += len;
-
-    auto msg = Message::create(hdr.session_id, hdr.message_type, hdr.payload_len);
-    len = recvall(sockfd, msg->payload, msg->payload_len);
-    if (len == 0)
-    {
-        fprintf(stderr, "unexpected missing message body\n");
-        exit(EXIT_FAILURE);
-    }
-    else
-    {
-        bytes_received += len;
-    }
-
-    return msg;
 }
 
 auto SocketConnection::statistics() const -> std::pair<size_t, size_t>

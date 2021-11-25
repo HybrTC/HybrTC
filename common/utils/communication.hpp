@@ -10,6 +10,29 @@
 
 #include "../host/socket/socket.h"
 
+struct Message
+{
+    uint32_t session_id;
+    uint32_t message_type;
+    uint32_t payload_len;
+    uint8_t payload[]; // NOLINT(modernize-avoid-c-arrays)
+
+    Message() = delete;
+    static auto create(uint32_t session_id, uint32_t message_type, uint32_t payload_len) -> std::shared_ptr<Message>
+    {
+        void* buf = calloc(sizeof(Message) + payload_len, 1);
+
+        Message& msg = *reinterpret_cast<Message*>(buf);
+        msg.session_id = session_id;
+        msg.message_type = message_type;
+        msg.payload_len = payload_len;
+
+        return std::shared_ptr<Message>(&msg, free);
+    }
+};
+
+using MessagePtr = std::shared_ptr<Message>;
+
 class TxSocket
 {
     std::shared_ptr<SocketServer> server = nullptr;
@@ -33,31 +56,44 @@ class TxSocket
 
     auto recv() -> MessagePtr
     {
-        // receive a message
+        size_t len;
 
-        auto msg = connection->recv();
+        struct
+        {
+            uint32_t session_id;
+            uint32_t message_type;
+            uint32_t payload_len;
+        } hdr;
+        len = connection->recv(&hdr, sizeof(hdr));
+        if (len == 0)
+        {
+            return nullptr;
+        }
 
-        // deserialize the message
-        // auto object = nlohmann::json::from_msgpack(u8p(msg.data()), u8p(msg.data()) + msg.size());
+        auto msg = Message::create(hdr.session_id, hdr.message_type, hdr.payload_len);
 
-        // SPDLOG_TRACE("recv = {}", object.dump());
+        len = connection->recv(msg->payload, msg->payload_len);
+        if (len == 0)
+        {
+            fprintf(stderr, "unexpected missing message body\n");
+            exit(EXIT_FAILURE);
+        }
+
         return msg;
     }
 
     void send(const Message& msg)
     {
-        connection->send(msg);
-        // SPDLOG_TRACE("sent = {}", object.dump());
-        // auto ret = core.send(zmq::buffer(nlohmann::json::to_msgpack(object)));
-        // if (ret.has_value())
-        // {
-        //     bytes_sent += ret.value();
-        // }
+        connection->send(u8p(&msg), sizeof(Message) + msg.payload_len);
     }
 
     void send(uint32_t session_id, uint32_t message_type, uint32_t payload_len, const void* payload)
     {
-        connection->send(session_id, message_type, payload_len, payload);
+        for (uint32_t val : {session_id, message_type, payload_len})
+        {
+            connection->send(val, true);
+        }
+        connection->send(payload, payload_len);
     }
 
     auto statistics() -> std::pair<size_t, size_t>

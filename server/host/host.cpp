@@ -229,8 +229,6 @@ auto main(int argc, const char* argv[]) -> int
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
     auto s_peer = std::async(std::launch::async, peer_servant, peer_portl, &psi);
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-
     /* start client */
     auto [c_peer_sent, c_peer_recv] = peer_client(peer_host.c_str(), peer_port, &psi);
 
