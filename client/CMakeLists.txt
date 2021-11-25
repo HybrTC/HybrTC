@@ -8,10 +8,10 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
 
     add_executable(${target} ${CLIENT_SRCS})
 
-    # target_compile_options(${target} PRIVATE "-fsanitize=address"
-    #                                          "-fno-omit-frame-pointer")
-    # target_link_options(${target} PRIVATE "-fsanitize=address"
-    #                     "-fno-omit-frame-pointer")
+    target_compile_options(${target} PRIVATE "-fsanitize=address"
+                                             "-fno-omit-frame-pointer")
+    target_link_options(${target} PRIVATE "-fsanitize=address"
+                        "-fno-omit-frame-pointer")
 
     target_link_libraries(
       ${target}
