@@ -47,7 +47,7 @@ class SocketConnection : Socket
     SocketConnection(const char* host, uint16_t port);
 
     void send(const Message& msg);
-    void send(uint32_t session_id, uint32_t message_type, uint32_t payload_len, const uint8_t* payload);
+    void send(uint32_t session_id, uint32_t message_type, uint32_t payload_len, const void* payload);
 
     auto recv() -> MessagePtr;
     [[nodiscard]] auto statistics() const -> std::pair<size_t, size_t>;

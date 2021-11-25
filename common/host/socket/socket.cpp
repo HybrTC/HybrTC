@@ -67,11 +67,7 @@ SocketServer::SocketServer(uint16_t port) : Socket()
     }
 
     // bind 0.0.0.0:port
-    sockaddr_u addr{
-        .in = {
-            .sin_family = AF_INET, .sin_port = htons(port), .sin_addr = {INADDR_ANY}
-
-        }};
+    sockaddr_u addr{.in = {.sin_family = AF_INET, .sin_port = htons(port), .sin_addr = {INADDR_ANY}, .sin_zero = {0}}};
 
     if (::bind(sockfd, &addr.addr, sizeof(addr)) < 0)
     {
@@ -99,11 +95,7 @@ static auto sockaddr_to_str(sockaddr_in& addr) -> std::string
 
 auto SocketServer::accept() const -> SocketConnection
 {
-    sockaddr_u addr{
-        .in = {
-            .sin_family = AF_INET, .sin_port = 0, .sin_addr = {0}
-
-        }};
+    sockaddr_u addr{.in = {.sin_family = AF_INET, .sin_port = 0, .sin_addr = {0}, .sin_zero = {0}}};
     socklen_t addr_len = sizeof(addr);
 
     int peerfd = ::accept(sockfd, &addr.addr, &addr_len);
@@ -131,13 +123,7 @@ SocketServer::~SocketServer()
 
 SocketConnection::SocketConnection(const char* host, uint16_t port) : Socket()
 {
-    sockaddr_u addr{
-        .in = {
-            .sin_family = AF_INET,
-            .sin_port = htons(port),
-
-        }};
-
+    sockaddr_u addr{.in = {.sin_family = AF_INET, .sin_port = htons(port), .sin_addr = {0}, .sin_zero = {0}}};
     if (inet_pton(AF_INET, host, &addr.in.sin_addr) <= 0)
     {
         fprintf(stderr, "inet_pton: address %s not supported", host);
@@ -176,7 +162,7 @@ void SocketConnection::send(const Message& msg)
     }
 }
 
-void SocketConnection::send(uint32_t session_id, uint32_t message_type, uint32_t payload_len, const uint8_t* payload)
+void SocketConnection::send(uint32_t session_id, uint32_t message_type, uint32_t payload_len, const void* payload)
 {
     for (uint32_t val : {session_id, message_type, payload_len})
     {
