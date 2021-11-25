@@ -5,8 +5,6 @@
 #include <cstdlib>
 #include <memory>
 
-#include <nlohmann/json.hpp>
-
 #include "common/types.hpp"
 #include "socket/socket.h"
 #include "spdlog.hpp"
