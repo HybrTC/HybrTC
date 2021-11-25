@@ -37,9 +37,10 @@ class SocketConnection : Socket
     SocketConnection(const char* host, uint16_t port);
 
     void send(uint32_t data, bool more = false);
-    void send(const void* data, size_t size);
+    void send(const void* data, size_t size, bool more = false);
 
     auto recv(void* buffer, size_t size) -> size_t;
+    auto recv(size_t size) -> void*;
 
     [[nodiscard]] auto statistics() const -> std::pair<size_t, size_t>;
     [[nodiscard]] auto get_peer_address() const -> const char*

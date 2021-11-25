@@ -159,18 +159,14 @@ static auto check_send_len(ssize_t len) -> bool
     }
 }
 
-void SocketConnection::send(std::uint32_t data, bool more)
+void SocketConnection::send(uint32_t data, bool more)
 {
-    ssize_t len = ::send(sockfd, reinterpret_cast<uint8_t*>(&data), sizeof(data), more ? MSG_MORE : 0);
-    if (check_send_len(len))
-    {
-        bytes_sent += len;
-    }
+    return send(reinterpret_cast<uint8_t*>(&data), sizeof(uint32_t), more);
 }
 
-void SocketConnection::send(const void* data, size_t size)
+void SocketConnection::send(const void* data, size_t size, bool more)
 {
-    ssize_t len = ::send(sockfd, data, size, 0);
+    ssize_t len = ::send(sockfd, data, size, more ? MSG_MORE : 0);
     if (check_send_len(len))
     {
         bytes_sent += len;
@@ -204,6 +200,18 @@ auto SocketConnection::recv(void* buffer, size_t size) -> size_t
     }
 
     return received;
+}
+
+auto SocketConnection::recv(size_t size) -> void*
+{
+    void* buffer = calloc(size, 1);
+    if (recv(buffer, size) == 0)
+    {
+        free(buffer);
+        return nullptr;
+    }
+    
+    return buffer;
 }
 
 auto SocketConnection::statistics() const -> std::pair<size_t, size_t>

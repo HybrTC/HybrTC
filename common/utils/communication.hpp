@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <memory>
 
 #include <nlohmann/json.hpp>
@@ -12,22 +14,30 @@
 
 struct Message
 {
-    uint32_t session_id;
-    uint32_t message_type;
-    uint32_t payload_len;
-    uint8_t payload[]; // NOLINT(modernize-avoid-c-arrays)
+    uint32_t session_id = -1;
+    uint32_t message_type = -1;
+    uint32_t payload_len = -1;
+    std::uint8_t* payload = nullptr;
 
-    Message() = delete;
-    static auto create(uint32_t session_id, uint32_t message_type, uint32_t payload_len) -> std::shared_ptr<Message>
+    Message() = default;
+
+    explicit Message(uint32_t payload_len) : payload_len(payload_len)
     {
-        void* buf = calloc(sizeof(Message) + payload_len, 1);
+        payload = u8p(calloc(payload_len, 1));
+    }
 
-        Message& msg = *reinterpret_cast<Message*>(buf);
-        msg.session_id = session_id;
-        msg.message_type = message_type;
-        msg.payload_len = payload_len;
+    Message(uint32_t session_id, uint32_t message_type, uint32_t payload_len)
+        : session_id(session_id), message_type(message_type), payload_len(payload_len)
+    {
+        payload = u8p(calloc(payload_len, 1));
+    }
 
-        return std::shared_ptr<Message>(&msg, free);
+    ~Message()
+    {
+        if (payload != nullptr)
+        {
+            free(payload);
+        }
     }
 };
 
@@ -56,24 +66,15 @@ class TxSocket
 
     auto recv() -> MessagePtr
     {
-        size_t len;
+        MessagePtr msg = std::make_shared<Message>();
 
-        struct
-        {
-            uint32_t session_id;
-            uint32_t message_type;
-            uint32_t payload_len;
-        } hdr;
-        len = connection->recv(&hdr, sizeof(hdr));
-        if (len == 0)
+        if (connection->recv(msg.get(), sizeof(uint32_t) * 3) == 0)
         {
             return nullptr;
         }
 
-        auto msg = Message::create(hdr.session_id, hdr.message_type, hdr.payload_len);
-
-        len = connection->recv(msg->payload, msg->payload_len);
-        if (len == 0)
+        msg->payload = u8p(connection->recv(msg->payload_len));
+        if (msg->payload == nullptr)
         {
             fprintf(stderr, "unexpected missing message body\n");
             exit(EXIT_FAILURE);
@@ -84,7 +85,8 @@ class TxSocket
 
     void send(const Message& msg)
     {
-        connection->send(u8p(&msg), sizeof(Message) + msg.payload_len);
+        connection->send(u8p(&msg), sizeof(uint32_t) * 3, true);
+        connection->send(msg.payload, msg.payload_len);
     }
 
     void send(uint32_t session_id, uint32_t message_type, uint32_t payload_len, const void* payload)
