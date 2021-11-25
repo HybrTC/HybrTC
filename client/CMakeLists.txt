@@ -1,5 +1,9 @@
+set_source_files_properties(
+  ${PROTO_CPP_SRC} PROPERTIES GENERATED 1 COMPILE_OPTIONS
+                                          "-Wno-deprecated-declarations")
+
 file(GLOB CLIENT_SRCS *.cpp ${CMAKE_SOURCE_DIR}/common/host/socket/socket.cpp
-     ${CMAKE_SOURCE_DIR}/common/sgx/attestation/verifier.cpp)
+     ${CMAKE_SOURCE_DIR}/common/sgx/attestation/verifier.cpp ${PROTO_CPP_SRC})
 
 foreach (select_policy IN LISTS PSI_SELECT_POLICY)
   foreach (aggregate_policy IN LISTS PSI_AGGREGATE_POLICY)
@@ -14,12 +18,8 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
                         "-fno-omit-frame-pointer")
 
     target_link_libraries(
-      ${target}
-      openenclave::oehost
-      ${LIBMBEDCRYPTO}
-      spdlog::spdlog
-      nlohmann_json::nlohmann_json
-      CLI11::CLI11)
+      ${target} openenclave::oehost ${LIBMBEDCRYPTO} spdlog::spdlog
+      nlohmann_json::nlohmann_json CLI11::CLI11)
 
     target_compile_definitions(
       ${target} PUBLIC PSI_SELECT_POLICY=${select_policy}

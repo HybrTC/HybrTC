@@ -1,5 +1,8 @@
-# Copyright (c) Open Enclave SDK contributors.
-# Licensed under the MIT License.
+include(${CMAKE_SOURCE_DIR}/cmake/protobuf.cmake)
+
+set_source_files_properties(
+  ${PROTO_CPP_SRC} PROPERTIES GENERATED 1 COMPILE_OPTIONS
+                                          "-Wno-deprecated-declarations")
 
 # Use the edger8r to generate C bindings from the EDL file.
 add_custom_command(
@@ -8,8 +11,14 @@ add_custom_command(
   COMMAND openenclave::oeedger8r --trusted ${ENCLAVE_EDL} --search-path
           ${OE_INCLUDEDIR} --search-path ${OE_INCLUDEDIR}/openenclave/edl/sgx)
 
-file(GLOB ENCLAVE_SOURCE_FILES *.cpp psi/*.cpp
-     ${CMAKE_SOURCE_DIR}/common/sgx/attestation/*.cpp)
+file(
+  GLOB
+  ENCLAVE_SOURCE_FILES
+  *.cpp
+  psi/*.cpp
+  ${CMAKE_SOURCE_DIR}/common/sgx/attestation/*.cpp
+  ${PROTO_CPP_SRC}
+  ${PROTOBUF_SRC})
 
 foreach (select_policy IN LISTS PSI_SELECT_POLICY)
   foreach (aggregate_policy IN LISTS PSI_AGGREGATE_POLICY)
@@ -24,7 +33,8 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
                        PSI_AGGREGATE_POLICY=${aggregate_policy})
 
     # Need for the generated file helloworld_t.h
-    target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+    target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+                                                 ${PROTOBUF_INC})
 
     target_link_libraries(
       ${target} openenclave::oeenclave openenclave::oecrypto${OE_CRYPTO_LIB}

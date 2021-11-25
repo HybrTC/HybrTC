@@ -36,6 +36,10 @@ add_subdirectory(3rd-party/json)
 # CLI11
 add_subdirectory(3rd-party/CLI11)
 
+find_package(Protobuf CONFIG REQUIRED)
+message(STATUS "Using protobuf ${Protobuf_VERSION}")
+include(cmake/spec.cmake)
+
 # constants
 
 set(PSI_SELECT_ALL_PASSTHROUGH 0x00)
@@ -74,7 +78,7 @@ message(STATUS "PSI_AGGREGATE_POLICY=${PSI_AGGREGATE_POLICY}")
 
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 
-include_directories(${CMAKE_SOURCE_DIR}/common)
+include_directories(${CMAKE_SOURCE_DIR}/common ${PROTO_CPP_INC})
 
 add_subdirectory(client)
 add_subdirectory(server)

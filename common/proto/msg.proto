@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package hybrtc;
+
+// uint32 verifier_id  = 16; // 10
+// bytes verifier_pk   = 17;  // 11
+// uint32 attester_id  = 32; // 20
+// bytes attester_pk   = 33; // 21
+// bytes format_settings   = 48; // 30
+// bytes evidence      = 49; // 31
+
+message AttestationChallenge {
+    uint32 verifier_id  = 16; // 10
+    bytes verifier_pk   = 17;  // 11
+    bytes format_settings   = 48; // 30
+}
+
+message AttestationResponse {
+    uint32 verifier_id  = 16; // 10
+    uint32 attester_id  = 32; // 20
+    bytes attester_pk   = 33; // 21
+    bytes evidence      = 49; // 31
+}

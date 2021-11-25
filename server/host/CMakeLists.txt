@@ -1,5 +1,7 @@
-# Copyright (c) Open Enclave SDK contributors.
-# Licensed under the MIT License.
+set_source_files_properties(
+  ${PROTO_CPP_SRC} PROPERTIES GENERATED 1 COMPILE_OPTIONS
+                                          "-Wno-deprecated-declarations")
+
 add_custom_command(
   OUTPUT helloworld_u.h helloworld_u.c helloworld_args.h
   DEPENDS ${ENCLAVE_EDL}
@@ -7,7 +9,7 @@ add_custom_command(
           ${OE_INCLUDEDIR} --search-path ${OE_INCLUDEDIR}/openenclave/edl/sgx)
 
 file(GLOB SERVER_SOURCE_FILES *.cpp
-     ${CMAKE_SOURCE_DIR}/common/host/socket/socket.cpp)
+     ${CMAKE_SOURCE_DIR}/common/host/socket/socket.cpp ${PROTO_CPP_SRC})
 
 foreach (select_policy IN LISTS PSI_SELECT_POLICY)
   foreach (aggregate_policy IN LISTS PSI_AGGREGATE_POLICY)
