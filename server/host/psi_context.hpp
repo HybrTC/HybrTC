@@ -9,10 +9,10 @@
 #include "common/types.hpp"
 #include "config.hpp"
 #include "enclave.hpp"
+#include "host/spdlog.hpp"
+#include "host/timer.hpp"
 #include "prng.hpp"
-#include "timer.hpp"
 #include "type/message.hpp"
-#include "utils/spdlog.hpp"
 
 constexpr size_t TEST_SIZE = (1 << 20);
 

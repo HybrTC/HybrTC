@@ -19,12 +19,12 @@
 #include "config.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "crypto/sha256.hpp"
+#include "host/communication.hpp"
+#include "host/spdlog.hpp"
+#include "host/timer.hpp"
 #include "paillier.hpp"
 #include "sgx/attestation.hpp"
-#include "timer.hpp"
 #include "type/message.hpp"
-#include "utils/communication.hpp"
-#include "utils/spdlog.hpp"
 
 using nlohmann::json;
 using std::string;

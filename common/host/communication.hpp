@@ -8,9 +8,8 @@
 #include <nlohmann/json.hpp>
 
 #include "common/types.hpp"
+#include "socket/socket.h"
 #include "spdlog.hpp"
-
-#include "../host/socket/socket.h"
 
 struct Message
 {

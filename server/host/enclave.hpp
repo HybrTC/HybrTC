@@ -7,7 +7,7 @@
 #include <openenclave/host.h>
 
 #include "common/types.hpp"
-#include "timer.hpp"
+#include "host/timer.hpp"
 
 struct buffer
 {

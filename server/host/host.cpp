@@ -11,11 +11,10 @@
 #include <nlohmann/json.hpp>
 
 #include "common/types.hpp"
+#include "host/communication.hpp"
+#include "host/spdlog.hpp"
+#include "host/timer.hpp"
 #include "psi_context.hpp"
-#include "spdlog/spdlog.h"
-#include "timer.hpp"
-#include "utils/communication.hpp"
-#include "utils/spdlog.hpp"
 
 using nlohmann::json;
 using std::string;
