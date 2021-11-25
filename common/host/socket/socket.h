@@ -29,6 +29,9 @@ class Socket
     explicit Socket(int sockfd) : sockfd(sockfd)
     {
     }
+
+  public:
+    Socket(const Socket& other);
 };
 
 class SocketConnection : Socket

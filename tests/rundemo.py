@@ -11,11 +11,11 @@ from time import sleep
 from uuid import uuid1
 
 
-SERVER0_HOST = "localhost"
+SERVER0_HOST = "127.0.0.1"
 SERVER0_PORT_P = "5000"
 SERVER0_PORT_C = "5001"
 
-SERVER1_HOST = "localhost"
+SERVER1_HOST = "127.0.0.1"
 SERVER1_PORT_P = "6000"
 SERVER1_PORT_C = "6001"
 
@@ -23,16 +23,16 @@ NET_TOPO = {
     "server0": {
         "client_port": SERVER0_PORT_C,
         "peer_port": SERVER0_PORT_P,
-        "peer_endpoint": f"tcp://{SERVER1_HOST}:{SERVER1_PORT_P}",
+        "peer_endpoint": (SERVER1_HOST, SERVER1_PORT_P),
     },
     "server1": {
         "client_port": SERVER1_PORT_C,
         "peer_port": SERVER1_PORT_P,
-        "peer_endpoint": f"tcp://{SERVER0_HOST}:{SERVER0_PORT_P}",
+        "peer_endpoint": (SERVER0_HOST, SERVER0_PORT_P),
     },
     "client": {
-        "s0_endpoint": f"tcp://{SERVER0_HOST}:{SERVER0_PORT_C}",
-        "s1_endpoint": f"tcp://{SERVER1_HOST}:{SERVER1_PORT_C}",
+        "s0_endpoint": (SERVER0_HOST, SERVER0_PORT_C),
+        "s1_endpoint": (SERVER1_HOST, SERVER1_PORT_C),
     },
 }
 
@@ -41,11 +41,18 @@ def prefix(pid):
     return f"[{datetime.now().isoformat()}] [{pid}]"
 
 
-def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
+def run_client(
+    client_path,
+    test_id,
+    s0_endpoint,
+    s1_endpoint,
+):
     cmd = [
         str(client_path),
-        f"--s0-endpoint={s0_endpoint}",
-        f"--s1-endpoint={s1_endpoint}",
+        f"--s0-host={s0_endpoint[0]}",
+        f"--s0-port={s0_endpoint[1]}",
+        f"--s1-host={s1_endpoint[0]}",
+        f"--s1-port={s1_endpoint[1]}",
         f"--test-id={test_id}",
     ]
 
@@ -58,15 +65,25 @@ def run_client(client_path, test_id, s0_endpoint, s1_endpoint):
     os.execv(cmd[0], cmd)
 
 
-def run_server(server_path, test_id, server_id, data_size, enclave_path, client_port, peer_port, peer_endpoint):
+def run_server(
+    server_path,
+    test_id,
+    server_id,
+    data_size,
+    enclave_path,
+    client_port,
+    peer_port,
+    peer_endpoint,
+):
     cmd = [
         str(server_path),
         f"--enclave-path={enclave_path}",
         f"--server-id={server_id}",
         f"--data-size={data_size}",
-        f"--client-port={client_port}",
-        f"--peer-port={peer_port}",
-        f"--peer-endpoint={peer_endpoint}",
+        f"--client-portl={client_port}",
+        f"--peer-portl={peer_port}",
+        f"--peer-host={peer_endpoint[0]}",
+        f"--peer-port={peer_endpoint[1]}",
         f"--test-id={test_id}",
     ]
 
@@ -82,8 +99,12 @@ def test(client: Path, server: Path, enclave: Path, data_size: int):
     test_id = datetime.now().strftime("%Y%m%dT%H%M%S")
 
     procs = {
-        run_server(server, test_id, 0, data_size, enclave, **NET_TOPO["server0"]): "Server0",
-        run_server(server, test_id, 1, data_size, enclave, **NET_TOPO["server1"]): "Server1",
+        run_server(
+            server, test_id, 0, data_size, enclave, **NET_TOPO["server0"]
+        ): "Server0",
+        run_server(
+            server, test_id, 1, data_size, enclave, **NET_TOPO["server1"]
+        ): "Server1",
         run_client(client, test_id, **NET_TOPO["client"]): "Client",
     }
 
@@ -101,7 +122,9 @@ def test(client: Path, server: Path, enclave: Path, data_size: int):
                 print(prefix(pid), name, "exited with return code 0")
                 continue
             else:
-                print(prefix(pid), name, "exited with return code", os.WEXITSTATUS(status))
+                print(
+                    prefix(pid), name, "exited with return code", os.WEXITSTATUS(status)
+                )
 
         if os.WCOREDUMP(status):
             print(prefix(pid), name, "exited with WCOREDUMP")
@@ -109,7 +132,12 @@ def test(client: Path, server: Path, enclave: Path, data_size: int):
         if os.WIFSIGNALED(status):
             print(prefix(pid), name, "exited with WIFSIGNALED", os.WTERMSIG(status))
 
-        arguments = {"client": client, "server": server, "enclave": enclave, "data_size": data_size}
+        arguments = {
+            "client": client,
+            "server": server,
+            "enclave": enclave,
+            "data_size": data_size,
+        }
         print(prefix(pid), arguments)
 
         for p in procs.keys():
@@ -153,7 +181,9 @@ def main(args):
             assert enclave.exists()
 
             print("************************************************************")
-            print(f"*    {i}/{repeat} # {idx}/{total} # size={size} select={select} aggregate={aggregate}")
+            print(
+                f"*    {i}/{repeat} # {idx}/{total} # size={size} select={select} aggregate={aggregate}"
+            )
             print("************************************************************")
             test(client, server, enclave, size)
 
@@ -164,7 +194,9 @@ if __name__ == "__main__":
     parser.add_argument("--binary-dir", dest="build", type=Path, required=True)
     parser.add_argument("--repeat", dest="repeat", type=int, default=1)
     parser.add_argument("--select-policy", dest="select", nargs="+", required=True)
-    parser.add_argument("--aggregate-policy", dest="aggregate", nargs="+", required=True)
+    parser.add_argument(
+        "--aggregate-policy", dest="aggregate", nargs="+", required=True
+    )
     parser.add_argument("--data-size", dest="size", type=int, default=[10], nargs="+")
 
     args = parser.parse_args()

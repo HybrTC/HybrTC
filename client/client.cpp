@@ -23,12 +23,11 @@
 #include "paillier.hpp"
 #include "sgx/attestation.hpp"
 #include "timer.hpp"
+#include "utils/communication.hpp"
 #include "utils/spdlog.hpp"
-#include "utils/zmq.hpp"
 
 using nlohmann::json;
 using std::string;
-using zmq::context_t;
 
 std::shared_ptr<mbedtls::ctr_drbg> rand_ctx;
 std::map<uint32_t, std::shared_ptr<PSI::Session>> sessions;
@@ -52,11 +51,9 @@ auto verifier_generate_challenge(VerifierContext& ctx, int vid) -> v8
  * input:   vid, aid, evidence
  * output:  attestation_result
  */
-auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
+auto verifier_process_response(VerifierContext& ctx, const nlohmann::json& input) -> uint32_t
 {
-    /* deserialize and handle input */
-    auto input = json::from_msgpack(ibuf);
-
+    /* handle input */
     ctx.aid = input["aid"].get<uint16_t>();      // set attester id
     ctx.apk = input["apk"].get<v8>();            // set attester pubkey
     auto evidence = input["evidence"].get<v8>(); // load attestation evidence
@@ -80,10 +77,13 @@ auto verifier_process_response(VerifierContext& ctx, const v8& ibuf) -> uint32_t
     return sid;
 }
 
-auto client(const string& server_addr, context_t* io, int id, const v8& pk) -> std::tuple<v8, size_t, size_t>
+auto client(const char* host, uint16_t port, int id, const v8& pk) -> std::tuple<v8, size_t, size_t>
 {
+    SPDLOG_INFO("starting {} to {}:{}", __FUNCTION__, host, port);
+
     /* construct a request socket and connect to interface */
-    auto client = Socket::connect(*io, server_addr.c_str());
+    auto client = TxSocket::connect(host, port);
+
     VerifierContext vctx(rand_ctx);
     uint32_t sid;
 
@@ -91,13 +91,17 @@ auto client(const string& server_addr, context_t* io, int id, const v8& pk) -> s
     timer(fmt::format("c/s{}: initiate attestation", id));
 
     {
-        json request = {{"sid", -1}, {"type", AttestationRequest}, {"payload", verifier_generate_challenge(vctx, id)}};
-        assert(request["type"].get<MessageType>() == AttestationRequest);
-        client.send(request);
+        {
+            auto payload = verifier_generate_challenge(vctx, id);
+            client.send(-1, AttestationRequest, payload.size(), payload.data());
+        }
 
-        json response = client.recv();
-        assert(response["type"].get<MessageType>() == AttestationResponse);
-        auto payload = response["payload"].get<v8>();
+        auto response = client.recv();
+        if (response->message_type != AttestationResponse)
+        {
+            abort();
+        }
+        auto payload = json::from_msgpack(response->payload, response->payload + response->payload_len);
         sid = verifier_process_response(vctx, payload);
         assert(sid == response["sid"].get<uint32_t>());
     }
@@ -108,15 +112,22 @@ auto client(const string& server_addr, context_t* io, int id, const v8& pk) -> s
     SPDLOG_DEBUG("client session to s{}: sid={:08x}", id, sid);
 
     /* set public key */
-    json request = {{"sid", sid}, {"type", QueryRequest}, {"payload", session->cipher().encrypt(pk, *rand_ctx)}};
-    assert(request["type"].get<MessageType>() == QueryRequest);
-    client.send(request);
+    {
+        auto payload = session->cipher().encrypt(pk, *rand_ctx);
+        client.send(sid, QueryRequest, payload.size(), payload.data());
+    }
 
     /* get match result and aggregate */
-    json response = client.recv();
-    assert(response["type"].get<MessageType>() == QueryResponse);
-    assert(sid == response["sid"].get<uint32_t>());
-    auto result = session->cipher().decrypt(response["payload"].get<v8>());
+    auto response = client.recv();
+    if (response->message_type != QueryResponse)
+    {
+        abort();
+    }
+    if (response->session_id != sid)
+    {
+        abort();
+    }
+    auto result = session->cipher().decrypt(response->payload, response->payload_len);
 
     timer(fmt::format("c/s{}: result received", id));
 
@@ -171,11 +182,17 @@ auto main(int argc, const char* argv[]) -> int
 
     CLI::App app;
 
-    string s0_endpoint;
-    app.add_option("--s0-endpoint", s0_endpoint, "server 0's endpoint")->required();
+    string s0_host;
+    app.add_option("--s0-host", s0_host, "server 0's host")->required();
 
-    string s1_endpoint;
-    app.add_option("--s1-endpoint", s1_endpoint, "server 1's endpoint")->required();
+    uint16_t s0_port;
+    app.add_option("--s0-port", s0_port, "server 0's port")->required();
+
+    string s1_host;
+    app.add_option("--s1-host", s1_host, "server 1's host")->required();
+
+    uint16_t s1_port;
+    app.add_option("--s1-port", s1_port, "server 1's port")->required();
 
     string test_id = fmt::format("{:%Y%m%dT%H%M%S}", fmt::localtime(time(nullptr)));
     app.add_option("--test-id", test_id, "test identifier");
@@ -187,8 +204,7 @@ auto main(int argc, const char* argv[]) -> int
     spdlog::set_level(spdlog::level::trace);
     spdlog::set_pattern("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [c] [%t] %s:%# -%$ %v");
 
-    const std::array<string, 2> endpoint = {s0_endpoint, s1_endpoint};
-    SPDLOG_INFO("server endpoint: {} {}", endpoint[0], endpoint[1]);
+    SPDLOG_INFO("server endpoint: {}:{} {}:{}", s0_host, s0_port, s1_host, s1_port);
 
     /* prepare public key */
 
@@ -198,14 +214,11 @@ auto main(int argc, const char* argv[]) -> int
     homo_crypto.keygen(PSI_PAILLIER_PK_LEN, *rand_ctx);
     auto pubkey = homo_crypto.dump_pubkey();
 
-    /* initialize the zmq context with a single IO thread */
-    context_t context{1};
-
     timer("start");
 
     /* start client */
-    auto c0 = std::async(std::launch::async, client, endpoint[0], &context, 0, pubkey);
-    auto c1 = std::async(std::launch::async, client, endpoint[1], &context, 1, pubkey);
+    auto c0 = std::async(std::launch::async, client, s0_host.c_str(), s0_port, 0, pubkey);
+    auto c1 = std::async(std::launch::async, client, s1_host.c_str(), s1_port, 1, pubkey);
 
     /* wait for the result */
     auto [v0, c0_sent, c0_recv] = c0.get();

@@ -1,6 +1,7 @@
 #include "socket.h"
 
 #include <array>
+#include <cerrno>
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
@@ -11,22 +12,28 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #define ENDPOINT_MAXLEN 32
 
-#define perr_exit(msg)      \
-    {                       \
-        perror(msg);        \
-        exit(EXIT_FAILURE); \
+#define TID syscall(__NR_gettid)
+
+#define perr_exit(msg)                          \
+    {                                           \
+        std::array<char, BUFSIZ> errbuf;        \
+        sprintf(&errbuf[0], "[%ld] " msg, TID); \
+        perror(errbuf.data());                  \
+        exit(EXIT_FAILURE);                     \
     }
 
-#define pferr_exit(format, ...)                   \
-    {                                             \
-        std::array<char, BUFSIZ> errbuf;          \
-        sprintf(&errbuf[0], format, __VA_ARGS__); \
-        perr_exit(errbuf.data());                 \
+#define pferr_exit(format, ...)                                 \
+    {                                                           \
+        std::array<char, BUFSIZ> errbuf;                        \
+        sprintf(&errbuf[0], "[%ld] " format, TID, __VA_ARGS__); \
+        perror(errbuf.data());                                  \
+        exit(EXIT_FAILURE);                                     \
     }
 
 union sockaddr_u
@@ -52,9 +59,13 @@ Socket::Socket()
     sockfd = ::socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
     {
-        perror("socket");
-        exit(EXIT_FAILURE);
+        perr_exit("socket");
     }
+}
+
+Socket::Socket(const Socket& other)
+{
+    sockfd = dup(other.sockfd);
 }
 
 SocketServer::SocketServer(uint16_t port) : Socket()
@@ -101,7 +112,7 @@ auto SocketServer::accept() const -> SocketConnection
     int peerfd = ::accept(sockfd, &addr.addr, &addr_len);
     if (peerfd < 0)
     {
-        perror("accept");
+        perr_exit("accept");
         exit(EXIT_FAILURE);
     }
 
@@ -114,7 +125,6 @@ SocketServer::~SocketServer()
 {
     if (sockfd > 0)
     {
-        puts(__PRETTY_FUNCTION__);
         close(sockfd);
     }
 }
@@ -130,9 +140,18 @@ SocketConnection::SocketConnection(const char* host, uint16_t port) : Socket()
         exit(EXIT_FAILURE);
     }
 
-    if (::connect(sockfd, &addr.addr, sizeof(addr)) < 0)
+    int retry = 3;
+    int ret = 0;
+    while ((ret = ::connect(sockfd, &addr.addr, sizeof(addr))) < 0)
     {
-        pferr_exit("connect %s:%d", host, port);
+        if ((retry--) > 0 && errno == ECONNREFUSED)
+        {
+            sleep(1);
+        }
+        else
+        {
+            pferr_exit("connect %s:%d", host, port);
+        }
     }
 
     peer_address = sockaddr_to_str(addr.in);
@@ -144,8 +163,7 @@ static auto check_send_len(ssize_t len) -> bool
 {
     if (len < 0)
     {
-        perror("send");
-        exit(EXIT_FAILURE);
+        perr_exit("send");
     }
     else
     {
@@ -191,8 +209,7 @@ static auto recvall(int fd, void* buf, size_t n) -> size_t
 
         if (len < 0)
         {
-            perror("recv");
-            exit(EXIT_FAILURE);
+            perr_exit("recv")
         }
         else if (len == 0)
         {
@@ -251,7 +268,6 @@ SocketConnection::~SocketConnection()
 {
     if (sockfd > 0)
     {
-        puts(__PRETTY_FUNCTION__);
         close(sockfd);
     }
 }

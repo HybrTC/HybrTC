@@ -6,17 +6,16 @@ add_custom_command(
   COMMAND openenclave::oeedger8r --untrusted ${ENCLAVE_EDL} --search-path
           ${OE_INCLUDEDIR} --search-path ${OE_INCLUDEDIR}/openenclave/edl/sgx)
 
-file(GLOB SERVER_SOURCE_FILES *.cpp)
+file(GLOB SERVER_SOURCE_FILES *.cpp
+     ${CMAKE_SOURCE_DIR}/common/host/socket/socket.cpp)
 
 foreach (select_policy IN LISTS PSI_SELECT_POLICY)
   foreach (aggregate_policy IN LISTS PSI_AGGREGATE_POLICY)
 
     set(target server-${select_policy}-${aggregate_policy})
 
-    add_executable(
-      ${target}
-      ${SERVER_SOURCE_FILES} ${CMAKE_SOURCE_DIR}/common/host/socket/socket.cpp
-      ${CMAKE_CURRENT_BINARY_DIR}/helloworld_u.c)
+    add_executable(${target} ${SERVER_SOURCE_FILES}
+                             ${CMAKE_CURRENT_BINARY_DIR}/helloworld_u.c)
 
     # Needed for the generated file helloworld_u.h
     target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
@@ -27,7 +26,7 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
       ${LIBMBEDCRYPTO}
       spdlog::spdlog
       nlohmann_json::nlohmann_json
-      cppzmq-static
+      # cppzmq-static
       CLI11::CLI11)
 
     target_compile_definitions(

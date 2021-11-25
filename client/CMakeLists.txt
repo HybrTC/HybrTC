@@ -1,4 +1,4 @@
-file(GLOB CLIENT_SRCS *.cpp
+file(GLOB CLIENT_SRCS *.cpp ${CMAKE_SOURCE_DIR}/common/host/socket/socket.cpp
      ${CMAKE_SOURCE_DIR}/common/sgx/attestation/verifier.cpp)
 
 foreach (select_policy IN LISTS PSI_SELECT_POLICY)
@@ -19,7 +19,7 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
       ${LIBMBEDCRYPTO}
       spdlog::spdlog
       nlohmann_json::nlohmann_json
-      cppzmq-static
+      # cppzmq-static
       CLI11::CLI11)
 
     target_compile_definitions(
