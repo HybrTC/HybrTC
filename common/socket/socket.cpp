@@ -1,17 +1,41 @@
 #include "socket.h"
 
+#include <array>
+#include <cstdarg>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
+#define ENDPOINT_MAXLEN 32
 
-MessagePtr Message::create(uint32_t session_id, uint32_t message_type, uint32_t payload_len)
+#define perr_exit(msg)      \
+    {                       \
+        perror(msg);        \
+        exit(EXIT_FAILURE); \
+    }
+
+#define pferr_exit(format, ...)                   \
+    {                                             \
+        std::array<char, BUFSIZ> errbuf;          \
+        sprintf(&errbuf[0], format, __VA_ARGS__); \
+        perr_exit(errbuf.data());                 \
+    }
+
+union sockaddr_u
+{
+    struct sockaddr addr;
+    struct sockaddr_in in;
+};
+
+auto Message::create(uint32_t session_id, uint32_t message_type, uint32_t payload_len) -> MessagePtr
 {
     void* buf = calloc(sizeof(Message) + payload_len, 1);
 
@@ -20,7 +44,7 @@ MessagePtr Message::create(uint32_t session_id, uint32_t message_type, uint32_t 
     msg.message_type = message_type;
     msg.payload_len = payload_len;
 
-    return MessagePtr((Message*)buf, free);
+    return MessagePtr(&msg, free);
 }
 
 Socket::Socket()
@@ -35,53 +59,54 @@ Socket::Socket()
 
 SocketServer::SocketServer(uint16_t port) : Socket()
 {
-    char errbuf[16];
-
     // to avoid address already in used
     static const int opt = 1;
     if (::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) < 0)
     {
-        perror("setsockopt");
-        exit(EXIT_FAILURE);
+        perr_exit("setsockopt");
     }
 
     // bind 0.0.0.0:port
-    struct sockaddr_in addr
+    sockaddr_u addr{
+        .in = {
+            .sin_family = AF_INET, .sin_port = htons(port), .sin_addr = {INADDR_ANY}
+
+        }};
+
+    if (::bind(sockfd, &addr.addr, sizeof(addr)) < 0)
     {
-        .sin_family = AF_INET, .sin_port = htons(port), .sin_addr = { INADDR_ANY }
-    };
-    if (::bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
-    {
-        sprintf(errbuf, "bind %u", port);
-        perror(errbuf);
-        exit(EXIT_FAILURE);
+        pferr_exit("bind %u", port);
     }
 
     // listen
     if (::listen(sockfd, 3) < 0)
     {
-        sprintf(errbuf, "listen %u", port);
-        perror(errbuf);
-        exit(EXIT_FAILURE);
+        pferr_exit("listen %u", port)
     }
 }
 
-static void sockaddr_to_str(sockaddr_in& addr, char* dst)
+static auto sockaddr_to_str(sockaddr_in& addr) -> std::string
 {
-    inet_ntop(AF_INET, &addr.sin_addr, dst, sizeof(addr));
-    dst += strlen(dst);
-    sprintf(dst, ":%u", addr.sin_port);
+    std::string dst(ENDPOINT_MAXLEN, 0);
+
+    inet_ntop(AF_INET, &addr.sin_addr, &dst[0], sizeof(addr));
+    dst.resize(strlen(&dst[0]));
+    dst += ':';
+    dst += std::to_string(addr.sin_port);
+
+    return dst;
 }
 
-SocketConnection SocketServer::accept() const
+auto SocketServer::accept() const -> SocketConnection
 {
-    struct sockaddr_in addr
-    {
-        .sin_family = AF_INET, .sin_port = 0, .sin_addr = { 0 }
-    };
+    sockaddr_u addr{
+        .in = {
+            .sin_family = AF_INET, .sin_port = 0, .sin_addr = {0}
+
+        }};
     socklen_t addr_len = sizeof(addr);
 
-    int peerfd = ::accept(sockfd, (struct sockaddr*)&addr, (socklen_t*)&addr_len);
+    int peerfd = ::accept(sockfd, &addr.addr, &addr_len);
     if (peerfd < 0)
     {
         perror("accept");
@@ -89,7 +114,7 @@ SocketConnection SocketServer::accept() const
     }
 
     SocketConnection conn(peerfd);
-    sockaddr_to_str(addr, conn.peer_address);
+    conn.peer_address = sockaddr_to_str(addr.in);
     return conn;
 }
 
@@ -106,31 +131,30 @@ SocketServer::~SocketServer()
 
 SocketConnection::SocketConnection(const char* host, uint16_t port) : Socket()
 {
-    struct sockaddr_in addr
-    {
-        .sin_family = AF_INET, .sin_port = htons(port),
-    };
+    sockaddr_u addr{
+        .in = {
+            .sin_family = AF_INET,
+            .sin_port = htons(port),
 
-    if (inet_pton(AF_INET, host, &addr.sin_addr) <= 0)
+        }};
+
+    if (inet_pton(AF_INET, host, &addr.in.sin_addr) <= 0)
     {
         fprintf(stderr, "inet_pton: address %s not supported", host);
         exit(EXIT_FAILURE);
     }
 
-    if (::connect(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
+    if (::connect(sockfd, &addr.addr, sizeof(addr)) < 0)
     {
-        char errbuf[32];
-        sprintf(errbuf, "connect %s:%d", host, port);
-        perror(errbuf);
-        exit(EXIT_FAILURE);
+        pferr_exit("connect %s:%d", host, port);
     }
 
-    sockaddr_to_str(addr, peer_address);
+    peer_address = sockaddr_to_str(addr.in);
 }
 
 // Send utilities
 
-static bool _check_send_len(ssize_t len)
+static auto check_send_len(ssize_t len) -> bool
 {
     if (len < 0)
     {
@@ -145,8 +169,8 @@ static bool _check_send_len(ssize_t len)
 
 void SocketConnection::send(const Message& msg)
 {
-    ssize_t len = ::send(sockfd, (uint8_t*)&msg, sizeof(Message) + msg.payload_len, 0);
-    if (_check_send_len(len))
+    ssize_t len = ::send(sockfd, reinterpret_cast<const uint8_t*>(&msg), sizeof(Message) + msg.payload_len, 0);
+    if (check_send_len(len))
     {
         bytes_sent += len;
     }
@@ -156,25 +180,25 @@ void SocketConnection::send(uint32_t session_id, uint32_t message_type, uint32_t
 {
     for (uint32_t val : {session_id, message_type, payload_len})
     {
-        ssize_t len = ::send(sockfd, (uint8_t*)&val, sizeof(val), MSG_MORE);
-        if (_check_send_len(len))
+        ssize_t len = ::send(sockfd, reinterpret_cast<uint8_t*>(&val), sizeof(val), MSG_MORE);
+        if (check_send_len(len))
         {
             bytes_sent += len;
         }
     }
 
     ssize_t len = ::send(sockfd, payload, payload_len, 0);
-    if (_check_send_len(len))
+    if (check_send_len(len))
     {
         bytes_sent += len;
     }
 }
 
-static ssize_t recvall(int fd, void* buf, size_t n)
+static auto recvall(int fd, void* buf, size_t n) -> size_t
 {
-    uint8_t* ptr = (uint8_t*)buf;
+    auto* ptr = static_cast<uint8_t*>(buf);
 
-    ssize_t received = 0;
+    size_t received = 0;
     while (received < n)
     {
         ssize_t len = recv(fd, ptr + received, n - received, MSG_WAITALL);
@@ -202,7 +226,7 @@ static ssize_t recvall(int fd, void* buf, size_t n)
 
 auto SocketConnection::recv() -> MessagePtr
 {
-    ssize_t len;
+    size_t len;
 
     struct
     {
@@ -215,10 +239,7 @@ auto SocketConnection::recv() -> MessagePtr
     {
         return nullptr;
     }
-    else
-    {
-        bytes_received += len;
-    }
+    bytes_received += len;
 
     auto msg = Message::create(hdr.session_id, hdr.message_type, hdr.payload_len);
     len = recvall(sockfd, msg->payload, msg->payload_len);

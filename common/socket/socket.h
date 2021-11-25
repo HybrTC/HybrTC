@@ -2,16 +2,17 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 
 struct Message
 {
     uint32_t session_id;
     uint32_t message_type;
     uint32_t payload_len;
-    uint8_t payload[];
+    uint8_t payload[]; // NOLINT(modernize-avoid-c-arrays)
 
     Message() = delete;
-    static std::shared_ptr<Message> create(uint32_t session_id, uint32_t message_type, uint32_t payload_len);
+    static auto create(uint32_t session_id, uint32_t message_type, uint32_t payload_len) -> std::shared_ptr<Message>;
 };
 
 using MessagePtr = std::shared_ptr<Message>;
@@ -25,7 +26,7 @@ class Socket
 
     Socket();
 
-    Socket(int sockfd) : sockfd(sockfd)
+    explicit Socket(int sockfd) : sockfd(sockfd)
     {
     }
 };
@@ -36,9 +37,9 @@ class SocketConnection : Socket
 
     size_t bytes_sent = 0;
     size_t bytes_received = 0;
-    char peer_address[32] = {0};
+    std::string peer_address;
 
-    SocketConnection(int fd) : Socket(fd)
+    explicit SocketConnection(int fd) : Socket(fd)
     {
     }
 
@@ -49,11 +50,11 @@ class SocketConnection : Socket
     void send(uint32_t session_id, uint32_t message_type, uint32_t payload_len, const uint8_t* payload);
 
     auto recv() -> MessagePtr;
-    auto statistics() const -> std::pair<size_t, size_t>;
+    [[nodiscard]] auto statistics() const -> std::pair<size_t, size_t>;
 
-    auto get_peer_address() const -> const char*
+    [[nodiscard]] auto get_peer_address() const -> const char*
     {
-        return peer_address;
+        return peer_address.c_str();
     }
 
     ~SocketConnection();
@@ -62,9 +63,9 @@ class SocketConnection : Socket
 class SocketServer : public Socket
 {
   public:
-    SocketServer(uint16_t port);
+    explicit SocketServer(uint16_t port);
 
-    SocketConnection accept() const;
+    [[nodiscard]] auto accept() const -> SocketConnection;
 
     ~SocketServer();
 };
