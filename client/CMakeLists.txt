@@ -12,6 +12,10 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
 
     add_executable(${target} ${CLIENT_SRCS})
 
+    add_dependencies(${target} PROTO_CPP_SRC_GENERATE)
+
+    target_include_directories(${target} PRIVATE ${PROTO_CPP_INC})
+
     target_compile_options(${target} PRIVATE "-fsanitize=address"
                                              "-fno-omit-frame-pointer")
     target_link_options(${target} PRIVATE "-fsanitize=address"

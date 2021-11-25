@@ -28,6 +28,8 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
     add_executable(${target} ${ENCLAVE_SOURCE_FILES}
                              ${CMAKE_CURRENT_BINARY_DIR}/helloworld_t.c)
 
+    add_dependencies(${target} PROTO_CPP_SRC_GENERATE)
+
     target_compile_definitions(
       ${target} PUBLIC OE_API_VERSION=2 PSI_SELECT_POLICY=${select_policy}
                        PSI_AGGREGATE_POLICY=${aggregate_policy})

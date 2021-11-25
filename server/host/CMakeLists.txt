@@ -19,6 +19,8 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
     add_executable(${target} ${SERVER_SOURCE_FILES}
                              ${CMAKE_CURRENT_BINARY_DIR}/helloworld_u.c)
 
+    add_dependencies(${target} PROTO_CPP_SRC_GENERATE)
+
     # Needed for the generated file helloworld_u.h
     target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
