@@ -19,7 +19,6 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
       ${LIBMBEDCRYPTO}
       spdlog::spdlog
       nlohmann_json::nlohmann_json
-      # cppzmq-static
       CLI11::CLI11)
 
     target_compile_definitions(
