@@ -46,8 +46,6 @@ auto client_servant(int port, PSIContext* context)
     /* construct a response socket and bind to interface */
     auto server = TxSocket::listen(port);
 
-    SPDLOG_TRACE("hoooooooooooooo");
-
     /* attestation */
     auto sid = attestation_servant(server, *context);
     context->set_client_sid(sid);
