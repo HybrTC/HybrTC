@@ -25,8 +25,13 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
     target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
     target_link_libraries(
-      ${target} openenclave::oehost ${LIBMBEDCRYPTO} spdlog::spdlog
-      nlohmann_json::nlohmann_json CLI11::CLI11)
+      ${target}
+      openenclave::oehost
+      ${LIBMBEDCRYPTO}
+      spdlog::spdlog
+      nlohmann_json::nlohmann_json
+      CLI11::CLI11
+      protobuf::libprotobuf)
 
     target_compile_definitions(
       ${target} PUBLIC PSI_SELECT_POLICY=${select_policy}

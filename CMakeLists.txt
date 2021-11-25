@@ -5,8 +5,8 @@ cmake_minimum_required(VERSION 3.18)
 
 # Setting the cmake compiler when LVI mitigation is not enabled.
 # This must be done before the `project` command.
-find_program(CMAKE_C_COMPILER clang-8 clang)
-find_program(CMAKE_CXX_COMPILER clang++-8 clang++)
+find_program(CMAKE_C_COMPILER clang-10 clang)
+find_program(CMAKE_CXX_COMPILER clang++-10 clang++)
 
 project("SGX-PSI" LANGUAGES C CXX)
 

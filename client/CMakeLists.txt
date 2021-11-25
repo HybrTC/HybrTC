@@ -22,8 +22,13 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
                         "-fno-omit-frame-pointer")
 
     target_link_libraries(
-      ${target} openenclave::oehost ${LIBMBEDCRYPTO} spdlog::spdlog
-      nlohmann_json::nlohmann_json CLI11::CLI11)
+      ${target}
+      openenclave::oehost
+      ${LIBMBEDCRYPTO}
+      spdlog::spdlog
+      nlohmann_json::nlohmann_json
+      CLI11::CLI11
+      protobuf::libprotobuf)
 
     target_compile_definitions(
       ${target} PUBLIC PSI_SELECT_POLICY=${select_policy}

@@ -4,6 +4,12 @@ set_source_files_properties(
   ${PROTO_CPP_SRC} PROPERTIES GENERATED 1 COMPILE_OPTIONS
                                           "-Wno-deprecated-declarations")
 
+set_source_files_properties(
+  ${PROTOBUF_SRC}
+  PROPERTIES COMPILE_OPTIONS "-Wno-maybe-uninitialized"
+             COMPILE_OPTIONS "-Wno-unused-parameter"
+             COMPILE_OPTIONS "-Wno-sign-compare")
+
 # Use the edger8r to generate C bindings from the EDL file.
 add_custom_command(
   OUTPUT helloworld_t.h helloworld_t.c helloworld_args.h
@@ -17,8 +23,8 @@ file(
   *.cpp
   psi/*.cpp
   ${CMAKE_SOURCE_DIR}/common/sgx/attestation/*.cpp
-  ${PROTO_CPP_SRC}
-  ${PROTOBUF_SRC})
+  ${PROTOBUF_SRC}
+  ${PROTO_CPP_SRC})
 
 foreach (select_policy IN LISTS PSI_SELECT_POLICY)
   foreach (aggregate_policy IN LISTS PSI_AGGREGATE_POLICY)
@@ -31,8 +37,9 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
     add_dependencies(${target} PROTO_CPP_SRC_GENERATE)
 
     target_compile_definitions(
-      ${target} PUBLIC OE_API_VERSION=2 PSI_SELECT_POLICY=${select_policy}
-                       PSI_AGGREGATE_POLICY=${aggregate_policy})
+      ${target}
+      PUBLIC OE_API_VERSION=2 HAVE_PTHREAD PSI_SELECT_POLICY=${select_policy}
+             PSI_AGGREGATE_POLICY=${aggregate_policy})
 
     # Need for the generated file helloworld_t.h
     target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
