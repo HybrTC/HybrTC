@@ -7,3 +7,6 @@
 [submodule "3rd-party/CLI11"]
 	path = 3rd-party/CLI11
 	url = https://github.com/CLIUtils/CLI11.git
+[submodule "3rd-party/protobuf"]
+	path = 3rd-party/protobuf
+	url = https://github.com/protocolbuffers/protobuf.git
