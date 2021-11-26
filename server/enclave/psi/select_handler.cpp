@@ -2,8 +2,10 @@
 
 #include <nlohmann/json.hpp>
 
+#include "common/uint128.hpp"
 #include "config.hpp"
 #include "melbourne.hpp"
+#include "msg.pb.h"
 #include "prp.hpp"
 #include "select_handler.hpp"
 
@@ -33,14 +35,17 @@ auto SelectHandler::get_result() -> std::string
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
     PRP prp;
 
-    auto result = json::array();
+    hybrtc::Pairs result;
     for (auto& [k, v] : local_data)
     {
         uint128_t key = prp(k);
-        result.push_back(json::array({*reinterpret_cast<const PRP::binary*>(&key), v}));
+
+        auto* pair = result.add_pairs();
+        pair->set_key(&key, sizeof(uint128_t));
+        pair->set_value(&v, sizeof(v));
     }
 
-    return json::to_msgpack(result);
+    return result.SerializeAsString();
 #else
     abort();
 #endif
