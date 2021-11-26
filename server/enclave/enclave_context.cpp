@@ -122,7 +122,6 @@ auto EnclaveContext::attester_generate_response(const u8* ibuf, size_t ilen, u8*
     hybrtc::AttestationChallenge input;
     input.ParseFromArray(ibuf, static_cast<int>(ilen));
 
-    // auto input = json::from_msgpack(ibuf, ibuf + ilen);
     ctx.vid = input.verifier_id();            // set verifier id
     ctx.vpk = input.verifier_pk();            // set peer pk
     const auto& fs = input.format_settings(); // load format settings
@@ -149,7 +148,6 @@ auto EnclaveContext::attester_generate_response(const u8* ibuf, size_t ilen, u8*
     puts("");
     TRACE_ENCLAVE("%s", __PRETTY_FUNCTION__);
 
-    // auto json = json::object({{"vid", ctx.vid}, {"aid", ctx.aid}, {"apk", ctx.apk}, {"evidence", evidence}});
     dump(response.SerializeAsString(), obuf, olen);
 
     /* build crypto context */

@@ -32,11 +32,7 @@ static auto attestation_servant(TxSocket& server, PSIContext& context) -> u32
     auto response = context.handle_attestation_req(payload);
     assert(response->message_type == AttestationResponse);
     server.send(*response);
-    // {
-    //     auto payload = response["payload"].get<v8>();
-    //     server.send(response["sid"].get<u32>(), response["type"].get<MessageType>(), payload.size(), payload.data());
     SPDLOG_DEBUG("handle_attestation_req: response sent");
-    // }
     return response->session_id;
 }
 
@@ -70,11 +66,6 @@ auto client_servant(int port, PSIContext* context)
         assert(response->message_type == QueryResponse);
         server.send(*response);
         SPDLOG_DEBUG("handle_query_request: response sent");
-        // {
-        //     auto payload = response["payload"].get<v8>();
-        //     server.send(
-        //         response["sid"].get<u32>(), response["type"].get<MessageType>(), payload.size(), payload.data());
-        // }
     }
 
     return server.statistics();
@@ -111,11 +102,6 @@ auto peer_servant(int port, PSIContext* context)
         assert(response->message_type == ComputeResponse);
         server.send(*response);
         SPDLOG_DEBUG("handle_compute_req: response sent");
-        // {
-        //     auto payload = response["payload"].get<v8>();
-        //     server.send(
-        //         response["sid"].get<u32>(), response["type"].get<MessageType>(), payload.size(), payload.data());
-        // }
     }
 
     return server.statistics();
@@ -133,10 +119,6 @@ auto peer_client(const char* peer_host, std::uint16_t peer_port, PSIContext* con
     assert(request->message_type == AttestationRequest);
     SPDLOG_DEBUG("prepare_attestation_req: request sent");
     client.send(*request);
-    // {
-    //     auto payload = request["payload"].get<v8>();
-    //     client.send(request["sid"].get<u32>(), request["type"].get<MessageType>(), payload.size(), payload.data());
-    // }
 
     auto response = client.recv();
     SPDLOG_DEBUG("process_attestation_resp: response received");

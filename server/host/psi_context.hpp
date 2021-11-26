@@ -5,8 +5,6 @@
 #include <memory>
 #include <mutex>
 
-#include <nlohmann/json.hpp>
-
 #include "common/types.hpp"
 #include "config.hpp"
 #include "enclave.hpp"
@@ -92,8 +90,6 @@ class PSIContext
         buffer request;
         enclave.verifier_generate_challenge(request);
         return std::make_shared<Message>(-1, AttestationRequest, request.size, request.data);
-        // return {{"sid", -1}, {"type", AttestationRequest}, {"payload", v8(request.data, request.data +
-        // request.size)}};
     }
 
     auto handle_attestation_req(const v8& request) -> MessagePtr
@@ -101,9 +97,6 @@ class PSIContext
         buffer response;
         uint32_t sid = enclave.attester_generate_response(request, response);
         return std::make_shared<Message>(sid, AttestationResponse, response.size, response.data);
-        // return {
-        //     {"sid", sid}, {"type", AttestationResponse}, {"payload", v8(response.data, response.data +
-        //     response.size)}};
     }
 
     auto process_attestation_resp(const v8& response) -> uint32_t
@@ -136,8 +129,6 @@ class PSIContext
         enclave.get_result(client_ctx.sid, output);
 
         /* build and return query result */
-        // auto result = v8(output.data, output.data + output.size);
-        // return {{"sid", sid}, {"type", QueryResponse}, {"payload", result}};
         return std::make_shared<Message>(sid, QueryResponse, output.size, output.data);
     }
 
@@ -151,12 +142,10 @@ class PSIContext
         /* wait for client public key to be set */
         SPDLOG_DEBUG("Locking client_ctx.lock_build");
         client_ctx.lock_build.lock();
+
         buffer request;
         enclave.build_bloom_filter(peer_ctx.osid, request);
-        // return {
-        //     {"sid", peer_ctx.osid},
-        //     {"type", ComputeRequest},
-        //     {"payload", v8(request.data, request.data + request.size)}};
+
         return std::make_shared<Message>(peer_ctx.osid, ComputeRequest, request.size, request.data);
     }
 
@@ -171,7 +160,6 @@ class PSIContext
         buffer response;
         enclave.match_bloom_filter(sid, payload, response);
 
-        // return {{"sid", sid}, {"type", ComputeResponse}, {"payload", v8(response.data, response.data + response.size)}};
         return std::make_shared<Message>(sid, ComputeResponse, response.size, response.data);
     }
 

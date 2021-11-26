@@ -49,10 +49,6 @@ auto verifier_generate_challenge(VerifierContext& ctx, int vid) -> std::shared_p
     challenge->set_verifier_pk(ctx.vpk);
     challenge->set_format_settings(ctx.core.format_settings());
 
-    // json request = json::object({{"vid", ctx.vid}, {"vpk", ctx.vpk}, {"format_settings",
-    // ctx.core.format_settings()}});
-    // json::to_msgpack(request);
-
     return challenge;
 }
 
@@ -117,7 +113,6 @@ auto client(const char* host, uint16_t port, int id, const v8& pk) -> std::tuple
 
         hybrtc::AttestationResponse payload;
         payload.ParseFromArray(response->payload, static_cast<int>(response->payload_len));
-        // json::from_msgpack(response->payload, response->payload + response->payload_len);
         sid = verifier_process_response(vctx, payload);
         assert(sid == response["sid"].get<uint32_t>());
     }
