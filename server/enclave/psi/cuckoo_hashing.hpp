@@ -120,10 +120,10 @@ class CuckooHashing
         {
             uint32_t bi = hashes[hi] % L;
 
-            std::vector<ET>& bin = table[hi][bi];
-            for (auto& e : bin)
+            const std::vector<ET>& bin = table[hi][bi];
+            for (const auto& e : bin)
             {
-                if (e.first == key)
+                if (memcmp(&e.first, &key, sizeof(uint128_t)) == 0)
                 {
                     result.push_back(e.second);
                 }

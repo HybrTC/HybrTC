@@ -21,3 +21,13 @@ message AttestationResponse {
     bytes attester_pk   = 33; // 21
     bytes evidence      = 49; // 31
 }
+
+
+message BloomFilterHits {
+    message Pair {
+        bytes key = 1;
+        bytes value = 2;
+    }
+
+    repeated Pair pairs = 1;
+}

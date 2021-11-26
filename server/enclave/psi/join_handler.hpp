@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <tuple>
 
 #include "bloom_filter.hpp"
@@ -26,7 +27,7 @@ class JoinHandler : public SelectHandler
     bool half_data = false;
     database_t left_data;
 
-    using result_t = std::vector<std::tuple<uint128_t, v8, u32>>;
+    using result_t = std::vector<std::tuple<std::string, std::string, u32>>;
     result_t intersection;
 
   public:
@@ -46,7 +47,7 @@ class JoinHandler : public SelectHandler
 
     auto build_filter() -> v8;
 
-    auto match_filter(const v8& filter) -> v8;
+    auto match_filter(const v8& filter) -> std::string;
 
     void build_result(const v8& data);
 

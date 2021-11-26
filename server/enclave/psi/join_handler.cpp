@@ -8,6 +8,7 @@
 #include "config.hpp"
 #include "crypto/bignum.hpp"
 #include "join_handler.hpp"
+#include "msg.pb.h"
 
 using mbedtls::ctr_drbg;
 using mbedtls::mpi;
@@ -44,10 +45,11 @@ auto JoinHandler::build_filter() -> v8
     return bloom_filter.data();
 }
 
-auto JoinHandler::match_filter(const v8& filter) -> v8
+auto JoinHandler::match_filter(const v8& filter) -> std::string
 {
     HashSet bloom_filter(filter);
-    auto hits = json::array();
+
+    hybrtc::BloomFilterHits hits;
 
     const database_t& db = half_data ? left_data : local_data;
     for (const auto& [k, v] : db)
@@ -55,17 +57,23 @@ auto JoinHandler::match_filter(const v8& filter) -> v8
         uint128_t key = prp(k);
         if (bloom_filter.lookup(key))
         {
+            auto* pair = hits.add_pairs();
+
+            const auto& key_bin = *reinterpret_cast<const PRP::binary*>(&key);
+            pair->set_key(key_bin.data(), key_bin.size());
+
             auto enc = homo.encrypt(v, *rand_ctx).to_vector();
-            hits.push_back(json::array({*reinterpret_cast<const PRP::binary*>(&key), enc}));
+            pair->set_value(enc.data(), enc.size());
         }
     }
 
-    return json::to_msgpack(hits);
+    return hits.SerializeAsString();
 }
 
 void JoinHandler::build_result(const v8& data)
 {
-    auto peer = json::from_msgpack(data);
+    hybrtc::BloomFilterHits peer;
+    peer.ParseFromArray(data.data(), static_cast<int>(data.size()));
 
     /*
      * build cuckoo hashing table
@@ -81,17 +89,15 @@ void JoinHandler::build_result(const v8& data)
     /*
      * match cuckoo hashing table
      */
-    for (const auto& pair : peer)
+    for (const auto& pair : peer.pairs())
     {
-        PRP::binary key_bin = pair[0];
-        v8 val_bin = pair[1];
+        const auto& key_bin = pair.key();
+        const auto& val_bin = pair.value();
 
-        const uint128_t& key = *reinterpret_cast<const uint128_t*>(key_bin.data());
-        auto query_result = hashing.lookup(key);
-
+        auto query_result = hashing.lookup(*reinterpret_cast<const uint128_t*>(key_bin.data()));
         for (const auto& val : query_result)
         {
-            intersection.emplace_back(std::make_tuple(key, val_bin, val));
+            intersection.emplace_back(std::make_tuple(key_bin, val_bin, val));
         }
     }
 }

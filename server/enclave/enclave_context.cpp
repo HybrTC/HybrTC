@@ -2,15 +2,12 @@
 #include <openenclave/enclave.h>
 #include <cstddef>
 #include <cstdint>
-#include <nlohmann/json.hpp>
 
 #include "common/types.hpp"
 #include "enclave_context.hpp"
 #include "msg.pb.h"
 #include "sgx/attestation.hpp"
 #include "sgx/session.hpp"
-
-using nlohmann::json;
 
 EnclaveContext::EnclaveContext() : rand_ctx(std::make_shared<mbedtls::ctr_drbg>())
 {
@@ -32,6 +29,17 @@ void EnclaveContext::dump(const v8& bytes, uint8_t** obuf, size_t* olen)
     *olen = bytes.size();
     *obuf = u8p(oe_host_malloc(bytes.size()));
     memcpy(*obuf, bytes.data(), bytes.size());
+}
+
+void EnclaveContext::dump_enc(u32 sid, const std::string& bytes, uint8_t** obuf, size_t* olen)
+{
+    auto cipher = session(sid).cipher();
+    size_t len = cipher.encrypt_size(bytes.size());
+
+    *olen = len;
+    *obuf = u8p(oe_host_malloc(len));
+
+    cipher.encrypt(*obuf, *olen, u8p(bytes.data()), bytes.size(), *rand_ctx);
 }
 
 void EnclaveContext::dump_enc(u32 sid, const v8& bytes, uint8_t** obuf, size_t* olen)

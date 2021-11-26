@@ -130,8 +130,14 @@ auto client(const char* host, uint16_t port, int id, const v8& pk) -> std::tuple
 
     /* get match result and aggregate */
     auto response = client.recv();
+    if (response == nullptr)
+    {
+        SPDLOG_ERROR("Cannot Receive QueryResponse");
+        exit(EXIT_FAILURE);
+    }
     if (response->message_type != QueryResponse)
     {
+        SPDLOG_ERROR("Unexpected message type {}", response->message_type);
         abort();
     }
     if (response->session_id != sid)

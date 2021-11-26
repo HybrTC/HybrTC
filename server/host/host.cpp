@@ -219,6 +219,7 @@ auto main(int argc, const char* argv[]) -> int
     /* finish everything */
     auto [s_peer_sent, s_peer_recv] = s_peer.get();
     SPDLOG_INFO("Server for peer closed");
+
 #endif
 
     auto [s_client_sent, s_client_recv] = s_client.get();

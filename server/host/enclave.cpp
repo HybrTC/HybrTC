@@ -12,16 +12,16 @@
         exit(EXIT_FAILURE);                                                                           \
     }
 
-#define ECALL_IN                                      \
-    {                                                 \
-        SPDLOG_DEBUG("ECALL {}:start", __FUNCTION__);       \
+#define ECALL_IN                                            \
+    {                                                       \
+        SPDLOG_WARN("ECALL > {}", __FUNCTION__);            \
         timer(fmt::format("ECALL {}:start", __FUNCTION__)); \
     }
 
-#define ECALL_OUT                                    \
-    {                                                \
-        timer(fmt::format("ECALL {}:done", __FUNCTION__)); \
-        SPDLOG_DEBUG("ECALL {}:done", __FUNCTION__);       \
+#define ECALL_OUT                                       \
+    {                                                   \
+        timer(fmt::format("ECALL < {}", __FUNCTION__)); \
+        SPDLOG_WARN("ECALL {}:done", __FUNCTION__);     \
     }
 
 SPIEnclave::SPIEnclave(const char* enclave_image_path, bool simulate)

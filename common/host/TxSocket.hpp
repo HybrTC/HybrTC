@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "common/types.hpp"
+#include "crypto/sha256.hpp"
 #include "message.hpp"
 #include "socket/socket.h"
 #include "spdlog.hpp"
@@ -47,8 +48,19 @@ class TxSocket
             exit(EXIT_FAILURE);
         }
 
+#ifdef PSI_VERBOSE
+        mbedtls::sha256 h;
+        h.update(msg->payload, msg->payload_len);
+        auto d = h.finish();
+
         SPDLOG_DEBUG(
-            "TxSocket received sid={:08x} type={} len={}", msg->session_id, msg->message_type, msg->payload_len);
+            "TxSocket received from {} sid={:08x} type={:#02x} payload_len={}: {}",
+            connection->get_peer_address(),
+            msg->session_id,
+            msg->message_type,
+            msg->payload_len,
+            spdlog::to_hex(d));
+#endif
 
         return msg;
     }
@@ -58,7 +70,19 @@ class TxSocket
         connection->send(u8p(&msg), sizeof(uint32_t) * 3, true);
         connection->send(msg.payload, msg.payload_len);
 
-        SPDLOG_DEBUG("TxSocket sent sid={:08x} type={} len={}", msg.session_id, msg.message_type, msg.payload_len);
+#ifdef PSI_VERBOSE
+        mbedtls::sha256 h;
+        h.update(msg.payload, msg.payload_len);
+        auto d = h.finish();
+
+        SPDLOG_DEBUG(
+            "TxSocket sent to {} sid={:08x} type={:#02x} payload_len={}: {}",
+            connection->get_peer_address(),
+            msg.session_id,
+            msg.message_type,
+            msg.payload_len,
+            spdlog::to_hex(d));
+#endif
     }
 
     void send(uint32_t session_id, uint32_t message_type, const std::string& payload)
