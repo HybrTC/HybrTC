@@ -139,15 +139,6 @@ auto EnclaveContext::attester_generate_response(const u8* ibuf, size_t ilen, u8*
     response.set_attester_pk(ctx.apk);
     response.set_evidence(evidence);
 
-    TRACE_ENCLAVE("%s", __PRETTY_FUNCTION__);
-    printf("evidence(%lu): ", evidence.size());
-    for (std::uint8_t b : evidence)
-    {
-        printf("%02hhx ", b);
-    }
-    puts("");
-    TRACE_ENCLAVE("%s", __PRETTY_FUNCTION__);
-
     dump(response.SerializeAsString(), obuf, olen);
 
     /* build crypto context */
@@ -167,15 +158,6 @@ auto EnclaveContext::verifier_process_response(const u8* ibuf, size_t ilen) -> u
     ctx->aid = input.attester_id();            // set attester id
     ctx->apk = input.attester_pk();            // set attester pubkey
     const auto& evidence = input.evidence();   // load attestation evidence
-
-    TRACE_ENCLAVE("%s", __PRETTY_FUNCTION__);
-    printf("evidence(%lu): ", evidence.size());
-    for (std::uint8_t b : evidence)
-    {
-        printf("%02hhx ", b);
-    }
-    puts("");
-    TRACE_ENCLAVE("%s", __PRETTY_FUNCTION__);
 
     /* set vpk in ecdh context */
     ctx->ecdh.read_public(u8p(ctx->apk.data()), ctx->apk.size());
