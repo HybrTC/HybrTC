@@ -30,3 +30,12 @@ set_source_files_properties(
     "-Wno-unused-parameter;-Wno-sign-compare;-Wno-missing-field-initializers")
 
 set(PROTOBUF_INC ${protobuf_source_dir}/src)
+
+# Build LibProtobuf
+add_library(TxLibProtobuf ${PROTOBUF_SRC})
+target_include_directories(TxLibProtobuf PRIVATE ${PROTOBUF_INC})
+target_link_libraries(TxLibProtobuf openenclave::oelibc openenclave::oelibcxx)
+target_compile_definitions(TxLibProtobuf PUBLIC HAVE_PTHREAD)
+target_compile_options(
+  TxLibProtobuf PRIVATE "-Wno-uninitialized" "-Wno-unused-parameter"
+                        "-Wno-sign-compare")

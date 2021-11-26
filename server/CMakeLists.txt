@@ -22,6 +22,10 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
     set(prvkey prvkey-${select_policy}-${aggregate_policy}.pem)
     set(pubkey pubkey-${select_policy}-${aggregate_policy}.pem)
 
+    if (EXISTS ${CMAKE_CURRENT_BINARY_DIR}/${target})
+      file(REMOVE ${CMAKE_CURRENT_BINARY_DIR}/${target})
+    endif ()
+
     # Generate key
     add_custom_command(
       OUTPUT ${prvkey} ${pubkey}
