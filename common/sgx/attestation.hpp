@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <utility>
 
 #include <openenclave/attestation/sgx/evidence.h>
@@ -26,8 +27,8 @@ struct AttestationContext
     uint16_t vid = -1; // session id at verifier's side
     uint16_t aid = -1; // session id at attester's side
 
-    v8 vpk; // verifier's pk
-    v8 apk; // attester's pk
+    std::string vpk; // verifier's pk
+    std::string apk; // attester's pk
 
     explicit AttestationContext(const sptr<mbedtls::ctr_drbg>& rand_ctx)
         : rand_ctx(rand_ctx), ecdh(mbedtls::MBEDTLS_ECP_DP_SECP256R1, rand_ctx)

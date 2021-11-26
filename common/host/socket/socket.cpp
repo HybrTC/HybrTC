@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <system_error>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -20,20 +21,20 @@
 
 #define TID syscall(__NR_gettid)
 
-#define perr_exit(msg)                          \
-    {                                           \
-        std::array<char, BUFSIZ> errbuf;        \
-        sprintf(&errbuf[0], "[%ld] " msg, TID); \
-        perror(errbuf.data());                  \
-        exit(EXIT_FAILURE);                     \
+#define perr_exit(msg)                                                         \
+    {                                                                          \
+        std::array<char, BUFSIZ> errbuf;                                       \
+        sprintf(&errbuf[0], "[%ld] " msg, TID);                                \
+        throw std::system_error(errno, std::system_category(), errbuf.data()); \
+        exit(EXIT_FAILURE);                                                    \
     }
 
-#define pferr_exit(format, ...)                                 \
-    {                                                           \
-        std::array<char, BUFSIZ> errbuf;                        \
-        sprintf(&errbuf[0], "[%ld] " format, TID, __VA_ARGS__); \
-        perror(errbuf.data());                                  \
-        exit(EXIT_FAILURE);                                     \
+#define pferr_exit(format, ...)                                                \
+    {                                                                          \
+        std::array<char, BUFSIZ> errbuf;                                       \
+        sprintf(&errbuf[0], "[%ld] " format, TID, __VA_ARGS__);                \
+        throw std::system_error(errno, std::system_category(), errbuf.data()); \
+        exit(EXIT_FAILURE);                                                    \
     }
 
 union sockaddr_u
@@ -130,6 +131,7 @@ SocketConnection::SocketConnection(const char* host, uint16_t port) : Socket()
 
     int retry = 3;
     int ret = 0;
+
     while ((ret = ::connect(sockfd, &addr.addr, sizeof(addr))) < 0)
     {
         if ((retry--) > 0 && errno == ECONNREFUSED)
@@ -205,12 +207,18 @@ auto SocketConnection::recv(void* buffer, size_t size) -> size_t
 auto SocketConnection::recv(size_t size) -> void*
 {
     void* buffer = calloc(size, 1);
+    if (buffer == nullptr)
+    {
+        abort();
+    }
+
     if (recv(buffer, size) == 0)
     {
         free(buffer);
+        buffer = nullptr;
         return nullptr;
     }
-    
+
     return buffer;
 }
 

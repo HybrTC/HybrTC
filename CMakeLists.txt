@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.18)
 find_program(CMAKE_C_COMPILER clang-10 clang)
 find_program(CMAKE_CXX_COMPILER clang++-10 clang++)
 
-project("SGX-PSI" LANGUAGES C CXX)
+project("HybrTC" LANGUAGES C CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 

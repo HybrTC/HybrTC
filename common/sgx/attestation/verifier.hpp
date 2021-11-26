@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include <openenclave/attestation/verifier.h>
 
 #include "claims.hpp"
@@ -14,7 +16,7 @@ class Verifier
 
     explicit Verifier(const oe_uuid_t* format_id);
 
-    auto format_settings() -> v8;
+    auto format_settings() -> std::string;
 
-    auto verify_evidence(const v8& evidence) -> Claims;
+    auto verify_evidence(const std::string& evidence) -> Claims;
 };

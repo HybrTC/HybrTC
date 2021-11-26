@@ -1,9 +1,12 @@
 #include <mbedtls/ctr_drbg.h>
 #include <openenclave/enclave.h>
 #include <cstddef>
+#include <cstdint>
 #include <nlohmann/json.hpp>
 
+#include "common/types.hpp"
 #include "enclave_context.hpp"
+#include "msg.pb.h"
 #include "sgx/attestation.hpp"
 #include "sgx/session.hpp"
 
@@ -15,6 +18,13 @@ EnclaveContext::EnclaveContext() : rand_ctx(std::make_shared<mbedtls::ctr_drbg>(
     custom.resize(MBEDTLS_CTR_DRBG_KEYSIZE);
     oe_random(&custom[0], custom.size());
     rand_ctx->seed(custom);
+}
+
+void EnclaveContext::dump(const std::string& bytes, uint8_t** obuf, size_t* olen)
+{
+    *olen = bytes.size();
+    *obuf = u8p(oe_host_malloc(bytes.size()));
+    memcpy(*obuf, bytes.data(), bytes.size());
 }
 
 void EnclaveContext::dump(const v8& bytes, uint8_t** obuf, size_t* olen)
@@ -91,9 +101,12 @@ void EnclaveContext::verifier_generate_challenge(u8** obuf, size_t* olen)
     verifiers.push_back(ctx);
 
     /* generate output object */
-    auto json = json::object({{"vid", ctx->vid}, {"vpk", ctx->vpk}, {"format_settings", ctx->core.format_settings()}});
+    hybrtc::AttestationChallenge challenge;
+    challenge.set_verifier_id(ctx->vid);
+    challenge.set_verifier_pk(ctx->vpk);
+    challenge.set_format_settings(ctx->core.format_settings());
 
-    dump(json::to_msgpack(json), obuf, olen);
+    dump(challenge.SerializeAsString(), obuf, olen);
 }
 
 auto EnclaveContext::attester_generate_response(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen) -> u32
@@ -105,21 +118,39 @@ auto EnclaveContext::attester_generate_response(const u8* ibuf, size_t ilen, u8*
     ctx.aid = rand_ctx->rand<decltype(ctx.aid)>();
 
     /* deserialize and handle input */
-    auto input = json::from_msgpack(ibuf, ibuf + ilen);
-    ctx.vid = input["vid"].get<uint16_t>();       // set verifier id
-    ctx.vpk = input["vpk"].get<v8>();             // set peer pk
-    auto fs = input["format_settings"].get<v8>(); // load format settings
+
+    hybrtc::AttestationChallenge input;
+    input.ParseFromArray(ibuf, static_cast<int>(ilen));
+
+    // auto input = json::from_msgpack(ibuf, ibuf + ilen);
+    ctx.vid = input.verifier_id();            // set verifier id
+    ctx.vpk = input.verifier_pk();            // set peer pk
+    const auto& fs = input.format_settings(); // load format settings
 
     /* set vpk in ecdh context */
-    ctx.ecdh.read_public(ctx.vpk);
+    ctx.ecdh.read_public(u8p(ctx.vpk.data()), ctx.vpk.size());
 
     /* build claims and generate evidence*/
     auto evidence = ctx.core.get_evidence(fs, ctx.build_claims());
 
     /* generate output object */
-    auto json = json::object({{"vid", ctx.vid}, {"aid", ctx.aid}, {"apk", ctx.apk}, {"evidence", evidence}});
+    hybrtc::AttestationResponse response;
+    response.set_verifier_id(ctx.vid);
+    response.set_attester_id(ctx.aid);
+    response.set_attester_pk(ctx.apk);
+    response.set_evidence(evidence);
 
-    dump(json::to_msgpack(json), obuf, olen);
+    TRACE_ENCLAVE("%s", __PRETTY_FUNCTION__);
+    printf("evidence(%lu): ", evidence.size());
+    for (std::uint8_t b : evidence)
+    {
+        printf("%02hhx ", b);
+    }
+    puts("");
+    TRACE_ENCLAVE("%s", __PRETTY_FUNCTION__);
+
+    // auto json = json::object({{"vid", ctx.vid}, {"aid", ctx.aid}, {"apk", ctx.apk}, {"evidence", evidence}});
+    dump(response.SerializeAsString(), obuf, olen);
 
     /* build crypto context */
     auto [sid, session] = ctx.complete_attestation();
@@ -131,15 +162,25 @@ auto EnclaveContext::attester_generate_response(const u8* ibuf, size_t ilen, u8*
 auto EnclaveContext::verifier_process_response(const u8* ibuf, size_t ilen) -> u32
 {
     /* deserialize and handle input */
-    auto input = json::from_msgpack(ibuf, ibuf + ilen);
+    hybrtc::AttestationResponse input;
+    input.ParseFromArray(ibuf, static_cast<int>(ilen));
 
-    auto ctx = verifiers[input["vid"].get<uint16_t>()]; // load verifier context
-    ctx->aid = input["aid"].get<uint16_t>();            // set attester id
-    ctx->apk = input["apk"].get<v8>();                  // set attester pubkey
-    auto evidence = input["evidence"].get<v8>();        // load attestation evidence
+    auto ctx = verifiers[input.verifier_id()]; // load verifier context
+    ctx->aid = input.attester_id();            // set attester id
+    ctx->apk = input.attester_pk();            // set attester pubkey
+    const auto& evidence = input.evidence();   // load attestation evidence
+
+    TRACE_ENCLAVE("%s", __PRETTY_FUNCTION__);
+    printf("evidence(%lu): ", evidence.size());
+    for (std::uint8_t b : evidence)
+    {
+        printf("%02hhx ", b);
+    }
+    puts("");
+    TRACE_ENCLAVE("%s", __PRETTY_FUNCTION__);
 
     /* set vpk in ecdh context */
-    ctx->ecdh.read_public(ctx->apk);
+    ctx->ecdh.read_public(u8p(ctx->apk.data()), ctx->apk.size());
 
     /* verify evidence */
     auto claims = ctx->core.verify_evidence(evidence);

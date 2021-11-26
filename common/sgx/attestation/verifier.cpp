@@ -38,27 +38,32 @@ Verifier::Verifier(const oe_uuid_t* format_id) : format_ptr(format_id)
     init_lock.unlock();
 }
 
-auto Verifier::format_settings() -> v8
+auto Verifier::format_settings() -> std::string
 {
     uint8_t* buffer = nullptr;
     size_t size = 0;
 
-    oe_verifier_get_format_settings(format_ptr, &buffer, &size);
+    oe_result_t ret = oe_verifier_get_format_settings(format_ptr, &buffer, &size);
+    if (ret != OE_OK)
+    {
+        TRACE_ENCLAVE("oe_verifier_get_format_settings returns %s", oe_result_str(ret));
+        std::abort();
+    }
 
-    v8 format_settings(buffer, buffer + size);
+    std::string format_settings(buffer, buffer + size);
 
     oe_verifier_free_format_settings(buffer);
 
     return format_settings;
 }
 
-auto Verifier::verify_evidence(const v8& evidence) -> Claims
+auto Verifier::verify_evidence(const std::string& evidence) -> Claims
 {
     oe_claim_t* claims = nullptr;
     size_t claims_length = 0;
 
     oe_result_t result = oe_verify_evidence(
-        format_ptr, evidence.data(), evidence.size(), nullptr, 0, nullptr, 0, &claims, &claims_length);
+        format_ptr, u8p(evidence.data()), evidence.size(), nullptr, 0, nullptr, 0, &claims, &claims_length);
 
     if (result != OE_OK)
     {

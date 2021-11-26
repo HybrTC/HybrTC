@@ -22,7 +22,8 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
     add_dependencies(${target} PROTO_CPP_SRC_GENERATE)
 
     # Needed for the generated file helloworld_u.h
-    target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+    target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+                                                 ${PROTO_CPP_INC})
 
     target_link_libraries(
       ${target}

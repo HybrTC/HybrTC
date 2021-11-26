@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -23,20 +24,20 @@ class ecdh : public internal::resource<mbedtls_ecdh_context, mbedtls_ecdh_init, 
         mbedtls_ecdh_setup(get(), grp_id);
     }
 
-    auto make_public() -> v8
+    auto make_public() -> std::string
     {
-        v8 buf(MBEDTLS_ECP_MAX_BYTES, 0);
+        std::string buf(MBEDTLS_ECP_MAX_BYTES, 0);
         size_t len;
 
-        mbedtls_ecdh_make_public(get(), &len, &buf[0], buf.size(), mbedtls_ctr_drbg_random, rand_ctx->get());
+        mbedtls_ecdh_make_public(get(), &len, u8p(&buf[0]), buf.size(), mbedtls_ctr_drbg_random, rand_ctx->get());
 
         buf.resize((len));
         return buf;
     }
 
-    void read_public(const v8& buf)
+    void read_public(const unsigned char* buf, size_t blen)
     {
-        mbedtls_ecdh_read_public(get(), buf.data(), buf.size());
+        mbedtls_ecdh_read_public(get(), buf, blen);
     }
 
     auto calc_secret() -> v8

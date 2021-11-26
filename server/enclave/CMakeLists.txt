@@ -20,11 +20,11 @@ add_custom_command(
 file(
   GLOB
   ENCLAVE_SOURCE_FILES
+  ${PROTOBUF_SRC}
+  ${PROTO_CPP_SRC}
   *.cpp
   psi/*.cpp
-  ${CMAKE_SOURCE_DIR}/common/sgx/attestation/*.cpp
-  ${PROTOBUF_SRC}
-  ${PROTO_CPP_SRC})
+  ${CMAKE_SOURCE_DIR}/common/sgx/attestation/*.cpp)
 
 foreach (select_policy IN LISTS PSI_SELECT_POLICY)
   foreach (aggregate_policy IN LISTS PSI_AGGREGATE_POLICY)
@@ -42,8 +42,9 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
              PSI_AGGREGATE_POLICY=${aggregate_policy})
 
     # Need for the generated file helloworld_t.h
-    target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-                                                 ${PROTOBUF_INC})
+    target_include_directories(
+      ${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${PROTOBUF_INC}
+                        ${PROTO_CPP_INC})
 
     target_link_libraries(
       ${target} openenclave::oeenclave openenclave::oecrypto${OE_CRYPTO_LIB}

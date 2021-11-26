@@ -6,39 +6,9 @@
 #include <memory>
 
 #include "common/types.hpp"
+#include "message.hpp"
 #include "socket/socket.h"
 #include "spdlog.hpp"
-
-struct Message
-{
-    uint32_t session_id = -1;
-    uint32_t message_type = -1;
-    uint32_t payload_len = -1;
-    std::uint8_t* payload = nullptr;
-
-    Message() = default;
-
-    explicit Message(uint32_t payload_len) : payload_len(payload_len)
-    {
-        payload = u8p(calloc(payload_len, 1));
-    }
-
-    Message(uint32_t session_id, uint32_t message_type, uint32_t payload_len)
-        : session_id(session_id), message_type(message_type), payload_len(payload_len)
-    {
-        payload = u8p(calloc(payload_len, 1));
-    }
-
-    ~Message()
-    {
-        if (payload != nullptr)
-        {
-            free(payload);
-        }
-    }
-};
-
-using MessagePtr = std::shared_ptr<Message>;
 
 class TxSocket
 {
@@ -77,6 +47,9 @@ class TxSocket
             exit(EXIT_FAILURE);
         }
 
+        SPDLOG_DEBUG(
+            "TxSocket received sid={:08x} type={} len={}", msg->session_id, msg->message_type, msg->payload_len);
+
         return msg;
     }
 
@@ -84,6 +57,13 @@ class TxSocket
     {
         connection->send(u8p(&msg), sizeof(uint32_t) * 3, true);
         connection->send(msg.payload, msg.payload_len);
+
+        SPDLOG_DEBUG("TxSocket sent sid={:08x} type={} len={}", msg.session_id, msg.message_type, msg.payload_len);
+    }
+
+    void send(uint32_t session_id, uint32_t message_type, const std::string& payload)
+    {
+        send(session_id, message_type, payload.size(), payload.data());
     }
 
     void send(uint32_t session_id, uint32_t message_type, uint32_t payload_len, const void* payload)

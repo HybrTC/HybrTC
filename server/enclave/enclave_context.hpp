@@ -20,6 +20,7 @@ class EnclaveContext
   public:
     EnclaveContext();
 
+    static void dump(const std::string& bytes, uint8_t** obuf, size_t* olen);
     static void dump(const v8& bytes, uint8_t** obuf, size_t* olen);
 
     void dump_enc(u32 sid, const v8& bytes, uint8_t** obuf, size_t* olen);

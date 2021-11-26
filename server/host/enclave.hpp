@@ -16,14 +16,6 @@ struct buffer
 
     buffer() = default;
     buffer(const buffer&) = delete;
-
-    ~buffer()
-    {
-        if (data != nullptr)
-        {
-            free(data);
-        }
-    }
 };
 
 class SPIEnclave

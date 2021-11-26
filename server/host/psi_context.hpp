@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 
 #include <nlohmann/json.hpp>
@@ -9,6 +10,7 @@
 #include "common/types.hpp"
 #include "config.hpp"
 #include "enclave.hpp"
+#include "host/message.hpp"
 #include "host/spdlog.hpp"
 #include "host/timer.hpp"
 #include "prng.hpp"
@@ -85,21 +87,23 @@ class PSIContext
      * attestation routines
      */
 
-    auto prepare_attestation_req() -> nlohmann::json
+    auto prepare_attestation_req() -> MessagePtr
     {
         buffer request;
         enclave.verifier_generate_challenge(request);
-
-        return {{"sid", -1}, {"type", AttestationRequest}, {"payload", v8(request.data, request.data + request.size)}};
+        return std::make_shared<Message>(-1, AttestationRequest, request.size, request.data);
+        // return {{"sid", -1}, {"type", AttestationRequest}, {"payload", v8(request.data, request.data +
+        // request.size)}};
     }
 
-    auto handle_attestation_req(const v8& request) -> nlohmann::json
+    auto handle_attestation_req(const v8& request) -> MessagePtr
     {
         buffer response;
         uint32_t sid = enclave.attester_generate_response(request, response);
-
-        return {
-            {"sid", sid}, {"type", AttestationResponse}, {"payload", v8(response.data, response.data + response.size)}};
+        return std::make_shared<Message>(sid, AttestationResponse, response.size, response.data);
+        // return {
+        //     {"sid", sid}, {"type", AttestationResponse}, {"payload", v8(response.data, response.data +
+        //     response.size)}};
     }
 
     auto process_attestation_resp(const v8& response) -> uint32_t
@@ -112,7 +116,7 @@ class PSIContext
      * client routines
      */
 
-    auto handle_query_request(uint32_t sid, const v8& payload) -> nlohmann::json
+    auto handle_query_request(uint32_t sid, const v8& payload) -> MessagePtr
     {
         assert(sid == client_ctx.sid);
         enclave.set_client_query(sid, payload, half, data_keys, data_vals);
@@ -130,10 +134,11 @@ class PSIContext
 
         buffer output;
         enclave.get_result(client_ctx.sid, output);
-        auto result = v8(output.data, output.data + output.size);
 
         /* build and return query result */
-        return {{"sid", sid}, {"type", QueryResponse}, {"payload", result}};
+        // auto result = v8(output.data, output.data + output.size);
+        // return {{"sid", sid}, {"type", QueryResponse}, {"payload", result}};
+        return std::make_shared<Message>(sid, QueryResponse, output.size, output.data);
     }
 
     /*
@@ -141,20 +146,21 @@ class PSIContext
      */
 
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-    auto prepare_compute_req() -> nlohmann::json
+    auto prepare_compute_req() -> MessagePtr
     {
         /* wait for client public key to be set */
         SPDLOG_DEBUG("Locking client_ctx.lock_build");
         client_ctx.lock_build.lock();
         buffer request;
         enclave.build_bloom_filter(peer_ctx.osid, request);
-        return {
-            {"sid", peer_ctx.osid},
-            {"type", ComputeRequest},
-            {"payload", v8(request.data, request.data + request.size)}};
+        // return {
+        //     {"sid", peer_ctx.osid},
+        //     {"type", ComputeRequest},
+        //     {"payload", v8(request.data, request.data + request.size)}};
+        return std::make_shared<Message>(peer_ctx.osid, ComputeRequest, request.size, request.data);
     }
 
-    auto handle_compute_req(uint32_t sid, const v8& payload) -> nlohmann::json
+    auto handle_compute_req(uint32_t sid, const v8& payload) -> MessagePtr
     {
         /* wait for client public key to be set */
         SPDLOG_DEBUG("Locking client_ctx.lock_match");
@@ -165,7 +171,8 @@ class PSIContext
         buffer response;
         enclave.match_bloom_filter(sid, payload, response);
 
-        return {{"sid", sid}, {"type", ComputeResponse}, {"payload", v8(response.data, response.data + response.size)}};
+        // return {{"sid", sid}, {"type", ComputeResponse}, {"payload", v8(response.data, response.data + response.size)}};
+        return std::make_shared<Message>(sid, ComputeResponse, response.size, response.data);
     }
 
     void process_compute_resp(uint32_t sid, const v8& payload)

@@ -1,4 +1,3 @@
-
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -6,22 +5,25 @@
 #include <cstdlib>
 #include <future>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <thread>
+#include <tuple>
 
 #include <CLI/CLI.hpp>
 #include <nlohmann/json.hpp>
-#include <tuple>
 
 #define __OUTSIDE_ENCLAVE__
 
+#include "common/types.hpp"
 #include "common/uint128.hpp"
 #include "config.hpp"
 #include "crypto/ctr_drbg.hpp"
 #include "crypto/sha256.hpp"
-#include "host/communication.hpp"
+#include "host/TxSocket.hpp"
 #include "host/spdlog.hpp"
 #include "host/timer.hpp"
+#include "msg.pb.h"
 #include "paillier.hpp"
 #include "sgx/attestation.hpp"
 #include "type/message.hpp"
@@ -36,30 +38,41 @@ Timer timer;
 /*
  * output:  vid, this_pk, format_setting
  */
-auto verifier_generate_challenge(VerifierContext& ctx, int vid) -> v8
+auto verifier_generate_challenge(VerifierContext& ctx, int vid) -> std::shared_ptr<hybrtc::AttestationChallenge>
 {
     /* set verifier id; generate and dump ephemeral public key */
     ctx.vid = vid;
 
     /* generate output object */
-    json request = json::object({{"vid", ctx.vid}, {"vpk", ctx.vpk}, {"format_settings", ctx.core.format_settings()}});
+    auto challenge = std::make_shared<hybrtc::AttestationChallenge>();
+    challenge->set_verifier_id(ctx.vid);
+    challenge->set_verifier_pk(ctx.vpk);
+    challenge->set_format_settings(ctx.core.format_settings());
 
-    return json::to_msgpack(request);
+    // json request = json::object({{"vid", ctx.vid}, {"vpk", ctx.vpk}, {"format_settings",
+    // ctx.core.format_settings()}});
+    // json::to_msgpack(request);
+
+    return challenge;
 }
 
 /*
  * input:   vid, aid, evidence
  * output:  attestation_result
  */
-auto verifier_process_response(VerifierContext& ctx, const nlohmann::json& input) -> uint32_t
+auto verifier_process_response(VerifierContext& ctx, const hybrtc::AttestationResponse& input) -> uint32_t
 {
     /* handle input */
-    ctx.aid = input["aid"].get<uint16_t>();      // set attester id
-    ctx.apk = input["apk"].get<v8>();            // set attester pubkey
-    auto evidence = input["evidence"].get<v8>(); // load attestation evidence
+
+    ctx.aid = input.attester_id(); // set attester id
+    ctx.apk = input.attester_pk(); // set attester pubkey
+#if 0
+// Should verify the evidence here. But our platform is outdated
+const auto& evidence = input.evidence(); // load attestation evidence
+#endif
 
     /* set vpk in ecdh context */
-    ctx.ecdh.read_public(ctx.apk);
+    ctx.ecdh.read_public(u8p(ctx.apk.data()), ctx.apk.size());
 
     /* build crypto context */
     auto [sid, session] = ctx.complete_attestation();
@@ -93,7 +106,7 @@ auto client(const char* host, uint16_t port, int id, const v8& pk) -> std::tuple
     {
         {
             auto payload = verifier_generate_challenge(vctx, id);
-            client.send(-1, AttestationRequest, payload.size(), payload.data());
+            client.send(-1, AttestationRequest, payload->SerializeAsString());
         }
 
         auto response = client.recv();
@@ -101,7 +114,10 @@ auto client(const char* host, uint16_t port, int id, const v8& pk) -> std::tuple
         {
             abort();
         }
-        auto payload = json::from_msgpack(response->payload, response->payload + response->payload_len);
+
+        hybrtc::AttestationResponse payload;
+        payload.ParseFromArray(response->payload, static_cast<int>(response->payload_len));
+        // json::from_msgpack(response->payload, response->payload + response->payload_len);
         sid = verifier_process_response(vctx, payload);
         assert(sid == response["sid"].get<uint32_t>());
     }
