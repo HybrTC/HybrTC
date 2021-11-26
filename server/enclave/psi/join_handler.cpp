@@ -5,10 +5,12 @@
 
 #include <nlohmann/json.hpp>
 
+#include "common/types.hpp"
 #include "config.hpp"
 #include "crypto/bignum.hpp"
 #include "join_handler.hpp"
 #include "msg.pb.h"
+#include "sgx/log.h"
 
 using mbedtls::ctr_drbg;
 using mbedtls::mpi;
@@ -49,7 +51,7 @@ auto JoinHandler::match_filter(const v8& filter) -> std::string
 {
     HashSet bloom_filter(filter);
 
-    hybrtc::BloomFilterHits hits;
+    hybrtc::Pairs hits;
 
     const database_t& db = half_data ? left_data : local_data;
     for (const auto& [k, v] : db)
@@ -72,7 +74,7 @@ auto JoinHandler::match_filter(const v8& filter) -> std::string
 
 void JoinHandler::build_result(const v8& data)
 {
-    hybrtc::BloomFilterHits peer;
+    hybrtc::Pairs peer;
     peer.ParseFromArray(data.data(), static_cast<int>(data.size()));
 
     /*
@@ -102,11 +104,13 @@ void JoinHandler::build_result(const v8& data)
     }
 }
 
-auto JoinHandler::get_result() -> v8
+auto JoinHandler::get_result() -> std::string
 {
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
     abort();
 #endif
+
+    hybrtc::Pairs result;
 
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_JOIN_SUM
     auto result = json::array();
@@ -121,8 +125,14 @@ auto JoinHandler::get_result() -> v8
         result.push_back(json::array({key_bin, homo.add(peer_val, this_val).to_vector()}));
     }
 #else
-    auto result = json::array({intersection.size(), rand_ctx->rand<size_t>()});
+    auto* pair = result.add_pairs();
+
+    size_t size = intersection.size();
+    auto rand = rand_ctx->rand<size_t>();
+
+    pair->set_key(u8p(&size), sizeof(size_t));
+    pair->set_value(u8p(&rand), sizeof(size_t));
 #endif
 
-    return json::to_msgpack(result);
+    return result.SerializeAsString();
 }

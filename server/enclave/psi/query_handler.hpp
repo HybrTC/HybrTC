@@ -9,7 +9,7 @@ class QueryHandler
 
     virtual void load_data(const u32* data_key, const u32* data_val, size_t data_size) = 0;
 
-    virtual auto get_result() -> v8 = 0;
+    virtual auto get_result() -> std::string = 0;
 
     virtual ~QueryHandler() = default;
 };

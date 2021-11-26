@@ -23,7 +23,7 @@ message AttestationResponse {
 }
 
 
-message BloomFilterHits {
+message Pairs {
     message Pair {
         bytes key = 1;
         bytes value = 2;

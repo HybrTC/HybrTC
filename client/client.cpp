@@ -155,15 +155,19 @@ auto client(const char* host, uint16_t port, int id, const v8& pk) -> std::tuple
     return std::make_tuple(result, bytes_sent, bytes_received);
 }
 
-void output_result(PSI::Paillier& homo_crypto, const json& obj)
+void output_result(PSI::Paillier& homo_crypto, const v8& buf)
 {
+    hybrtc::Pairs pairs;
+    pairs.ParseFromArray(buf.data(), static_cast<int>(buf.size()));
+
 #if PSI_VERBOSE
 
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_JOIN_COUNT
 
     (void)(homo_crypto);
 
-    auto count = obj[0].get<size_t>();
+    auto bin = pairs.pairs(0).key();
+    size_t count = *reinterpret_cast<const size_t*>(bin.data());
     SPDLOG_INFO("{}", count);
 
 #else
@@ -188,7 +192,7 @@ void output_result(PSI::Paillier& homo_crypto, const json& obj)
 #else
 
     (void)(homo_crypto);
-    (void)(obj);
+    (void)(buf);
 
 #endif
 }
@@ -244,8 +248,8 @@ auto main(int argc, const char* argv[]) -> int
     timer("done");
 
     /* print out query result */
-    output_result(homo_crypto, json::from_msgpack(v0));
-    output_result(homo_crypto, json::from_msgpack(v1));
+    output_result(homo_crypto, v0);
+    output_result(homo_crypto, v1);
 
     /* dump statistics*/
     json output = json::object(

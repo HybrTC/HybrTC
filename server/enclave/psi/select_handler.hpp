@@ -14,5 +14,5 @@ class SelectHandler : public QueryHandler
 
     void load_data(const u32* data_key, const u32* data_val, size_t data_size) override;
 
-    auto get_result() -> v8 override;
+    auto get_result() -> std::string override;
 };

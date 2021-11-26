@@ -28,7 +28,7 @@ void SelectHandler::load_data(const u32* data_key, const u32* data_val, size_t d
 #endif
 }
 
-auto SelectHandler::get_result() -> v8
+auto SelectHandler::get_result() -> std::string
 {
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
     PRP prp;

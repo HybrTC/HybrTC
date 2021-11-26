@@ -51,5 +51,5 @@ class JoinHandler : public SelectHandler
 
     void build_result(const v8& data);
 
-    auto get_result() -> v8 override;
+    auto get_result() -> std::string override;
 };
