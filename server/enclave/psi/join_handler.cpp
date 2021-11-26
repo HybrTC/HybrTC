@@ -113,16 +113,15 @@ auto JoinHandler::get_result() -> std::string
     hybrtc::Pairs result;
 
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_JOIN_SUM
-    auto result = json::array();
-
-    for (auto& [key, peer_bin, this_raw] : intersection)
+    for (const auto& [key_bin, peer_bin, this_raw] : intersection)
     {
-        const auto& key_bin = *reinterpret_cast<const PRP::binary*>(&key);
-
-        mpi peer_val(peer_bin.data(), peer_bin.size());
+        mpi peer_val(u8p(peer_bin.data()), peer_bin.size());
         mpi this_val(homo.encrypt(this_raw, *rand_ctx));
+        const auto sum = homo.add(peer_val, this_val).to_vector();
 
-        result.push_back(json::array({key_bin, homo.add(peer_val, this_val).to_vector()}));
+        auto* pair = result.add_pairs();
+        pair->set_key(key_bin);
+        pair->set_value(sum.data(), sum.size());
     }
 #else
     auto* pair = result.add_pairs();

@@ -172,16 +172,16 @@ void output_result(PSI::Paillier& homo_crypto, const v8& buf)
 
 #else
 
-    for (auto pair : obj)
+    for (const auto& pair : pairs.pairs())
     {
-        a8<sizeof(uint128_t)> key_bin = pair[0];
+        const auto& key_bin = pair.key();
 
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
         (void)(homo_crypto);
         auto val = pair[1].get<uint64_t>();
 #else
-        v8 val_bin = pair[1];
-        auto val = homo_crypto.decrypt(mbedtls::mpi(val_bin.data(), val_bin.size())).to_unsigned<uint64_t>();
+        auto val_bin = pair.value();
+        auto val = homo_crypto.decrypt(mbedtls::mpi(u8p(val_bin.data()), val_bin.size())).to_unsigned<uint64_t>();
 #endif
 
         SPDLOG_INFO("{:sn} {:016x}", spdlog::to_hex(key_bin), val);
