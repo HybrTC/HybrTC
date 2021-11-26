@@ -4,6 +4,17 @@ set_source_files_properties(
   ${PROTO_CPP_SRC} PROPERTIES GENERATED 1 COMPILE_OPTIONS
                                           "-Wno-deprecated-declarations")
 
+# Build LibProtobuf
+add_library(TxProtoEnclave ${PROTOBUF_SRC} ${PROTO_CPP_SRC})
+add_dependencies(TxProtoEnclave PROTO_CPP_SRC_GENERATE)
+target_include_directories(TxProtoEnclave PRIVATE ${PROTOBUF_INC}
+                                                  ${PROTO_CPP_INC})
+target_link_libraries(TxProtoEnclave openenclave::oelibc openenclave::oelibcxx)
+target_compile_definitions(TxProtoEnclave PUBLIC HAVE_PTHREAD)
+target_compile_options(
+  TxProtoEnclave PRIVATE "-Wno-uninitialized" "-Wno-unused-parameter"
+                         "-Wno-sign-compare")
+
 # Use the edger8r to generate C bindings from the EDL file.
 add_custom_command(
   OUTPUT helloworld_t.h helloworld_t.c helloworld_args.h
@@ -11,7 +22,7 @@ add_custom_command(
   COMMAND openenclave::oeedger8r --trusted ${ENCLAVE_EDL} --search-path
           ${OE_INCLUDEDIR} --search-path ${OE_INCLUDEDIR}/openenclave/edl/sgx)
 
-file(GLOB ENCLAVE_SOURCE_FILES ${PROTO_CPP_SRC} *.cpp psi/*.cpp
+file(GLOB ENCLAVE_SOURCE_FILES *.cpp psi/*.cpp
      ${CMAKE_SOURCE_DIR}/common/sgx/attestation/*.cpp)
 
 foreach (select_policy IN LISTS PSI_SELECT_POLICY)
@@ -22,7 +33,7 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
     add_executable(${target} ${ENCLAVE_SOURCE_FILES}
                              ${CMAKE_CURRENT_BINARY_DIR}/helloworld_t.c)
 
-    add_dependencies(${target} PROTO_CPP_SRC_GENERATE)
+    add_dependencies(${target} TxProtoEnclave)
 
     target_compile_definitions(
       ${target} PUBLIC OE_API_VERSION=2 PSI_SELECT_POLICY=${select_policy}
@@ -40,7 +51,7 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
       openenclave::oelibc
       openenclave::oelibcxx
       nlohmann_json::nlohmann_json
-      TxLibProtobuf)
+      TxProtoEnclave)
 
   endforeach ()
 endforeach ()

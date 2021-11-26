@@ -2,6 +2,12 @@ set_source_files_properties(
   ${PROTO_CPP_SRC} PROPERTIES GENERATED 1 COMPILE_OPTIONS
                                           "-Wno-deprecated-declarations")
 
+add_library(TxProtoClient ${PROTO_CPP_SRC})
+add_dependencies(TxProtoClient PROTO_CPP_SRC_GENERATE)
+target_include_directories(TxProtoClient PRIVATE ${PROTO_CPP_INC})
+target_link_libraries(TxProtoClient protobuf::libprotobuf)
+target_compile_options(TxProtoClient PRIVATE "-Wno-unused-parameter")
+
 file(
   GLOB
   CLIENT_SRCS
@@ -18,7 +24,7 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
 
     add_executable(${target} ${CLIENT_SRCS})
 
-    add_dependencies(${target} PROTO_CPP_SRC_GENERATE)
+    add_dependencies(${target} TxProtoClient)
 
     target_include_directories(${target} PRIVATE ${PROTO_CPP_INC})
 
@@ -34,7 +40,7 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
       spdlog::spdlog
       nlohmann_json::nlohmann_json
       CLI11::CLI11
-      protobuf::libprotobuf)
+      TxProtoClient)
 
     target_compile_definitions(
       ${target} PUBLIC PSI_SELECT_POLICY=${select_policy}
