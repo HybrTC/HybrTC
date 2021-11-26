@@ -3,18 +3,15 @@
 #include <tuple>
 #include <utility>
 
-#include <nlohmann/json.hpp>
-
+#include "../msg_pb.h"
 #include "common/types.hpp"
 #include "config.hpp"
 #include "crypto/bignum.hpp"
 #include "join_handler.hpp"
-#include "msg.pb.h"
 #include "sgx/log.h"
 
 using mbedtls::ctr_drbg;
 using mbedtls::mpi;
-using nlohmann::json;
 
 JoinHandler::JoinHandler(sptr<ctr_drbg> rand_ctx) : SelectHandler(std::move(rand_ctx))
 {

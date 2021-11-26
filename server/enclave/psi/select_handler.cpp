@@ -1,16 +1,13 @@
 #include <utility>
 
-#include <nlohmann/json.hpp>
-
+#include "../msg_pb.h"
 #include "common/uint128.hpp"
 #include "config.hpp"
 #include "melbourne.hpp"
-#include "msg.pb.h"
 #include "prp.hpp"
 #include "select_handler.hpp"
 
 using mbedtls::ctr_drbg;
-using nlohmann::json;
 
 SelectHandler::SelectHandler(sptr<ctr_drbg> rand_ctx) : rand_ctx(std::move(rand_ctx))
 {

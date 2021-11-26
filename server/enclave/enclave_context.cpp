@@ -5,7 +5,7 @@
 
 #include "common/types.hpp"
 #include "enclave_context.hpp"
-#include "msg.pb.h"
+#include "msg_pb.h"
 #include "sgx/attestation.hpp"
 #include "sgx/session.hpp"
 

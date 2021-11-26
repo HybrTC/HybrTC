@@ -45,13 +45,8 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
                         ${PROTO_CPP_INC})
 
     target_link_libraries(
-      ${target}
-      openenclave::oeenclave
-      openenclave::oecrypto${OE_CRYPTO_LIB}
-      openenclave::oelibc
-      openenclave::oelibcxx
-      nlohmann_json::nlohmann_json
-      TxProtoEnclave)
+      ${target} openenclave::oeenclave openenclave::oecrypto${OE_CRYPTO_LIB}
+      openenclave::oelibc openenclave::oelibcxx TxProtoEnclave)
 
   endforeach ()
 endforeach ()
