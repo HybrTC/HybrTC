@@ -62,7 +62,7 @@ set(PSI_AGGREAGATE_JOIN_SUM 0x11)
 set(PSI_VERBOSE "" ON)
 set(PSI_DATA_SET_SIZE_LOG 12)
 set(PSI_SELECT_POLICY ${PSI_SELECT_ODD_OBLIVIOUS})
-set(PSI_AGGREGATE_POLICY ${PSI_AGGREAGATE_JOIN_SUM})
+set(PSI_AGGREGATE_POLICY ${PSI_AGGREAGATE_JOIN_COUNT})
 
 if (${PSI_VERBOSE})
   add_compile_definitions(PSI_VERBOSE=1)
@@ -78,24 +78,8 @@ message(STATUS "PSI_AGGREGATE_POLICY=${PSI_AGGREGATE_POLICY}")
 
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 
-include_directories(${CMAKE_SOURCE_DIR}/common ${PROTO_CPP_INC})
-
-add_subdirectory(client)
-add_subdirectory(server)
+add_subdirectory(src)
 add_subdirectory(tests)
-
-# use python to run in batch
-
-set(targets)
-foreach (select_policy IN LISTS PSI_SELECT_POLICY)
-  foreach (aggregate_policy IN LISTS PSI_AGGREGATE_POLICY)
-
-    list(APPEND targets client-${select_policy}-${aggregate_policy}
-         server-${select_policy}-${aggregate_policy}
-         sign-${select_policy}-${aggregate_policy})
-
-  endforeach ()
-endforeach ()
 
 add_custom_target(
   rundemo
