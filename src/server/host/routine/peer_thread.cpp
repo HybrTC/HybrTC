@@ -72,6 +72,7 @@ static auto peer_client(TxSocket* server, TxSocket* client, PSIContext* context)
     }
 
     /* get match result and aggregate */
+    for (size_t i = 0; i < context->server_count() - 1; i++)
     {
         auto response = client->recv();
         SPDLOG_DEBUG("process_compute_resp: response received");

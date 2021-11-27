@@ -13,13 +13,18 @@ from time import sleep
 SERVERS = [
     {
         "host": "127.0.0.1",
-        "port_p": 5000,
-        "port_c": 5001,
+        "port_c": 5000,
+        "port_p": 5001,
     },
     {
         "host": "127.0.0.1",
-        "port_p": 6000,
-        "port_c": 6001,
+        "port_c": 5010,
+        "port_p": 5011,
+    },
+    {
+        "host": "127.0.0.1",
+        "port_c": 5020,
+        "port_p": 5021,
     },
 ]
 
@@ -73,11 +78,12 @@ def run_server(server_path, test_id, server_id, data_size, enclave_path):
 def test(client: Path, server: Path, enclave: Path, data_size: int):
     test_id = datetime.now().strftime("%Y%m%dT%H%M%S")
 
-    procs = {
-        run_server(server, test_id, 0, data_size, enclave): "Server0",
-        run_server(server, test_id, 1, data_size, enclave): "Server1",
-        run_client(client, test_id): "Client",
-    }
+    procs = {}
+    for server_id in range(len(SERVERS)):
+        procs[
+            run_server(server, test_id, server_id, data_size, enclave)
+        ] = "Server{}".format(server_id)
+    procs[run_client(client, test_id)] = "Client"
 
     while len(procs) > 0:
         (pid, status) = os.wait()
@@ -120,10 +126,9 @@ def test(client: Path, server: Path, enclave: Path, data_size: int):
         break
 
     output_file = [
-        f"{test_id}-client.json",
-        f"{test_id}-server0.json",
-        f"{test_id}-server1.json",
+        f"{test_id}-server{server_id}.json" for server_id in range(len(SERVERS))
     ]
+    output_file.append(f"{test_id}-client.json")
 
     if not all(map(Path.exists, map(Path, output_file))):
         exit(-1)

@@ -163,6 +163,9 @@ class PSIContext
         buffer request;
         enclave.gen_compute_request(request);
 
+        lock.active.unlock();
+        SPDLOG_DEBUG("Unlocked lock.active");
+
         return std::make_shared<Message>(next_sid, Message::ComputeRequest, request.size, request.data);
     }
 
@@ -191,11 +194,14 @@ class PSIContext
 
     auto process_compute_resp(const uint8_t* data, size_t size) -> MessagePtr
     {
+        SPDLOG_DEBUG("Locking lock.active");
+        lock.active.lock();
+
         buffer output;
         enclave.pro_compute_response({const_cast<uint8_t*>(data), size}, output);
 
         lock.active.unlock();
-        SPDLOG_DEBUG("Unlocked lock.client");
+        SPDLOG_DEBUG("Unlocked lock.active");
 
         if (output.data == nullptr)
         {

@@ -97,8 +97,9 @@ auto JoinHandler::match_filter(const std::string& input, std::string& output) ->
 
     const auto slice_id = (id == 0) ? request.initiator_id() : 0;
 #if PSI_VERBOSE
+    TRACE_ENCLAVE("[s%u] %s: initiator_id = %u", id, __FUNCTION__, request.initiator_id());
     const auto& slice = data[slice_id];
-    TRACE_ENCLAVE("Server %u @ %s: slice id = %u, slice size = %lu", id, __FUNCTION__, slice_id, slice.size());
+    TRACE_ENCLAVE("[s%u] @ %s: slice id = %u, slice size = %lu", id, __FUNCTION__, slice_id, slice.size());
 #endif
 
     HashSet bloom_filter(1 << FILTER_POWER_BITS, request.bloom_filter());
@@ -153,8 +154,9 @@ void JoinHandler::build_result(const std::string& input, std::string& output)
 
     const auto slice_id = (id == 0) ? response.initiator_id() : 0;
 #if PSI_VERBOSE
+    TRACE_ENCLAVE("[s%u] %s: initiator_id = %u", id, __FUNCTION__, response.initiator_id());
     const auto& slice = data[slice_id];
-    TRACE_ENCLAVE("Server %u @ %s: slice id = %u, slice size = %lu", id, __FUNCTION__, slice_id, slice.size());
+    TRACE_ENCLAVE("[s%u] %s: slice id = %u, slice size = %lu", id, __FUNCTION__, slice_id, slice.size());
 #endif
 
     /*
@@ -166,7 +168,30 @@ void JoinHandler::build_result(const std::string& input, std::string& output)
         hashing.insert(key, val);
     }
 
-    if (response.initiator_id() == id)
+    if (response.initiator_id() != id)
+    {
+        hybrtc::ComputeResponse result;
+        result.set_initiator_id(response.initiator_id());
+        result.set_sender_id(id);
+
+        for (const auto& pair : response.pairs())
+        {
+            const auto& key_bin = pair.key();
+
+            auto query_result = hashing.lookup(*reinterpret_cast<const uint128_t*>(key_bin.data()));
+            for (const auto& val : query_result)
+            {
+                auto enc = homo.encrypt(val, *rand_ctx).to_vector();
+
+                auto* new_pair = result.add_pairs();
+                new_pair->CopyFrom(pair);
+                new_pair->add_value(enc.data(), enc.size());
+            }
+        }
+
+        result.SerializeToString(&output);
+    }
+    else
     {
         output.clear();
         /*
@@ -184,27 +209,6 @@ void JoinHandler::build_result(const std::string& input, std::string& output)
                     std::make_tuple(key_bin, std::vector<std::string>(val_bin.begin(), val_bin.end()), val));
             }
         }
-    }
-    else
-    {
-        hybrtc::ComputeResponse result;
-        result.set_initiator_id(response.initiator_id());
-        result.set_sender_id(id);
-
-        for (auto& pair : *response.mutable_pairs())
-        {
-            const auto& key_bin = pair.key();
-
-            auto query_result = hashing.lookup(*reinterpret_cast<const uint128_t*>(key_bin.data()));
-            for (const auto& val : query_result)
-            {
-                auto enc = homo.encrypt(val, *rand_ctx).to_vector();
-                pair.add_value(enc.data(), enc.size());
-                result.mutable_pairs()->AddAllocated(&pair);
-            }
-        }
-
-        result.SerializeToString(&output);
     }
 }
 

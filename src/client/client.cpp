@@ -101,11 +101,16 @@ auto client(const std::string& host, uint16_t port, unsigned server_id, unsigned
 
     {
         auto payload = verifier_generate_challenge(vctx, server_id);
+        SPDLOG_DEBUG("To s{} AttestationRequest sending", server_id);
         client.send(-1, Message::AttestationRequest, payload->SerializeAsString());
+        SPDLOG_DEBUG("To s{} AttestationRequest sent", server_id);
     }
 
     {
+        SPDLOG_DEBUG("From s{} AttestationResponse receving", server_id);
         auto response = client.recv();
+        SPDLOG_DEBUG("From s{} AttestationResponse received", server_id);
+
         assert(response->message_type == Message::AttestationResponse);
         hybrtc::AttestationResponse payload;
         payload.ParseFromArray(response->payload, static_cast<int>(response->payload_len));
@@ -125,11 +130,15 @@ auto client(const std::string& host, uint16_t port, unsigned server_id, unsigned
         request.set_server_count(server_count);
         request.set_homo_pk(pk);
         auto payload = session->cipher().encrypt(request.SerializeAsString(), *rand_ctx);
+        SPDLOG_DEBUG("To s{} QueryRequest sending", server_id);
         client.send(sid, Message::QueryRequest, payload.size(), payload.data());
+        SPDLOG_DEBUG("To s{} QueryRequest sent", server_id);
     }
 
     /* receive query result */
+    SPDLOG_DEBUG("From s{} QueryResponse receving", server_id);
     auto response = client.recv();
+    SPDLOG_DEBUG("From s{} QueryResponse received", server_id);
     if (response == nullptr)
     {
         SPDLOG_ERROR("Cannot Receive QueryResponse");

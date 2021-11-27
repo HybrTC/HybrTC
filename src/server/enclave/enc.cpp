@@ -162,9 +162,9 @@ void pro_compute_response(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
     const auto input = global->session(session_id.peer_next).cipher().decrypt_str(ibuf, ilen);
+
     std::string output;
     handler->build_result(input, output);
-
     if (output.empty())
     {
         *obuf = nullptr;
@@ -175,7 +175,6 @@ void pro_compute_response(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
         global->dump_enc(session_id.peer_prev, output, obuf, olen);
     }
 
-    (void)output;
 #else
     (void)(sid);
     (void)(ibuf);
