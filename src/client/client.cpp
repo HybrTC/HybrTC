@@ -193,6 +193,8 @@ void output_result(PSI::Paillier& homo_crypto, const v8& buf)
 
 auto main(int argc, const char* argv[]) -> int
 {
+    sleep(1);
+
     /* pasrse command line argument */
 
     CLI::App app;

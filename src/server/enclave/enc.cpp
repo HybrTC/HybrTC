@@ -74,16 +74,15 @@ auto verifier_process_response(const u8* ibuf, size_t ilen) -> u32
 
 void set_client_query(const u8* ibuf, size_t ilen, const u32* data_key, const u32* data_val, size_t data_size)
 {
-    const uint32_t server_id = global->server_id();
-    const uint32_t server_count = global->server_count();
-
     handler = std::make_shared<decltype(handler)::element_type>(global->rand_ptr());
 
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
     (void)(ibuf);
     (void)(ilen);
-    (void)(half);
 #else
+    const uint32_t server_id = global->server_id();
+    const uint32_t server_count = global->server_count();
+
     hybrtc::QueryRequest request;
     request.ParseFromString(global->session(session_id.client).cipher().decrypt_str(ibuf, ilen));
 
@@ -147,7 +146,6 @@ auto pro_compute_request(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen) -
 
     return otype;
 #else
-    (void)(sid);
     (void)(ibuf);
     (void)(ilen);
     (void)(obuf);
@@ -176,9 +174,10 @@ void pro_compute_response(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
     }
 
 #else
-    (void)(sid);
     (void)(ibuf);
     (void)(ilen);
+    (void)(obuf);
+    (void)(olen);
 
     TRACE_ENCLAVE("UNREACHABLE CODE");
     abort();

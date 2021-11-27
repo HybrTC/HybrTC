@@ -51,7 +51,6 @@ auto main(int argc, const char* argv[]) -> int
     CLI11_PARSE(app, argc, argv);
 
     auto peers = json::parse(topo);
-    auto peer_id = (server_id + 1) % peers.size();
 
     /* configure logger */
     spdlog::set_level(spdlog::level::debug);
@@ -59,7 +58,7 @@ auto main(int argc, const char* argv[]) -> int
 
     /* initialize PSI context */
     PSIContext psi(
-        enclave_image_path.c_str(), (1 << log_data_size), (1 << (log_data_size * 3 / 2)), server_id, peers.size());
+        enclave_image_path.c_str(), (1 << log_data_size), (1 << (log_data_size * 4 / 3)), server_id, peers.size());
 
     Timer timer;
     timer("start");
@@ -68,6 +67,8 @@ auto main(int argc, const char* argv[]) -> int
     auto s_client = std::async(std::launch::async, client_thread, client_port, &psi);
 
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
+
+    auto peer_id = (server_id + 1) % peers.size();
 
     auto [c_peer_sent, c_peer_recv, s_peer_sent, s_peer_recv] = peer_thread(
         peers[server_id]["port"].get<uint16_t>(),

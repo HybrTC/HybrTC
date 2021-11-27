@@ -49,7 +49,6 @@ def run_client(client_path, test_id):
         print(prefix(pid), *cmd)
         return pid
 
-    sleep(4)
     os.execv(cmd[0], cmd)
 
 

@@ -54,7 +54,7 @@ class TxSocket
             exit(EXIT_FAILURE);
         }
 
-#ifdef PSI_VERBOSE
+#if PSI_VERBOSE
         mbedtls::sha256 h;
         h.update(msg->payload, msg->payload_len);
         auto d = h.finish();
@@ -76,7 +76,7 @@ class TxSocket
         connection->send(u8p(&msg), sizeof(uint32_t) * 3, true);
         connection->send(msg.payload, msg.payload_len);
 
-#ifdef PSI_VERBOSE
+#if PSI_VERBOSE
         mbedtls::sha256 h;
         h.update(msg.payload, msg.payload_len);
         auto d = h.finish();

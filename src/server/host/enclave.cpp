@@ -14,14 +14,14 @@
 
 #define ECALL_IN                                      \
     {                                                 \
-        SPDLOG_WARN("ECALL > {}", __FUNCTION__);      \
+        SPDLOG_DEBUG("ECALL > {}", __FUNCTION__);      \
         timer(fmt::format("{}:start", __FUNCTION__)); \
     }
 
 #define ECALL_OUT                                    \
     {                                                \
         timer(fmt::format("{}:done", __FUNCTION__)); \
-        SPDLOG_WARN("ECALL < {}", __FUNCTION__);     \
+        SPDLOG_DEBUG("ECALL < {}", __FUNCTION__);     \
         CHECK(__FUNCTION__, result);                 \
     }
 
