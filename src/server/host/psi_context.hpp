@@ -22,8 +22,8 @@ class PSIContext
     v32 data_vals;
 
     uint32_t csid;
-    uint32_t isid;
-    uint32_t osid;
+    uint32_t prev_sid;
+    uint32_t next_sid;
 
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
     struct
@@ -87,14 +87,14 @@ class PSIContext
         csid = sid;
     }
 
-    void set_peer_isid(uint32_t sid)
+    void set_previous_peer_sid(uint32_t sid)
     {
-        isid = sid;
+        prev_sid = sid;
     }
 
-    void set_peer_osid(uint32_t sid)
+    void set_next_peer_sid(uint32_t sid)
     {
-        osid = sid;
+        next_sid = sid;
     }
 
     /*
@@ -164,9 +164,9 @@ class PSIContext
         lock.active.lock();
 
         buffer request;
-        enclave.build_bloom_filter(osid, request);
+        enclave.build_bloom_filter(next_sid, request);
 
-        return std::make_shared<Message>(osid, Message::ComputeRequest, request.size, request.data);
+        return std::make_shared<Message>(next_sid, Message::ComputeRequest, request.size, request.data);
     }
 
     void process_compute_resp(uint32_t sid, const v8& payload)

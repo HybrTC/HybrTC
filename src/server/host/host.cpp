@@ -102,7 +102,7 @@ void peer_servant(TxSocket* server, PSIContext* context)
 
     /* attestation */
     auto sid = attestation_servant(*server, *context);
-    context->set_peer_isid(sid);
+    context->set_previous_peer_sid(sid);
     SPDLOG_DEBUG("server session from peer: sid={:08x}", sid);
 
     /* compute query */
@@ -130,7 +130,7 @@ auto peer_client(TxSocket* client, PSIContext* context)
 {
     /* attestation */
     auto sid = attestation_initiator(*client, *context);
-    context->set_peer_osid(sid);
+    context->set_next_peer_sid(sid);
     SPDLOG_DEBUG("client session to peer: sid={:08x}", sid);
 
     /* build and send bloom filter */
