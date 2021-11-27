@@ -23,7 +23,7 @@ static auto attestation_servant(TxSocket& server, PSIContext& context) -> u32
 {
     auto request = server.recv();
     SPDLOG_DEBUG("handle_attestation_req: request received");
-    if (request->message_type != AttestationRequest)
+    if (request->message_type != Message::AttestationRequest)
     {
         std::abort();
     }
@@ -42,6 +42,7 @@ auto client_servant(int port, PSIContext* context)
 
     /* construct a response socket and bind to interface */
     auto server = TxSocket::listen(port);
+    server.accept();
 
     /* attestation */
     auto sid = attestation_servant(server, *context);
@@ -52,7 +53,7 @@ auto client_servant(int port, PSIContext* context)
     {
         auto request = server.recv();
         SPDLOG_DEBUG("handle_query_request: request received");
-        if (request->message_type != QueryRequest)
+        if (request->message_type != Message::QueryRequest)
         {
             std::abort();
         }
@@ -63,7 +64,7 @@ auto client_servant(int port, PSIContext* context)
         v8 payload(request->payload, request->payload + request->payload_len);
 
         auto response = context->handle_query_request(sid, payload);
-        assert(response->message_type == QueryResponse);
+        assert(response->message_type == Message::QueryResponse);
         server.send(*response);
         SPDLOG_DEBUG("handle_query_request: response sent");
     }
@@ -78,6 +79,7 @@ auto peer_servant(int port, PSIContext* context)
 
     /* construct a response socket and bind to interface */
     auto server = TxSocket::listen(port);
+    server.accept();
 
     /* attestation */
     auto sid = attestation_servant(server, *context);
@@ -88,7 +90,7 @@ auto peer_servant(int port, PSIContext* context)
     {
         auto request = server.recv();
         SPDLOG_DEBUG("handle_compute_req: request received");
-        if (request->message_type != ComputeRequest)
+        if (request->message_type != Message::ComputeRequest)
         {
             std::abort();
         }
@@ -99,7 +101,7 @@ auto peer_servant(int port, PSIContext* context)
         v8 payload(request->payload, request->payload + request->payload_len);
 
         auto response = context->handle_compute_req(sid, payload);
-        assert(response->message_type == ComputeResponse);
+        assert(response->message_type == Message::ComputeResponse);
         server.send(*response);
         SPDLOG_DEBUG("handle_compute_req: response sent");
     }

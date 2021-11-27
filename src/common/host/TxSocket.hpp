@@ -21,8 +21,13 @@ class TxSocket
     {
         TxSocket socket;
         socket.server = std::make_shared<SocketServer>(port);
-        socket.connection = std::make_shared<SocketConnection>(socket.server->accept());
         return socket;
+    }
+
+    auto accept() -> bool
+    {
+        connection = std::make_shared<SocketConnection>(server->accept());
+        return connection != nullptr;
     }
 
     static auto connect(const char* host, uint16_t port) -> TxSocket
