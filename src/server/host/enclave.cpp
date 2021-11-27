@@ -72,11 +72,17 @@ auto PSIEnclave::verifier_process_response(const buffer& input) -> uint32_t
     return sid;
 }
 
-void PSIEnclave::set_client_query(uint32_t sid, const v8& input, bool half, const v32& keys, const v32& values)
+void PSIEnclave::set_client_query(
+    uint32_t sid,
+    const v8& input,
+    uint32_t server_id,
+    uint32_t server_count,
+    const v32& keys,
+    const v32& values)
 {
     ECALL_IN;
-    oe_result_t result =
-        ::set_client_query(enclave(), sid, input.data(), input.size(), half, keys.data(), values.data(), keys.size());
+    oe_result_t result = ::set_client_query(
+        enclave(), sid, input.data(), input.size(), server_id, server_count, keys.data(), values.data(), keys.size());
     ECALL_OUT;
 
     CHECK("set_client_query", result);

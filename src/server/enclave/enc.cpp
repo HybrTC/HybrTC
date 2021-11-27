@@ -64,7 +64,8 @@ void set_client_query(
     u32 sid,
     const u8* ibuf,
     size_t ilen,
-    bool half,
+    uint32_t server_id,
+    uint32_t server_count,
     const u32* data_key,
     const u32* data_val,
     size_t data_size)
@@ -80,8 +81,25 @@ void set_client_query(
     hybrtc::QueryRequest request;
     request.ParseFromString(global->session(sid).cipher().decrypt_str(ibuf, ilen));
 
+    if (request.server_id() != server_id)
+    {
+        TRACE_ENCLAVE("Server ID mismatch: given %u, requested %u", server_id, request.server_id());
+        abort();
+    }
+    else
+    {
+        handler->set_id(server_id);
+    }
+    if (request.server_count() != server_count)
+    {
+        TRACE_ENCLAVE("Server ID mismatch: given %u, requested %u", server_count, request.server_count());
+        abort();
+    }
+    else
+    {
+        handler->set_count(server_count);
+    }
     handler->set_public_key(request.homo_pk());
-    handler->set_half(half);
 #endif
 
     handler->load_data(data_key, data_val, data_size);

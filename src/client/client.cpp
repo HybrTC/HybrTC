@@ -37,7 +37,7 @@ Timer timer;
 /*
  * output:  vid, this_pk, format_setting
  */
-auto verifier_generate_challenge(VerifierContext& ctx, int vid) -> std::shared_ptr<hybrtc::AttestationChallenge>
+auto verifier_generate_challenge(VerifierContext& ctx, unsigned vid) -> std::shared_ptr<hybrtc::AttestationChallenge>
 {
     /* set verifier id; generate and dump ephemeral public key */
     ctx.vid = vid;
@@ -85,7 +85,8 @@ const auto& evidence = input.evidence(); // load attestation evidence
     return sid;
 }
 
-auto client(const std::string& host, uint16_t port, int id, const std::string& pk) -> std::tuple<v8, size_t, size_t>
+auto client(const std::string& host, uint16_t port, unsigned server_id, unsigned server_count, const std::string& pk)
+    -> std::tuple<v8, size_t, size_t>
 {
     SPDLOG_INFO("starting {} to {}:{}", __FUNCTION__, host, port);
 
@@ -96,10 +97,10 @@ auto client(const std::string& host, uint16_t port, int id, const std::string& p
     uint32_t sid;
 
     /* attestation */
-    timer(fmt::format("c/s{}: initiate attestation", id));
+    timer(fmt::format("c/s{}: initiate attestation", server_id));
 
     {
-        auto payload = verifier_generate_challenge(vctx, id);
+        auto payload = verifier_generate_challenge(vctx, server_id);
         client.send(-1, Message::AttestationRequest, payload->SerializeAsString());
     }
 
@@ -112,14 +113,16 @@ auto client(const std::string& host, uint16_t port, int id, const std::string& p
         assert(sid == response["sid"].get<uint32_t>());
     }
 
-    timer(fmt::format("c/s{}: initiate query", id));
+    timer(fmt::format("c/s{}: initiate query", server_id));
 
     auto session = sessions[sid];
-    SPDLOG_DEBUG("client session to s{}: sid={:08x}", id, sid);
+    SPDLOG_DEBUG("client session to s{}: sid={:08x}", server_id, sid);
 
     /* send client query */
     {
         hybrtc::QueryRequest request;
+        request.set_server_id(server_id);
+        request.set_server_count(server_count);
         request.set_homo_pk(pk);
         auto payload = session->cipher().encrypt(request.SerializeAsString(), *rand_ctx);
         client.send(sid, Message::QueryRequest, payload.size(), payload.data());
@@ -136,7 +139,7 @@ auto client(const std::string& host, uint16_t port, int id, const std::string& p
     assert(response->session_id == sid);
     auto result = session->cipher().decrypt(response->payload, response->payload_len);
 
-    timer(fmt::format("c/s{}: result received", id));
+    timer(fmt::format("c/s{}: result received", server_id));
 
     auto [bytes_sent, bytes_received] = client.statistics();
 
@@ -218,7 +221,7 @@ auto main(int argc, const char* argv[]) -> int
     {
         const auto& host = servers[i]["host"].get<std::string>();
         const auto& port = servers[i]["port"].get<std::uint16_t>();
-        futures.emplace_back(std::async(std::launch::async, client, host, port, i, pubkey));
+        futures.emplace_back(std::async(std::launch::async, client, host, port, i, servers.size(), pubkey));
     }
 
     /* wait for the result */

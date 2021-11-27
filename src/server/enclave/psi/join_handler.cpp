@@ -22,7 +22,7 @@ void JoinHandler::load_data(const u32* data_key, const u32* data_val, size_t dat
 {
     SelectHandler::load_data(data_key, data_val, data_size);
 
-    if (half_data)
+    if (split() == 2)
     {
         size_t mid = local_data.size() / 2;
 
@@ -30,6 +30,12 @@ void JoinHandler::load_data(const u32* data_key, const u32* data_val, size_t dat
         memcpy(u8p(&left_data[0]), u8p(&local_data[mid]), left_data.size() * sizeof(left_data[0]));
 
         local_data.resize(mid);
+    }
+    else if (split() != 0)
+    {
+        // TODO:
+        TRACE_ENCLAVE("unimplemented split_shares = %u", split());
+        abort();
     }
 }
 
@@ -47,11 +53,18 @@ auto JoinHandler::build_filter() -> const std::string&
 
 auto JoinHandler::match_filter(const std::string& filter) -> std::string
 {
+    if (split() > 0 && split() != 2)
+    {
+        // TODO:
+        TRACE_ENCLAVE("unimplemented split_shares = %u", split());
+        abort();
+    }
+
     HashSet bloom_filter(1 << FILTER_POWER_BITS, filter);
 
     hybrtc::Pairs hits;
 
-    const database_t& db = half_data ? left_data : local_data;
+    const database_t& db = split() == 2 ? left_data : local_data;
     for (const auto& [k, v] : db)
     {
         uint128_t key = prp(k);

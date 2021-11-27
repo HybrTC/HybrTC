@@ -32,9 +32,23 @@ message Pairs {
 }
 
 message QueryRequest {
-    bytes homo_pk = 1;
+    uint32 server_id = 1;
+    uint32 server_count = 2;
+    bytes homo_pk = 3;
 }
 
 message QueryResponse {
     repeated Pair pairs = 1;
+}
+
+message ComputeRequest {
+    uint32 initiator_id = 1;
+    uint32 sender_id = 2;
+    bytes bloom_filter = 10;
+}
+
+message ComputeResponse {
+    uint32 initiator_id = 1;
+    uint32 sender_id = 2;
+    repeated Pair pairs = 10;
 }

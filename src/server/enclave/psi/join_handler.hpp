@@ -24,11 +24,18 @@ class JoinHandler : public SelectHandler
     PRP prp;
     PSI::Paillier homo;
 
-    bool half_data = false;
+    uint32_t id;
+    uint32_t count;
+
     database_t left_data;
 
     using result_t = std::vector<std::tuple<std::string, std::string, u32>>;
     result_t intersection;
+
+    [[nodiscard]] auto split() const -> unsigned
+    {
+        return id == 0 ? count : 0;
+    }
 
   public:
     explicit JoinHandler(sptr<mbedtls::ctr_drbg> rand_ctx);
@@ -38,9 +45,14 @@ class JoinHandler : public SelectHandler
         homo.load_pubkey(pubkey);
     }
 
-    void set_half(bool half = true)
+    void set_id(unsigned server_id)
     {
-        half_data = half;
+        id = server_id;
+    }
+
+    void set_count(unsigned server_count)
+    {
+        count = server_count;
     }
 
     void load_data(const u32* data_key, const u32* data_val, size_t data_size) override;
