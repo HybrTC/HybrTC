@@ -70,7 +70,7 @@ auto JoinHandler::match_filter(const std::string& filter) -> std::string
 
     HashSet bloom_filter(1 << FILTER_POWER_BITS, request.bloom_filter());
 
-    hybrtc::Pairs hits;
+    hybrtc::QueryResponse hits;
 
     const database_t& db = split() == 2 ? left_data : local_data;
     for (const auto& [k, v] : db)
@@ -93,7 +93,7 @@ auto JoinHandler::match_filter(const std::string& filter) -> std::string
 
 void JoinHandler::build_result(const v8& data)
 {
-    hybrtc::Pairs peer;
+    hybrtc::QueryResponse peer;
     peer.ParseFromArray(data.data(), static_cast<int>(data.size()));
 
     /*
