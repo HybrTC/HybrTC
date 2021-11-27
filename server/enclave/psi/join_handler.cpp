@@ -79,7 +79,7 @@ void JoinHandler::build_result(const v8& data)
      * build cuckoo hashing table
      */
     PRP prp;
-    HashTable hashing;
+    HashTable hashing(1 << CH_LOG_LENGTH, 1 << CH_LOG_DEPTH);
 
     for (auto& [k, v] : local_data)
     {

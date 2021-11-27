@@ -19,7 +19,7 @@ class JoinHandler : public SelectHandler
     constexpr static u32 CH_LOG_DEPTH = 2;
 
     using HashSet = BloomFilter<NUMBER_OF_HASHES, PRP::integer>;
-    using HashTable = CuckooHashing<CH_LOG_LENGTH, CH_LOG_DEPTH, NUMBER_OF_HASHES>;
+    using HashTable = CuckooHashing<NUMBER_OF_HASHES>;
 
     PRP prp;
     PSI::Paillier homo;

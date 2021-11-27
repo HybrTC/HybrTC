@@ -13,11 +13,11 @@
  *
  * @tparam LL    logarithm of the length of a single table
  * @tparam LD    logarithm of the number of elements in a single bin
- * @tparam HN   number of hash functions
- * @tparam KT   key type
- * @tparam VT   value type
+ * @tparam HashNum   number of hash functions
+ * @tparam KeyType   key type
+ * @tparam ValType   value type
  */
-template <uint32_t LL, uint32_t LD, uint32_t HashNum, class KeyType = uint128_t, class ValType = uint32_t>
+template <uint32_t HashNum, class KeyType = uint128_t, class ValType = uint32_t>
 class CuckooHashing
 {
   protected:
@@ -25,9 +25,10 @@ class CuckooHashing
     using ElemType = std::pair<KeyType, ValType>;
 
     // hash table
-    constexpr static uint32_t D = 1 << LD;
-    constexpr static uint32_t L = 1 << LL;
-    using CHTable = std::array<std::array<std::vector<ElemType>, L>, HashNum>;
+    uint32_t table_length;
+    uint32_t table_depth;
+
+    using CHTable = std::array<std::vector<std::vector<ElemType>>, HashNum>;
     std::unique_ptr<CHTable> table_ptr = std::make_unique<CHTable>();
     CHTable& table = *table_ptr;
     std::vector<ElemType> stash;
@@ -39,7 +40,7 @@ class CuckooHashing
     void evict(uint32_t hash_index, uint32_t bin_index)
     {
         std::vector<ElemType>& bin = table[hash_index][bin_index];
-        if (bin.size() != D)
+        if (bin.size() != table_depth)
         {
             printf(":( something bad happening: [%s][%d]\n", __PRETTY_FUNCTION__, __LINE__);
             abort();
@@ -70,9 +71,9 @@ class CuckooHashing
         // see if there's a seat
         for (uint32_t hi = hash_index; hi < HashNum; hi++)
         {
-            std::vector<ElemType>& bin = table[hi][hashes[hi] % L];
+            std::vector<ElemType>& bin = table[hi][hashes[hi] % table_length];
 
-            if (bin.size() < D)
+            if (bin.size() < table_depth)
             {
                 bin.emplace_back(key, value);
                 return true;
@@ -81,15 +82,15 @@ class CuckooHashing
 
         for (uint32_t hi = hash_index; hi < HashNum; hi++)
         {
-            uint32_t bi = hashes[hi] % L;
+            uint32_t bi = hashes[hi] % table_length;
             std::vector<ElemType>& bin = table[hi][bi];
 
-            if (bin.size() >= D)
+            if (bin.size() >= table_depth)
             {
                 evict(hi, bi); // this may modify the size of bin
             }
 
-            if (bin.size() < D)
+            if (bin.size() < table_depth)
             {
                 bin.emplace_back(key, value);
                 return true;
@@ -100,7 +101,13 @@ class CuckooHashing
     }
 
   public:
-    CuckooHashing() = default;
+    CuckooHashing(uint32_t length, uint32_t depth) : table_length(length), table_depth(depth)
+    {
+        for (auto& vec : table)
+        {
+            vec.resize(length);
+        }
+    }
 
     // forbid copy constructor
     CuckooHashing(const CuckooHashing& other) = delete;
@@ -121,7 +128,7 @@ class CuckooHashing
         const std::array<HashType, HashNum> hashes = hash(key);
         for (uint32_t hi = 0; hi < HashNum; hi++)
         {
-            uint32_t bi = hashes[hi] % L;
+            uint32_t bi = hashes[hi] % table_length;
 
             const std::vector<ElemType>& bin = table[hi][bi];
             for (const auto& e : bin)
