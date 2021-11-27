@@ -34,6 +34,7 @@ class TxSocket
     {
         TxSocket socket;
         socket.connection = std::make_shared<SocketConnection>(host, port);
+        SPDLOG_DEBUG("TxSocket connected to {}:{}", host, port);
         return socket;
     }
 
