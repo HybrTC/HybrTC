@@ -86,12 +86,12 @@ const auto& evidence = input.evidence(); // load attestation evidence
     return sid;
 }
 
-auto client(const char* host, uint16_t port, int id, const v8& pk) -> std::tuple<v8, size_t, size_t>
+auto client(const std::string& host, uint16_t port, int id, const v8& pk) -> std::tuple<v8, size_t, size_t>
 {
     SPDLOG_INFO("starting {} to {}:{}", __FUNCTION__, host, port);
 
     /* construct a request socket and connect to interface */
-    auto client = TxSocket::connect(host, port);
+    auto client = TxSocket::connect(host.c_str(), port);
 
     VerifierContext vctx(rand_ctx);
     uint32_t sid;
@@ -160,41 +160,33 @@ void output_result(PSI::Paillier& homo_crypto, const v8& buf)
     hybrtc::Pairs pairs;
     pairs.ParseFromArray(buf.data(), static_cast<int>(buf.size()));
 
-#if PSI_VERBOSE
-
-#if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_JOIN_COUNT
-
-    (void)(homo_crypto);
-
-    auto bin = pairs.pairs(0).key();
-    size_t count = *reinterpret_cast<const size_t*>(bin.data());
-    SPDLOG_INFO("{}", count);
-
-#else
-
-    for (const auto& pair : pairs.pairs())
+    if (PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_JOIN_COUNT)
     {
-        const auto& key_bin = pair.key();
-        const auto& val_bin = pair.value();
-
-#if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
         (void)(homo_crypto);
-        auto val = *reinterpret_cast<const uint32_t*>(val_bin.data());
-#else
-        auto val = homo_crypto.decrypt(mbedtls::mpi(u8p(val_bin.data()), val_bin.size())).to_unsigned<uint64_t>();
-#endif
 
-        SPDLOG_INFO("{:sn} {:016x}", spdlog::to_hex(key_bin), val);
+        auto bin = pairs.pairs(0).key();
+        size_t count = *reinterpret_cast<const size_t*>(bin.data());
+        SPDLOG_INFO("{}", count);
     }
+    else
+    {
+        for (const auto& pair : pairs.pairs())
+        {
+            const auto& key_bin = pair.key();
+            const auto& val_bin = pair.value();
 
-#endif
-
-#else
-
-    (void)(homo_crypto);
-    (void)(buf);
-
-#endif
+            uint64_t val;
+            if (PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT)
+            {
+                val = *reinterpret_cast<const uint32_t*>(val_bin.data());
+            }
+            else
+            {
+                val = homo_crypto.decrypt(mbedtls::mpi(u8p(val_bin.data()), val_bin.size())).to_unsigned<uint64_t>();
+            }
+            SPDLOG_INFO("{:sn} {:016x}", spdlog::to_hex(key_bin), val);
+        }
+    }
 }
 
 auto main(int argc, const char* argv[]) -> int
@@ -203,29 +195,21 @@ auto main(int argc, const char* argv[]) -> int
 
     CLI::App app;
 
-    string s0_host;
-    app.add_option("--s0-host", s0_host, "server 0's host")->required();
-
-    uint16_t s0_port;
-    app.add_option("--s0-port", s0_port, "server 0's port")->required();
-
-    string s1_host;
-    app.add_option("--s1-host", s1_host, "server 1's host")->required();
-
-    uint16_t s1_port;
-    app.add_option("--s1-port", s1_port, "server 1's port")->required();
+    string topo;
+    app.add_option("--topo", topo, "network topology")->required();
 
     string test_id = fmt::format("{:%Y%m%dT%H%M%S}", fmt::localtime(time(nullptr)));
     app.add_option("--test-id", test_id, "test identifier");
 
     CLI11_PARSE(app, argc, argv);
 
+    /* parse network topology */
+    auto servers = json::parse(topo);
+
     /* configure logger */
 
     spdlog::set_level(spdlog::level::trace);
     spdlog::set_pattern("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [c] [%t] %s:%# -%$ %v");
-
-    SPDLOG_INFO("server endpoint: {}:{} {}:{}", s0_host, s0_port, s1_host, s1_port);
 
     /* prepare public key */
 
@@ -238,31 +222,46 @@ auto main(int argc, const char* argv[]) -> int
     timer("start");
 
     /* start client */
-    auto c0 = std::async(std::launch::async, client, s0_host.c_str(), s0_port, 0, pubkey);
-    auto c1 = std::async(std::launch::async, client, s1_host.c_str(), s1_port, 1, pubkey);
+    std::vector<std::future<std::tuple<v8, std::uint64_t, std::uint64_t>>> futures;
+    futures.reserve(servers.size());
+    for (size_t i = 0; i < servers.size(); i++)
+    {
+        const auto& host = servers[i]["host"].get<std::string>();
+        const auto& port = servers[i]["port"].get<std::uint16_t>();
+        futures.emplace_back(std::async(std::launch::async, client, host, port, i, pubkey));
+    }
 
     /* wait for the result */
-    auto [v0, c0_sent, c0_recv] = c0.get();
-    auto [v1, c1_sent, c1_recv] = c1.get();
+    std::vector<std::tuple<v8, std::uint64_t, std::uint64_t>> results;
+    results.reserve(futures.size());
+    for (auto& future : futures)
+    {
+        results.emplace_back(future.get());
+    }
 
     timer("done");
 
-    /* print out query result */
-    output_result(homo_crypto, v0);
-    output_result(homo_crypto, v1);
+    /* collect communication result and print out query results */
+    json comm = json::object();
+    for (size_t i = 0; i < results.size(); i++)
+    {
+        const auto& r = results[i];
+#if PSI_VERBOSE
+        output_result(homo_crypto, std::get<0>(r));
+#endif
+        comm[fmt::format("c/s{}", i)] = {{"sent", std::get<1>(r)}, {"recv", std::get<2>(r)}};
+    }
 
-    /* dump statistics*/
+    /* prepare statistics */
     json output = json::object(
         {{"PSI_PAILLIER_PK_LEN", PSI_PAILLIER_PK_LEN},
          {"PSI_MELBOURNE_P", PSI_MELBOURNE_P},
          {"PSI_SELECT_POLICY", PSI_SELECT_POLICY},
          {"PSI_AGGREGATE_POLICY", PSI_AGGREGATE_POLICY},
-         {"c/s0:sent", c0_sent},
-         {"c/s0:recv", c0_recv},
-         {"c/s1:sent", c1_sent},
-         {"c/s1:recv", c1_recv},
+         {"comm", comm},
          {"time", timer.to_json()}});
 
+    /* dump statistics */
     {
         auto fn = fmt::format("{}-client.json", test_id);
 

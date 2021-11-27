@@ -1,23 +1,21 @@
 #! /usr/bin/env python3.8
 
 import argparse
+import json
 import os
-from time import ctime
 from datetime import datetime
 from itertools import product
 from pathlib import Path
 from signal import SIGKILL
-from time import sleep
-from uuid import uuid1
-
+from time import ctime, sleep
 
 SERVER0_HOST = "127.0.0.1"
-SERVER0_PORT_P = "5000"
-SERVER0_PORT_C = "5001"
+SERVER0_PORT_P = 5000
+SERVER0_PORT_C = 5001
 
 SERVER1_HOST = "127.0.0.1"
-SERVER1_PORT_P = "6000"
-SERVER1_PORT_C = "6001"
+SERVER1_PORT_P = 6000
+SERVER1_PORT_C = 6001
 
 NET_TOPO = {
     "server0": {
@@ -47,12 +45,14 @@ def run_client(
     s0_endpoint,
     s1_endpoint,
 ):
+    topo = [
+        {"host": s0_endpoint[0], "port": s0_endpoint[1]},
+        {"host": s1_endpoint[0], "port": s1_endpoint[1]},
+    ]
+
     cmd = [
         str(client_path),
-        f"--s0-host={s0_endpoint[0]}",
-        f"--s0-port={s0_endpoint[1]}",
-        f"--s1-host={s1_endpoint[0]}",
-        f"--s1-port={s1_endpoint[1]}",
+        f"--topo={json.dumps(topo)}",
         f"--test-id={test_id}",
     ]
 
