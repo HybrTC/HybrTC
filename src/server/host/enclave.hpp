@@ -63,7 +63,7 @@ class PSIEnclave
     auto pro_compute_request(const buffer& input, buffer& output) -> int;
 
     // active
-    void pro_compute_response(const v8& input);
+    void pro_compute_response(const buffer& input, buffer& output);
 
     // active
     void get_result(buffer& obuf);

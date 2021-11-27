@@ -153,9 +153,7 @@ class PSIContext
      */
 
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-    /*
-     * active
-     */
+
     auto prepare_compute_req() -> MessagePtr
     {
         /* wait for client public key to be set */
@@ -168,31 +166,11 @@ class PSIContext
         return std::make_shared<Message>(next_sid, Message::ComputeRequest, request.size, request.data);
     }
 
-    void process_compute_resp(const v8& payload)
-    {
-        assert(sid == osid);
-
-        enclave.pro_compute_response(payload);
-
-        /*
-         * result prepared, ready for client to take
-         */
-        lock.active.unlock();
-        SPDLOG_DEBUG("Unlocked lock.client");
-        lock.client.unlock();
-        SPDLOG_DEBUG("Unlocked lock.client");
-    }
-
-    /*
-     * passive
-     */
-    auto handle_compute_req(uint32_t sid, const uint8_t* data, size_t size) -> MessagePtr
+    auto handle_compute_req(const uint8_t* data, size_t size) -> MessagePtr
     {
         /* wait for client public key to be set */
         SPDLOG_DEBUG("Locking lock.passive");
         lock.passive.lock();
-
-        assert(sid == isid);
 
         buffer output;
         int otype = enclave.pro_compute_request({const_cast<uint8_t*>(data), size}, output);
@@ -200,7 +178,39 @@ class PSIContext
         lock.passive.unlock();
         SPDLOG_DEBUG("Unlocked lock.passive");
 
-        return std::make_shared<Message>(sid, static_cast<Message::Type>(otype), output.size, output.data);
+        if (otype == Message::ComputeRequest)
+        {
+            return std::make_shared<Message>(next_sid, Message::ComputeRequest, output.size, output.data);
+        }
+        if (otype == Message::ComputeResponse)
+        {
+            return std::make_shared<Message>(prev_sid, Message::ComputeResponse, output.size, output.data);
+        }
+        return nullptr;
     }
+
+    auto process_compute_resp(const uint8_t* data, size_t size) -> MessagePtr
+    {
+        buffer output;
+        enclave.pro_compute_response({const_cast<uint8_t*>(data), size}, output);
+
+        lock.active.unlock();
+        SPDLOG_DEBUG("Unlocked lock.client");
+
+        if (output.data == nullptr)
+        {
+            /*
+             * result prepared, ready for client to take
+             */
+
+            lock.client.unlock();
+            SPDLOG_DEBUG("Unlocked lock.client");
+            return nullptr;
+        }
+
+        /* pass the response to the previous peer */
+        return std::make_shared<Message>(prev_sid, Message::ComputeResponse, output.size, output.data);
+    }
+
 #endif
 };

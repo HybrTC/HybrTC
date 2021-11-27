@@ -34,7 +34,7 @@ static void peer_servant(TxSocket* server, TxSocket* client, PSIContext* context
         assert(request->message_type == Message::ComputeRequest);
         assert(request->session_id == sid);
 
-        auto output = context->handle_compute_req(sid, request->payload, request->payload_len);
+        auto output = context->handle_compute_req(request->payload, request->payload_len);
         if (output->message_type == Message::ComputeResponse)
         {
             server->send(*output);
@@ -80,8 +80,12 @@ static auto peer_client(TxSocket* server, TxSocket* client, PSIContext* context)
         {
             throw std::runtime_error("session id doesn't match");
         }
-        v8 payload(response->payload, response->payload + response->payload_len);
-        context->process_compute_resp(payload);
+        auto result = context->process_compute_resp(response->payload, response->payload_len);
+        if (result)
+        {
+            server->send(*result);
+            SPDLOG_DEBUG("process_compute_resp: response pass by");
+        }
     }
 
     return client->statistics();

@@ -35,7 +35,9 @@ enclave {
                                             [out] size_t* olen);
 
         public void pro_compute_response(   [user_check] const uint8_t* ibuf,
-                                            size_t ilen);
+                                            size_t ilen,
+                                            [out] uint8_t** obuf,
+                                            [out] size_t* olen);
 
         public void get_result(             [out] uint8_t** obuf,
                                             [out] size_t* olen);

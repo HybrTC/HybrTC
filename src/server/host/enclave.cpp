@@ -101,10 +101,10 @@ auto PSIEnclave::pro_compute_request(const buffer& input, buffer& output) -> int
     return otype;
 }
 
-void PSIEnclave::pro_compute_response(const v8& input)
+void PSIEnclave::pro_compute_response(const buffer& input, buffer& output)
 {
     ECALL_IN;
-    oe_result_t result = ::pro_compute_response(enclave(), input.data(), input.size());
+    oe_result_t result = ::pro_compute_response(enclave(), input.data, input.size, &output.data, &output.size);
     ECALL_OUT;
 }
 

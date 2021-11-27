@@ -57,7 +57,7 @@ class JoinHandler : public SelectHandler
 
     auto match_filter(const std::string& input, std::string& output) -> Message::Type;
 
-    void build_result(const std::string& input);
+    void build_result(const std::string& input, std::string& output);
 
     auto get_result() -> std::string override;
 };
