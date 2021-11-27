@@ -5,9 +5,9 @@
 #include <cstdlib>
 #include <memory>
 
+#include "common/message.hpp"
 #include "common/types.hpp"
 #include "crypto/sha256.hpp"
-#include "message.hpp"
 #include "socket/socket.h"
 #include "spdlog.hpp"
 

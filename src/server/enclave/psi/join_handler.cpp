@@ -9,6 +9,7 @@
 #include "config.hpp"
 #include "crypto/bignum.hpp"
 #include "join_handler.hpp"
+#include "msg.pb.h"
 #include "sgx/log.h"
 
 using mbedtls::ctr_drbg;
@@ -88,51 +89,82 @@ auto JoinHandler::build_filter() -> std::string
     return request.SerializeAsString();
 }
 
-auto JoinHandler::match_filter(const std::string& filter) -> std::string
+auto JoinHandler::match_filter(const std::string& input, std::string& output) -> Message::Type
 {
-    if (count > 2)
-    {
-        // TODO:
-        TRACE_ENCLAVE("unimplemented server count = %u", count);
-        abort();
-    }
-
     hybrtc::ComputeRequest request;
-    request.ParseFromString(filter);
+    request.ParseFromString(input);
     assert(request.initiator_id() != id);
 
-    HashSet bloom_filter(1 << FILTER_POWER_BITS, request.bloom_filter());
-
     const auto slice_id = (id == 0) ? request.initiator_id() : 0;
-
 #if PSI_VERBOSE
     const auto& slice = data[slice_id];
     TRACE_ENCLAVE("Server %u : slice id = %u", id, slice_id);
     TRACE_ENCLAVE("Server %u : slice size = %lu", id, slice.size());
 #endif
 
-    hybrtc::QueryResponse hits;
-    for (const auto& [key, val] : data[slice_id])
-    {
-        if (bloom_filter.lookup(key))
-        {
-            auto* pair = hits.add_pairs();
-
-            const auto& key_bin = *reinterpret_cast<const PRP::binary*>(&key);
-            pair->set_key(key_bin.data(), key_bin.size());
-
-            auto enc = homo.encrypt(val, *rand_ctx).to_vector();
-            pair->set_value(enc.data(), enc.size());
+    /*
+        if (initiator_id == local_id) {             // myself
+            ABORT()
         }
-    }
+        if (initiator_id == (local_id + 1) % count) { // the last one
+            RETURN compute_response
+        }
+        else {
+            RETURN compute_request (bloom filter)
+        }
+    */
 
-    return hits.SerializeAsString();
+    HashSet bloom_filter(1 << FILTER_POWER_BITS, request.bloom_filter());
+
+    if (request.initiator_id() == (id + 1) % count)
+    {
+        hybrtc::ComputeResponse result;
+        result.set_initiator_id(request.initiator_id());
+        result.set_sender_id(id);
+
+        for (const auto& [key, val] : data[slice_id])
+        {
+            if (bloom_filter.lookup(key))
+            {
+                auto* pair = result.add_pairs();
+
+                const auto& key_bin = *reinterpret_cast<const PRP::binary*>(&key);
+                pair->set_key(key_bin.data(), key_bin.size());
+
+                auto enc = homo.encrypt(val, *rand_ctx).to_vector();
+                pair->set_value(enc.data(), enc.size());
+            }
+        }
+
+        result.SerializeToString(&output);
+        return Message::ComputeResponse;
+    }
+    else
+    {
+        hybrtc::ComputeRequest result;
+        result.set_initiator_id(request.initiator_id());
+        result.set_sender_id(id);
+
+        HashSet new_filter(1 << FILTER_POWER_BITS);
+
+        for (const auto& [key, _] : data[slice_id])
+        {
+            if (bloom_filter.lookup(key))
+            {
+                new_filter.insert(key);
+            }
+        }
+
+        result.set_bloom_filter(new_filter.data());
+        result.SerializeToString(&output);
+        return Message::ComputeRequest;
+    }
 }
 
-void JoinHandler::build_result(const v8& response)
+void JoinHandler::build_result(const std::string& input)
 {
-    hybrtc::QueryResponse peer;
-    peer.ParseFromArray(response.data(), static_cast<int>(response.size()));
+    hybrtc::ComputeResponse peer;
+    peer.ParseFromString(input);
 
     /*
      * build cuckoo hashing table

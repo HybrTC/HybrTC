@@ -125,11 +125,27 @@ void gen_compute_request(u8** obuf, size_t* olen)
 #endif
 }
 
-void pro_compute_request(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
+auto pro_compute_request(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen) -> int
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-    auto output = handler->match_filter(global->session(session_id.peer_prev).cipher().decrypt_str(ibuf, ilen));
-    global->dump_enc(session_id.peer_prev, output, obuf, olen);
+    const auto input = global->session(session_id.peer_prev).cipher().decrypt_str(ibuf, ilen);
+    std::string output;
+    auto otype = handler->match_filter(input, output);
+    if (otype == Message::ComputeRequest)
+    {
+        global->dump_enc(session_id.peer_next, output, obuf, olen);
+    }
+    else if (otype == Message::ComputeResponse)
+    {
+        global->dump_enc(session_id.peer_prev, output, obuf, olen);
+    }
+    else
+    {
+        TRACE_ENCLAVE("Invalid response returned by %s", __FUNCTION__);
+        abort();
+    }
+
+    return otype;
 #else
     (void)(sid);
     (void)(ibuf);
@@ -145,7 +161,8 @@ void pro_compute_request(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
 void pro_compute_response(const u8* ibuf, size_t ilen)
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-    handler->build_result(global->session(session_id.peer_next).cipher().decrypt(ibuf, ilen));
+    const auto input = global->session(session_id.peer_next).cipher().decrypt_str(ibuf, ilen);
+    handler->build_result(input);
 #else
     (void)(sid);
     (void)(ibuf);

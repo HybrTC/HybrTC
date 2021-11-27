@@ -5,10 +5,10 @@
 #include <memory>
 #include <mutex>
 
+#include "common/message.hpp"
 #include "common/types.hpp"
 #include "config.hpp"
 #include "enclave.hpp"
-#include "host/message.hpp"
 #include "host/spdlog.hpp"
 #include "host/timer.hpp"
 #include "prng.hpp"
@@ -177,16 +177,16 @@ class PSIContext
         /*
          * result prepared, ready for client to take
          */
-        SPDLOG_DEBUG("Unlocking lock.client");
         lock.active.unlock();
-        SPDLOG_DEBUG("Unlocking lock.client");
+        SPDLOG_DEBUG("Unlocked lock.client");
         lock.client.unlock();
+        SPDLOG_DEBUG("Unlocked lock.client");
     }
 
     /*
      * passive
      */
-    auto handle_compute_req(uint32_t sid, const v8& payload) -> MessagePtr
+    auto handle_compute_req(uint32_t sid, const uint8_t* data, size_t size) -> MessagePtr
     {
         /* wait for client public key to be set */
         SPDLOG_DEBUG("Locking lock.passive");
@@ -194,13 +194,13 @@ class PSIContext
 
         assert(sid == isid);
 
-        buffer response;
-        enclave.pro_compute_request(payload, response);
+        buffer output;
+        int otype = enclave.pro_compute_request({const_cast<uint8_t*>(data), size}, output);
 
-        SPDLOG_DEBUG("Unlocking lock.passive");
         lock.passive.unlock();
+        SPDLOG_DEBUG("Unlocked lock.passive");
 
-        return std::make_shared<Message>(sid, Message::ComputeResponse, response.size, response.data);
+        return std::make_shared<Message>(sid, static_cast<Message::Type>(otype), output.size, output.data);
     }
 #endif
 };

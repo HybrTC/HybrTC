@@ -92,11 +92,13 @@ void PSIEnclave::gen_compute_request(buffer& bloom_filter)
     ECALL_OUT;
 }
 
-void PSIEnclave::pro_compute_request(const v8& input, buffer& output)
+auto PSIEnclave::pro_compute_request(const buffer& input, buffer& output) -> int
 {
+    int otype;
     ECALL_IN;
-    oe_result_t result = ::pro_compute_request(enclave(), input.data(), input.size(), &output.data, &output.size);
+    oe_result_t result = ::pro_compute_request(enclave(), &otype, input.data, input.size, &output.data, &output.size);
     ECALL_OUT;
+    return otype;
 }
 
 void PSIEnclave::pro_compute_response(const v8& input)

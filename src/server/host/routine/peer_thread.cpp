@@ -33,12 +33,22 @@ static void peer_servant(TxSocket* server, TxSocket* client, PSIContext* context
         assert(request->message_type == Message::ComputeRequest);
         assert(request->session_id == sid);
 
-        v8 payload(request->payload, request->payload + request->payload_len);
-        auto response = context->handle_compute_req(sid, payload);
-
-        assert(response->message_type == Message::ComputeResponse);
-        server->send(*response);
-        SPDLOG_DEBUG("handle_compute_req: response sent");
+        auto output = context->handle_compute_req(sid, request->payload, request->payload_len);
+        if (output->message_type == Message::ComputeResponse)
+        {
+            server->send(*output);
+            SPDLOG_DEBUG("handle_compute_req: response sent");
+        }
+        else if (output->message_type == Message::ComputeRequest)
+        {
+            client->send(*output);
+            SPDLOG_DEBUG("handle_compute_req: requst pass by");
+        }
+        else
+        {
+            SPDLOG_ERROR("handle_compute_req: unexpected result");
+            abort();
+        }
     }
 }
 

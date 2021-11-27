@@ -60,7 +60,7 @@ class PSIEnclave
     void gen_compute_request(buffer& bloom_filter);
 
     // passive
-    void pro_compute_request(const v8& input, buffer& output);
+    auto pro_compute_request(const buffer& input, buffer& output) -> int;
 
     // active
     void pro_compute_response(const v8& input);

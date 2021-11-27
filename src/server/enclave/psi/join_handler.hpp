@@ -4,6 +4,7 @@
 #include <tuple>
 
 #include "bloom_filter.hpp"
+#include "common/message.hpp"
 #include "common/uint128.hpp"
 #include "cuckoo_hashing.hpp"
 #include "paillier.hpp"
@@ -54,9 +55,9 @@ class JoinHandler : public SelectHandler
 
     auto build_filter() -> std::string;
 
-    auto match_filter(const std::string& filter) -> std::string;
+    auto match_filter(const std::string& input, std::string& output) -> Message::Type;
 
-    void build_result(const v8& response);
+    void build_result(const std::string& input);
 
     auto get_result() -> std::string override;
 };

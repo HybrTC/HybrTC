@@ -29,7 +29,7 @@ enclave {
         public void gen_compute_request(    [out] uint8_t** obuf,
                                             [out] size_t* olen);
 
-        public void pro_compute_request(    [user_check] const uint8_t* ibuf,
+        public int pro_compute_request(     [user_check] const uint8_t* ibuf,
                                             size_t ilen,
                                             [out] uint8_t** obuf,
                                             [out] size_t* olen);
