@@ -192,26 +192,24 @@ auto main(int argc, const char* argv[]) -> int
     auto peer_id = (server_id + 1) % peers.size();
 
     /* configure logger */
-
-    const string pattern = fmt::format("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [s{}] [%t] %s:%# -%$ %v", server_id);
-
     spdlog::set_level(spdlog::level::debug);
-    spdlog::set_pattern(pattern);
+    spdlog::set_pattern(fmt::format("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [s{}] [%t] %s:%# -%$ %v", server_id));
 
     /* initialize PSI context */
-    PSIContext psi(enclave_image_path.c_str(), (1 << log_data_size), (1 << (log_data_size * 3 / 2)), server_id);
+    PSIContext psi(
+        enclave_image_path.c_str(), (1 << log_data_size), (1 << (log_data_size * 3 / 2)), server_id, peers.size());
 
     Timer timer;
     timer("start");
 
-    /* start server */
+    /* start server towards client */
     auto s_client = std::async(std::launch::async, client_servant, client_port, &psi);
 
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
+    /* start server towards peer */
     auto s_peer = std::async(std::launch::async, peer_servant, peers[server_id]["port"].get<uint16_t>(), &psi);
 
     /* start client */
-
     auto [c_peer_sent, c_peer_recv] =
         peer_client(peers[peer_id]["host"].get<string>().c_str(), peers[peer_id]["port"].get<uint16_t>(), &psi);
 

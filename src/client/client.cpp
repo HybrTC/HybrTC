@@ -26,7 +26,6 @@
 #include "msg.pb.h"
 #include "paillier.hpp"
 #include "sgx/attestation.hpp"
-#include "type/message.hpp"
 
 using nlohmann::json;
 using std::string;
@@ -102,11 +101,11 @@ auto client(const std::string& host, uint16_t port, int id, const v8& pk) -> std
     {
         {
             auto payload = verifier_generate_challenge(vctx, id);
-            client.send(-1, AttestationRequest, payload->SerializeAsString());
+            client.send(-1, Message::AttestationRequest, payload->SerializeAsString());
         }
 
         auto response = client.recv();
-        if (response->message_type != AttestationResponse)
+        if (response->message_type != Message::AttestationResponse)
         {
             abort();
         }
@@ -125,7 +124,7 @@ auto client(const std::string& host, uint16_t port, int id, const v8& pk) -> std
     /* set public key */
     {
         auto payload = session->cipher().encrypt(pk, *rand_ctx);
-        client.send(sid, QueryRequest, payload.size(), payload.data());
+        client.send(sid, Message::QueryRequest, payload.size(), payload.data());
     }
 
     /* get match result and aggregate */
@@ -135,7 +134,7 @@ auto client(const std::string& host, uint16_t port, int id, const v8& pk) -> std
         SPDLOG_ERROR("Cannot Receive QueryResponse");
         exit(EXIT_FAILURE);
     }
-    if (response->message_type != QueryResponse)
+    if (response->message_type != Message::QueryResponse)
     {
         SPDLOG_ERROR("Unexpected message type {}", response->message_type);
         abort();

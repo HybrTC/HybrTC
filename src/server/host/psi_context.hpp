@@ -12,7 +12,6 @@
 #include "host/spdlog.hpp"
 #include "host/timer.hpp"
 #include "prng.hpp"
-#include "type/message.hpp"
 
 constexpr size_t TEST_SIZE = (1 << 20);
 
@@ -35,11 +34,18 @@ class PSIContext
     } lock;
 #endif
 
-    int half;
+    unsigned server_id;
+    unsigned server_cnt;
+    bool half;
 
   public:
-    explicit PSIContext(const char* enclave_image_path, size_t data_size, size_t max_key, int half)
-        : enclave(enclave_image_path, false), half(half)
+    explicit PSIContext(
+        const char* enclave_image_path,
+        size_t data_size,
+        size_t max_key,
+        unsigned server_id,
+        unsigned server_cnt)
+        : enclave(enclave_image_path, false), server_id(server_id), server_cnt(server_cnt), half(server_id == 0)
     {
         /* generate random dataset */
         PRNG<uint32_t> prng;
@@ -89,14 +95,14 @@ class PSIContext
     {
         buffer request;
         enclave.verifier_generate_challenge(request);
-        return std::make_shared<Message>(-1, AttestationRequest, request.size, request.data);
+        return std::make_shared<Message>(-1, Message::AttestationRequest, request.size, request.data);
     }
 
     auto handle_attestation_req(const v8& request) -> MessagePtr
     {
         buffer response;
         uint32_t sid = enclave.attester_generate_response(request, response);
-        return std::make_shared<Message>(sid, AttestationResponse, response.size, response.data);
+        return std::make_shared<Message>(sid, Message::AttestationResponse, response.size, response.data);
     }
 
     auto process_attestation_resp(const v8& response) -> uint32_t
@@ -130,7 +136,7 @@ class PSIContext
         enclave.get_result(csid, output);
 
         /* build and return query result */
-        return std::make_shared<Message>(sid, QueryResponse, output.size, output.data);
+        return std::make_shared<Message>(sid, Message::QueryResponse, output.size, output.data);
     }
 
     /*
@@ -150,7 +156,7 @@ class PSIContext
         buffer request;
         enclave.build_bloom_filter(osid, request);
 
-        return std::make_shared<Message>(osid, ComputeRequest, request.size, request.data);
+        return std::make_shared<Message>(osid, Message::ComputeRequest, request.size, request.data);
     }
 
     void process_compute_resp(uint32_t sid, const v8& payload)
@@ -185,7 +191,7 @@ class PSIContext
         SPDLOG_DEBUG("Unlocking lock.passive");
         lock.passive.unlock();
 
-        return std::make_shared<Message>(sid, ComputeResponse, response.size, response.data);
+        return std::make_shared<Message>(sid, Message::ComputeResponse, response.size, response.data);
     }
 #endif
 };

@@ -10,6 +10,18 @@ struct Message
     uint32_t payload_len = -1;
     std::uint8_t* payload = nullptr;
 
+    enum Type
+    {
+        AttestationRequest = 0x10,
+        AttestationResponse = 0x11,
+        /* C-S messages */
+        QueryRequest = 0x20,
+        QueryResponse = 0x21,
+        /* S-S messages */
+        ComputeRequest = 0x30,
+        ComputeResponse = 0x31
+    };
+
     Message() = default;
 
     Message(uint32_t session_id, uint32_t message_type, uint32_t payload_len, std::uint8_t* payload)
