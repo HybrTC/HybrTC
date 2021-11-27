@@ -66,6 +66,11 @@ class gcm : public internal::resource<mbedtls_gcm_context, mbedtls_gcm_init, mbe
         return encrypt(input.data(), input.size(), ctr_drbg);
     }
 
+    auto encrypt(const std::string& input, ctr_drbg& ctr_drbg) -> v8
+    {
+        return encrypt(u8p(input.data()), input.size(), ctr_drbg);
+    }
+
     auto encrypt(const uint8_t* ibuf, size_t ilen, ctr_drbg& ctr_drbg) -> v8
     {
         v8 output(encrypt_size(ilen), 0);

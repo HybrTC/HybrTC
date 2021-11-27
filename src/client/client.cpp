@@ -85,7 +85,7 @@ const auto& evidence = input.evidence(); // load attestation evidence
     return sid;
 }
 
-auto client(const std::string& host, uint16_t port, int id, const v8& pk) -> std::tuple<v8, size_t, size_t>
+auto client(const std::string& host, uint16_t port, int id, const std::string& pk) -> std::tuple<v8, size_t, size_t>
 {
     SPDLOG_INFO("starting {} to {}:{}", __FUNCTION__, host, port);
 
@@ -105,11 +105,7 @@ auto client(const std::string& host, uint16_t port, int id, const v8& pk) -> std
 
     {
         auto response = client.recv();
-        if (response->message_type != Message::AttestationResponse)
-        {
-            abort();
-        }
-
+        assert(response->message_type == Message::AttestationResponse);
         hybrtc::AttestationResponse payload;
         payload.ParseFromArray(response->payload, static_cast<int>(response->payload_len));
         sid = verifier_process_response(vctx, payload);
@@ -121,28 +117,23 @@ auto client(const std::string& host, uint16_t port, int id, const v8& pk) -> std
     auto session = sessions[sid];
     SPDLOG_DEBUG("client session to s{}: sid={:08x}", id, sid);
 
-    /* set public key */
+    /* send client query */
     {
-        auto payload = session->cipher().encrypt(pk, *rand_ctx);
+        hybrtc::QueryRequest request;
+        request.set_homo_pk(pk);
+        auto payload = session->cipher().encrypt(request.SerializeAsString(), *rand_ctx);
         client.send(sid, Message::QueryRequest, payload.size(), payload.data());
     }
 
-    /* get match result and aggregate */
+    /* receive query result */
     auto response = client.recv();
     if (response == nullptr)
     {
         SPDLOG_ERROR("Cannot Receive QueryResponse");
         exit(EXIT_FAILURE);
     }
-    if (response->message_type != Message::QueryResponse)
-    {
-        SPDLOG_ERROR("Unexpected message type {}", response->message_type);
-        abort();
-    }
-    if (response->session_id != sid)
-    {
-        abort();
-    }
+    assert(response->message_type == Message::QueryResponse);
+    assert(response->session_id == sid);
     auto result = session->cipher().decrypt(response->payload, response->payload_len);
 
     timer(fmt::format("c/s{}: result received", id));

@@ -49,9 +49,9 @@ class Paillier
             uint8_t data[];
         };
 
-        [[nodiscard]] auto dump() const -> v8
+        [[nodiscard]] auto dump() const -> std::string
         {
-            v8 buffer(sizeof(_dump) + n.size() + g.size(), 0);
+            std::string buffer(sizeof(_dump) + n.size() + g.size(), 0);
             _dump& dump = *reinterpret_cast<_dump*>(&buffer[0]);
 
             dump.nbits = bits;
@@ -130,19 +130,14 @@ class Paillier
         prvkey.complete(pubkey);
     }
 
-    [[nodiscard]] auto dump_pubkey() const -> v8
+    [[nodiscard]] auto dump_pubkey() const -> std::string
     {
         return pubkey.dump();
     }
 
-    void load_pubkey(const v8& pk)
+    void load_pubkey(const std::string& pk)
     {
-        return pubkey.load(pk.data(), pk.size());
-    }
-
-    void load_pubkey(const uint8_t* pk, size_t pk_size)
-    {
-        return pubkey.load(pk, pk_size);
+        return pubkey.load(u8p(pk.data()), pk.size());
     }
 
     auto encrypt(const uint32_t& plaintext, ctr_drbg& ctr_drbg) const -> mpi

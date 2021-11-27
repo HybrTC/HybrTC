@@ -33,7 +33,7 @@ class JoinHandler : public SelectHandler
   public:
     explicit JoinHandler(sptr<mbedtls::ctr_drbg> rand_ctx);
 
-    void set_public_key(const v8& pubkey)
+    void set_public_key(const std::string& pubkey)
     {
         homo.load_pubkey(pubkey);
     }

@@ -4,6 +4,7 @@
 #include "enclave_context.hpp"
 
 #include "helloworld_t.h"
+#include "msg.pb.h"
 #include "sgx/log.h"
 
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
@@ -76,7 +77,10 @@ void set_client_query(
     (void)(ilen);
     (void)(half);
 #else
-    handler->set_public_key(global->session(sid).cipher().decrypt(ibuf, ilen));
+    hybrtc::QueryRequest request;
+    request.ParseFromString(global->session(sid).cipher().decrypt_str(ibuf, ilen));
+
+    handler->set_public_key(request.homo_pk());
     handler->set_half(half);
 #endif
 
