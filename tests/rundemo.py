@@ -7,52 +7,35 @@ from datetime import datetime
 from itertools import product
 from pathlib import Path
 from signal import SIGKILL
-from time import ctime, sleep
+from time import sleep
 
-SERVER0_HOST = "127.0.0.1"
-SERVER0_PORT_P = 5000
-SERVER0_PORT_C = 5001
 
-SERVER1_HOST = "127.0.0.1"
-SERVER1_PORT_P = 6000
-SERVER1_PORT_C = 6001
+SERVERS = [
+    {
+        "host": "127.0.0.1",
+        "port_p": 5000,
+        "port_c": 5001,
+    },
+    {
+        "host": "127.0.0.1",
+        "port_p": 6000,
+        "port_c": 6001,
+    },
+]
 
-NET_TOPO = {
-    "server0": {
-        "client_port": SERVER0_PORT_C,
-        "peer_port": SERVER0_PORT_P,
-        "peer_endpoint": (SERVER1_HOST, SERVER1_PORT_P),
-    },
-    "server1": {
-        "client_port": SERVER1_PORT_C,
-        "peer_port": SERVER1_PORT_P,
-        "peer_endpoint": (SERVER0_HOST, SERVER0_PORT_P),
-    },
-    "client": {
-        "s0_endpoint": (SERVER0_HOST, SERVER0_PORT_C),
-        "s1_endpoint": (SERVER1_HOST, SERVER1_PORT_C),
-    },
-}
+
+CLIENT_TOPO = json.dumps([{"host": s["host"], "port": s["port_c"]} for s in SERVERS])
+SERVER_TOPO = json.dumps([{"host": s["host"], "port": s["port_p"]} for s in SERVERS])
 
 
 def prefix(pid):
     return f"[{datetime.now().isoformat()}] [{pid}]"
 
 
-def run_client(
-    client_path,
-    test_id,
-    s0_endpoint,
-    s1_endpoint,
-):
-    topo = [
-        {"host": s0_endpoint[0], "port": s0_endpoint[1]},
-        {"host": s1_endpoint[0], "port": s1_endpoint[1]},
-    ]
-
+def run_client(client_path, test_id):
     cmd = [
         str(client_path),
-        f"--topo={json.dumps(topo)}",
+        f"--topo={CLIENT_TOPO}",
         f"--test-id={test_id}",
     ]
 
@@ -65,25 +48,17 @@ def run_client(
     os.execv(cmd[0], cmd)
 
 
-def run_server(
-    server_path,
-    test_id,
-    server_id,
-    data_size,
-    enclave_path,
-    client_port,
-    peer_port,
-    peer_endpoint,
-):
+def run_server(server_path, test_id, server_id, data_size, enclave_path):
+
+    client_port = SERVERS[server_id]["port_c"]
+
     cmd = [
         str(server_path),
         f"--enclave-path={enclave_path}",
         f"--server-id={server_id}",
         f"--data-size={data_size}",
-        f"--client-portl={client_port}",
-        f"--peer-portl={peer_port}",
-        f"--peer-host={peer_endpoint[0]}",
-        f"--peer-port={peer_endpoint[1]}",
+        f"--listen={client_port}",
+        f"--peers={SERVER_TOPO}",
         f"--test-id={test_id}",
     ]
 
@@ -99,13 +74,9 @@ def test(client: Path, server: Path, enclave: Path, data_size: int):
     test_id = datetime.now().strftime("%Y%m%dT%H%M%S")
 
     procs = {
-        run_server(
-            server, test_id, 0, data_size, enclave, **NET_TOPO["server0"]
-        ): "Server0",
-        run_server(
-            server, test_id, 1, data_size, enclave, **NET_TOPO["server1"]
-        ): "Server1",
-        run_client(client, test_id, **NET_TOPO["client"]): "Client",
+        run_server(server, test_id, 0, data_size, enclave): "Server0",
+        run_server(server, test_id, 1, data_size, enclave): "Server1",
+        run_client(client, test_id): "Client",
     }
 
     while len(procs) > 0:

@@ -35,10 +35,10 @@ class PSIContext
     } lock;
 #endif
 
-    bool half;
+    int half;
 
   public:
-    explicit PSIContext(const char* enclave_image_path, size_t data_size, size_t max_key, bool half)
+    explicit PSIContext(const char* enclave_image_path, size_t data_size, size_t max_key, int half)
         : enclave(enclave_image_path, false), half(half)
     {
         /* generate random dataset */

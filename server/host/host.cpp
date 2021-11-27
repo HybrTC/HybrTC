@@ -167,36 +167,33 @@ auto main(int argc, const char* argv[]) -> int
     CLI::App app;
 
     string enclave_image_path;
-    app.add_option("-e,--enclave-path", enclave_image_path, "path to the signed enclave image")
+    app.add_option("--enclave-path", enclave_image_path, "path to the signed enclave image")
         ->required()
         ->check(CLI::ExistingFile);
 
-    bool server_id;
+    int server_id;
     app.add_option("--server-id", server_id, "server id: 0 or 1")->required();
 
     size_t log_data_size;
     app.add_option("--data-size", log_data_size, "logarithm of data set size")->required();
 
-    int client_portl;
-    app.add_option("--client-portl", client_portl, "listening port for client to connect")->required();
+    uint16_t client_port;
+    app.add_option("--listen", client_port, "listening port for client to connect")->required();
 
-    int peer_portl;
-    app.add_option("--peer-portl", peer_portl, "listening port for peer to connect")->required();
-
-    string peer_host;
-    app.add_option("--peer-host", peer_host, "peer's host")->required();
-
-    uint16_t peer_port;
-    app.add_option("--peer-port", peer_port, "peer's port")->required();
+    string topo;
+    app.add_option("--peers", topo, "network topology for peer servers")->required();
 
     string test_id = fmt::format("{:%Y%m%dT%H%M%S}", fmt::localtime(time(nullptr)));
     app.add_option("--test-id", test_id, "test identifier");
 
     CLI11_PARSE(app, argc, argv);
 
+    auto peers = json::parse(topo);
+    auto peer_id = (server_id + 1) % peers.size();
+
     /* configure logger */
 
-    const string pattern = fmt::format("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [s{}] [%t] %s:%# -%$ %v", int(server_id));
+    const string pattern = fmt::format("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [s{}] [%t] %s:%# -%$ %v", server_id);
 
     spdlog::set_level(spdlog::level::debug);
     spdlog::set_pattern(pattern);
@@ -208,13 +205,15 @@ auto main(int argc, const char* argv[]) -> int
     timer("start");
 
     /* start server */
-    auto s_client = std::async(std::launch::async, client_servant, client_portl, &psi);
+    auto s_client = std::async(std::launch::async, client_servant, client_port, &psi);
 
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-    auto s_peer = std::async(std::launch::async, peer_servant, peer_portl, &psi);
+    auto s_peer = std::async(std::launch::async, peer_servant, peers[server_id]["port"].get<uint16_t>(), &psi);
 
     /* start client */
-    auto [c_peer_sent, c_peer_recv] = peer_client(peer_host.c_str(), peer_port, &psi);
+
+    auto [c_peer_sent, c_peer_recv] =
+        peer_client(peers[peer_id]["host"].get<string>().c_str(), peers[peer_id]["port"].get<uint16_t>(), &psi);
 
     /* finish everything */
     auto [s_peer_sent, s_peer_recv] = s_peer.get();
@@ -227,18 +226,16 @@ auto main(int argc, const char* argv[]) -> int
 
     timer("done");
 
-    json output = json::object(
-        {
-            {"PSI_DATA_SET_SIZE_LOG", log_data_size},
+    json output = json::object({
+        {"PSI_DATA_SET_SIZE_LOG", log_data_size},
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-                {"c/p:sent", c_peer_sent}, {"c/p:recv", c_peer_recv}, {"s/p:sent", s_peer_sent},
-                {"s/p:recv", s_peer_recv},
+            {"c/p:sent", c_peer_sent}, {"c/p:recv", c_peer_recv}, {"s/p:sent", s_peer_sent}, {"s/p:recv", s_peer_recv},
 #endif
-                {"s/c:sent", s_client_sent}, {"s/c:recv", s_client_recv}, {"host_timer", timer.to_json()},
-            {
-                "enclave_timer", psi.get_timer().to_json()
-            }
-        });
+            {"s/c:sent", s_client_sent}, {"s/c:recv", s_client_recv}, {"host_timer", timer.to_json()},
+        {
+            "enclave_timer", psi.get_timer().to_json()
+        }
+    });
 
     {
         auto fn = fmt::format("{}-server{}.json", test_id, int(server_id));
