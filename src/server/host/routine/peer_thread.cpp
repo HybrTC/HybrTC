@@ -27,6 +27,7 @@ static void peer_servant(TxSocket* server, TxSocket* client, PSIContext* context
     lock.next.lock();
 
     /* compute query */
+    for (size_t i = 0; i < context->server_count() - 1; i++)
     {
         auto request = server->recv();
         SPDLOG_DEBUG("handle_compute_req: request received");
