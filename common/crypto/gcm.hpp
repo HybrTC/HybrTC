@@ -17,6 +17,27 @@ namespace mbedtls
 template <mbedtls_cipher_id_t cipher, uint32_t keybits>
 class gcm : public internal::resource<mbedtls_gcm_context, mbedtls_gcm_init, mbedtls_gcm_free>
 {
+    void decrypt(uint8_t* obuf, size_t olen, const uint8_t* ibuf)
+    {
+        const ciphertext& enc = *reinterpret_cast<const ciphertext*>(ibuf);
+
+        int result = mbedtls_gcm_auth_decrypt(
+            get(), olen, enc.iv.data(), IV_LEN, nullptr, 0, enc.tag.data(), TAG_LEN, enc.ciphertext, obuf);
+
+        if (result != 0)
+        {
+            switch (result)
+            {
+                case MBEDTLS_ERR_GCM_AUTH_FAILED:
+                    throw std::runtime_error("mbedtls_gcm_auth_decrypt returns "
+                                             "MBEDTLS_ERR_GCM_AUTH_FAILED");
+                case MBEDTLS_ERR_GCM_BAD_INPUT:
+                    throw std::runtime_error("mbedtls_gcm_auth_decrypt returns "
+                                             "MBEDTLS_ERR_GCM_BAD_INPUT");
+            }
+        }
+    }
+
   public:
     constexpr static size_t IV_LEN = 16;
     constexpr static size_t TAG_LEN = 12;
@@ -60,7 +81,7 @@ class gcm : public internal::resource<mbedtls_gcm_context, mbedtls_gcm_init, mbe
         encrypt(&output[0], output.size(), input.data(), input.size(), ctr_drbg);
     }
 
-    auto encrypt(uint8_t* obuf, size_t olen, const uint8_t* ibuf, size_t ilen, ctr_drbg& ctr_drbg)
+    void encrypt(uint8_t* obuf, size_t olen, const uint8_t* ibuf, size_t ilen, ctr_drbg& ctr_drbg)
     {
         ciphertext& enc = *reinterpret_cast<ciphertext*>(obuf);
 
@@ -91,37 +112,17 @@ class gcm : public internal::resource<mbedtls_gcm_context, mbedtls_gcm_init, mbe
         return decrypt(input.data(), input.size());
     }
 
-    auto decrypt(const uint8_t* input, size_t input_size) -> v8
+    auto decrypt_str(const uint8_t* ibuf, size_t ilen) -> std::string
     {
-        const ciphertext& enc = *reinterpret_cast<const ciphertext*>(input);
-        v8 output(input_size - sizeof(ciphertext));
+        std::string output(ilen - sizeof(ciphertext), 0);
+        decrypt(u8p(&output[0]), output.size(), ibuf);
+        return output;
+    }
 
-        int result = mbedtls_gcm_auth_decrypt(
-            get(),
-            output.size(),
-            enc.iv.data(),
-            IV_LEN,
-            nullptr,
-            0,
-            enc.tag.data(),
-            TAG_LEN,
-            enc.ciphertext,
-            &output[0]);
-
-        if (result != 0)
-        {
-            output.resize(0);
-            switch (result)
-            {
-                case MBEDTLS_ERR_GCM_AUTH_FAILED:
-                    throw std::runtime_error("mbedtls_gcm_auth_decrypt returns "
-                                             "MBEDTLS_ERR_GCM_AUTH_FAILED");
-                case MBEDTLS_ERR_GCM_BAD_INPUT:
-                    throw std::runtime_error("mbedtls_gcm_auth_decrypt returns "
-                                             "MBEDTLS_ERR_GCM_BAD_INPUT");
-            }
-        }
-
+    auto decrypt(const uint8_t* ibuf, size_t ilen) -> v8
+    {
+        v8 output(ilen - sizeof(ciphertext));
+        decrypt(&output[0], output.size(), ibuf);
         return output;
     }
 };

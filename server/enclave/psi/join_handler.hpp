@@ -18,7 +18,7 @@ class JoinHandler : public SelectHandler
     constexpr static u32 CH_LOG_LENGTH = 17;
     constexpr static u32 CH_LOG_DEPTH = 2;
 
-    using HashSet = BloomFilter<FILTER_POWER_BITS, NUMBER_OF_HASHES, PRP::integer>;
+    using HashSet = BloomFilter<NUMBER_OF_HASHES, PRP::integer>;
     using HashTable = CuckooHashing<CH_LOG_LENGTH, CH_LOG_DEPTH, NUMBER_OF_HASHES>;
 
     PRP prp;
@@ -45,9 +45,9 @@ class JoinHandler : public SelectHandler
 
     void load_data(const u32* data_key, const u32* data_val, size_t data_size) override;
 
-    auto build_filter() -> v8;
+    auto build_filter() -> const std::string&;
 
-    auto match_filter(const v8& filter) -> std::string;
+    auto match_filter(const std::string& filter) -> std::string;
 
     void build_result(const v8& data);
 

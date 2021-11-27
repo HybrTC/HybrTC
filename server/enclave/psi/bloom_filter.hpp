@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector>
+#include <string>
 
 #include "common/type_check.hpp"
 #include "hash.hpp"
@@ -13,36 +13,26 @@
  * @tparam HN The number of hashes
  * @tparam IT The type of input
  */
-template <uint8_t LL, uint8_t HN, class IT>
+template <uint8_t HN, class ElemType>
 class BloomFilter
 {
-    INTEGER_CHECK(IT, "input value");
+    INTEGER_CHECK(ElemType, "input value");
 
     constexpr static size_t BITS_PER_BYTE = 8;
     constexpr static std::array<uint8_t, BITS_PER_BYTE> BITMASK =
         {1UL << 0, 1UL << 1, 1UL << 2, 1UL << 3, 1UL << 4, 1UL << 5, 1UL << 6, 1UL << 7};
 
     // bitmap for the filter
-    constexpr static size_t FILTER_BYTES = ((1UL << LL) + 7) / BITS_PER_BYTE;
-    using BITMAP = std::vector<uint8_t>;
-    BITMAP bitmap;
+    size_t bitlen;
+    std::string bitmap;
 
     // hash function
     using HT = uint32_t;
-    HASH<HN, HT, IT> hash;
-
-    void bound_check(const HT& index) const
-    {
-        if (index >= (1UL << LL))
-        {
-            throw std::range_error("the bit is beyond the range of this filter");
-        }
-    }
+    HASH<HN, HT, ElemType> hash;
 
     template <bool set>
     void set_bit(const HT& index)
     {
-        bound_check(index);
         uint32_t block_index = index / BITS_PER_BYTE;
         uint32_t bit_index = index % BITS_PER_BYTE;
 
@@ -52,7 +42,6 @@ class BloomFilter
 
     [[nodiscard]] auto test_bit(const HT& index) const -> bool
     {
-        bound_check(index);
         uint32_t block_index = index / BITS_PER_BYTE;
         uint32_t bit_index = index % BITS_PER_BYTE;
 
@@ -60,37 +49,39 @@ class BloomFilter
     }
 
   public:
-    BloomFilter()
+    explicit BloomFilter(size_t bitlen) : bitlen(bitlen)
     {
-        bitmap.resize(FILTER_BYTES, 0);
+        size_t bytelen = (bitlen + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
+        bitmap.resize(bytelen, 0);
     }
 
-    explicit BloomFilter(const BITMAP& bitmap) : bitmap(bitmap)
+    explicit BloomFilter(size_t bitlen, std::string bitmap) : bitlen(bitlen), bitmap(std::move(bitmap))
     {
-        if (bitmap.size() < FILTER_BYTES)
+        size_t bytelen = (bitlen + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
+        if (bytelen > this->bitmap.size())
         {
-            TRACE_ENCLAVE("the bitmap given is not long enough");
+            TRACE_ENCLAVE("the bitmap given is not long enough %lu < %lu", this->bitmap.size(), bytelen);
             abort();
         }
     }
 
-    void insert(IT key)
+    void insert(const ElemType& key)
     {
         const std::array<HT, HN> hashes = hash(key);
 
         for (auto h : hashes)
         {
-            set_bit<1>(h % (1 << LL));
+            set_bit<1>(h % bitlen);
         }
     }
 
-    auto lookup(IT key) const -> bool
+    auto lookup(const ElemType& key) const -> bool
     {
         const std::array<HT, HN> hashes = hash(key);
 
         for (auto h : hashes)
         {
-            if (!test_bit(h % (1 << LL)))
+            if (!test_bit(h % bitlen))
             {
                 return false;
             }
@@ -99,7 +90,7 @@ class BloomFilter
         return true;
     }
 
-    [[nodiscard]] auto data() const -> const BITMAP&
+    [[nodiscard]] auto data() const -> const std::string&
     {
         return bitmap;
     }

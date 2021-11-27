@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <cstring>
+#include <string>
 #include <tuple>
 #include <utility>
 
@@ -32,9 +33,9 @@ void JoinHandler::load_data(const u32* data_key, const u32* data_val, size_t dat
     }
 }
 
-auto JoinHandler::build_filter() -> v8
+auto JoinHandler::build_filter() -> const std::string&
 {
-    HashSet bloom_filter;
+    HashSet bloom_filter(1 << FILTER_POWER_BITS);
 
     for (auto& [k, _] : local_data)
     {
@@ -44,9 +45,9 @@ auto JoinHandler::build_filter() -> v8
     return bloom_filter.data();
 }
 
-auto JoinHandler::match_filter(const v8& filter) -> std::string
+auto JoinHandler::match_filter(const std::string& filter) -> std::string
 {
-    HashSet bloom_filter(filter);
+    HashSet bloom_filter(1 << FILTER_POWER_BITS, filter);
 
     hybrtc::Pairs hits;
 

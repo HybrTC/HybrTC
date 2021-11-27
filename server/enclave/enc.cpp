@@ -101,8 +101,7 @@ void build_bloom_filter(u32 sid, u8** obuf, size_t* olen)
 void match_bloom_filter(u32 sid, const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-    auto input = global->session(sid).cipher().decrypt(ibuf, ilen);
-    auto output = handler->match_filter(input);
+    auto output = handler->match_filter(global->session(sid).cipher().decrypt_str(ibuf, ilen));
     global->dump_enc(sid, output, obuf, olen);
 #else
     (void)(sid);
