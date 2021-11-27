@@ -40,7 +40,7 @@ Timer timer;
 auto verifier_generate_challenge(VerifierContext& ctx, unsigned vid) -> std::shared_ptr<hybrtc::AttestationChallenge>
 {
     /* set verifier id; generate and dump ephemeral public key */
-    ctx.vid = vid;
+    ctx.vid = 0xff00 | vid;
 
     /* generate output object */
     auto challenge = std::make_shared<hybrtc::AttestationChallenge>();
@@ -202,7 +202,7 @@ auto main(int argc, const char* argv[]) -> int
     /* configure logger */
 
     spdlog::set_level(spdlog::level::trace);
-    spdlog::set_pattern("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [c] [%t] %s:%# -%$ %v");
+    spdlog::set_pattern("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [c ] [%t] %s:%# -%$ %v");
 
     /* prepare public key */
 

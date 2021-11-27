@@ -100,19 +100,23 @@ auto EnclaveContext::session(u32 session_id) -> PSI::Session&
     return *ret;
 }
 
+union U16
+{
+    uint16_t u;
+    std::array<uint8_t, 2> b;
+};
+
 void EnclaveContext::verifier_generate_challenge(u8** obuf, size_t* olen)
 {
     /* Assuming only one verifier session */
 
     /* initialize verifier context */
     verifier = std::make_shared<VerifierContext>(rand_ctx);
-    verifier->vid = id;
 
-    /* set verifier id; generate and dump ephemeral public key */
-    // ctx->vid = verifiers.size();
-    // verifiers.push_back(ctx);
-
-    TRACE_ENCLAVE("NEW VERIFIER@SERVER WITH ID %u", verifier->vid);
+    U16 vid;
+    vid.b[0] = id;
+    vid.b[1] = rand_ctx->rand<uint8_t>();
+    verifier->vid = vid.u;
 
     /* generate output object */
     hybrtc::AttestationChallenge challenge;
@@ -129,7 +133,10 @@ auto EnclaveContext::attester_generate_response(const u8* ibuf, size_t ilen, u8*
     AttesterContext ctx(rand_ctx);
 
     /* set attester id; generate and dump ephemeral public key */
-    ctx.aid = rand_ctx->rand<decltype(ctx.aid)>();
+    U16 aid;
+    aid.b[0] = id;
+    aid.b[1] = rand_ctx->rand<uint8_t>();
+    ctx.aid = aid.u;
 
     /* deserialize and handle input */
 
@@ -168,7 +175,7 @@ auto EnclaveContext::verifier_process_response(const u8* ibuf, size_t ilen) -> u
     hybrtc::AttestationResponse input;
     input.ParseFromArray(ibuf, static_cast<int>(ilen));
 
-    if (input.verifier_id() != id)
+    if ((input.verifier_id() & 0x00ff) != id)
     {
         TRACE_ENCLAVE("Verifier ID mismatch");
         abort();
