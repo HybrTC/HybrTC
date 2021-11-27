@@ -32,7 +32,7 @@ auto SelectHandler::get_result() -> std::string
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
     PRP prp;
 
-    hybrtc::Pairs result;
+    hybrtc::QueryResponse result;
     for (auto& [k, v] : local_data)
     {
         uint128_t key = prp(k);

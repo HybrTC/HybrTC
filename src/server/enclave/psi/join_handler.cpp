@@ -121,7 +121,7 @@ auto JoinHandler::get_result() -> std::string
     abort();
 #endif
 
-    hybrtc::Pairs result;
+    hybrtc::QueryResponse result;
 
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_JOIN_SUM
     for (const auto& [key_bin, peer_bin, this_raw] : intersection)
