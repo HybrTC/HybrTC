@@ -17,29 +17,28 @@
  * @tparam KT   key type
  * @tparam VT   value type
  */
-template <uint32_t LL, uint32_t LD, uint32_t HN, class KT = uint128_t, class VT = uint32_t>
+template <uint32_t LL, uint32_t LD, uint32_t HashNum, class KeyType = uint128_t, class ValType = uint32_t>
 class CuckooHashing
 {
   protected:
     // element type
-    using ET = std::pair<KT, VT>;
+    using ElemType = std::pair<KeyType, ValType>;
 
     // hash table
     constexpr static uint32_t D = 1 << LD;
     constexpr static uint32_t L = 1 << LL;
-    using CHTABLE = std::array<std::array<std::vector<ET>, L>, HN>;
-    std::unique_ptr<CHTABLE> table_ptr = std::make_unique<CHTABLE>();
-    CHTABLE& table = *table_ptr;
-    std::vector<ET> stash;
+    using CHTable = std::array<std::array<std::vector<ElemType>, L>, HashNum>;
+    std::unique_ptr<CHTable> table_ptr = std::make_unique<CHTable>();
+    CHTable& table = *table_ptr;
+    std::vector<ElemType> stash;
 
     // hash functions
-    using HT = uint32_t;
-    using HC = std::array<HT, HN>;
-    HASH<HN, HT, KT> hash;
+    using HashType = uint32_t;
+    HASH<HashNum, HashType, KeyType> hash;
 
     void evict(uint32_t hash_index, uint32_t bin_index)
     {
-        std::vector<ET>& bin = table[hash_index][bin_index];
+        std::vector<ElemType>& bin = table[hash_index][bin_index];
         if (bin.size() != D)
         {
             printf(":( something bad happening: [%s][%d]\n", __PRETTY_FUNCTION__, __LINE__);
@@ -48,7 +47,7 @@ class CuckooHashing
 
         for (auto it = bin.begin(); it < bin.end(); it++)
         {
-            const HC hashes = hash(it->first);
+            auto hashes = hash(it->first);
             if (insert_from(it->first, it->second, hash_index + 1, hashes))
             {
                 bin.erase(it);
@@ -57,17 +56,21 @@ class CuckooHashing
         }
     }
 
-    auto insert_from(const KT& key, const VT& value, uint32_t hash_index, const HC& hashes) -> bool
+    auto insert_from(
+        const KeyType& key,
+        const ValType& value,
+        uint32_t hash_index,
+        const std::array<HashType, HashNum>& hashes) -> bool
     {
-        if (hash_index >= HN)
+        if (hash_index >= HashNum)
         {
             return false;
         }
 
         // see if there's a seat
-        for (uint32_t hi = hash_index; hi < HN; hi++)
+        for (uint32_t hi = hash_index; hi < HashNum; hi++)
         {
-            std::vector<ET>& bin = table[hi][hashes[hi] % L];
+            std::vector<ElemType>& bin = table[hi][hashes[hi] % L];
 
             if (bin.size() < D)
             {
@@ -76,10 +79,10 @@ class CuckooHashing
             }
         }
 
-        for (uint32_t hi = hash_index; hi < HN; hi++)
+        for (uint32_t hi = hash_index; hi < HashNum; hi++)
         {
             uint32_t bi = hashes[hi] % L;
-            std::vector<ET>& bin = table[hi][bi];
+            std::vector<ElemType>& bin = table[hi][bi];
 
             if (bin.size() >= D)
             {
@@ -102,25 +105,25 @@ class CuckooHashing
     // forbid copy constructor
     CuckooHashing(const CuckooHashing& other) = delete;
 
-    void insert(const KT& key, const VT& value)
+    void insert(const KeyType& key, const ValType& value)
     {
-        const HC hashes = hash(key);
+        const auto hashes = hash(key);
         if (!insert_from(key, value, 0, hashes))
         {
             stash.emplace_back(key, value);
         }
     }
 
-    auto lookup(const KT& key) const -> std::vector<VT>
+    auto lookup(const KeyType& key) const -> std::vector<ValType>
     {
-        std::vector<VT> result;
+        std::vector<ValType> result;
 
-        const std::array<HT, HN> hashes = hash(key);
-        for (uint32_t hi = 0; hi < HN; hi++)
+        const std::array<HashType, HashNum> hashes = hash(key);
+        for (uint32_t hi = 0; hi < HashNum; hi++)
         {
             uint32_t bi = hashes[hi] % L;
 
-            const std::vector<ET>& bin = table[hi][bi];
+            const std::vector<ElemType>& bin = table[hi][bi];
             for (const auto& e : bin)
             {
                 if (memcmp(&e.first, &key, sizeof(uint128_t)) == 0)
