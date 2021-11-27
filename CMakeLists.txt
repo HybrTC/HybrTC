@@ -81,6 +81,19 @@ message(STATUS "PSI_AGGREGATE_POLICY=${PSI_AGGREGATE_POLICY}")
 add_subdirectory(src)
 add_subdirectory(tests)
 
+# use python to run in batch
+
+set(targets)
+foreach (select_policy IN LISTS PSI_SELECT_POLICY)
+  foreach (aggregate_policy IN LISTS PSI_AGGREGATE_POLICY)
+
+    list(APPEND targets client-${select_policy}-${aggregate_policy}
+         server-${select_policy}-${aggregate_policy}
+         sign-${select_policy}-${aggregate_policy})
+
+  endforeach ()
+endforeach ()
+
 add_custom_target(
   rundemo
   DEPENDS ${targets}

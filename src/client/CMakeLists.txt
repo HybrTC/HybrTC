@@ -13,8 +13,8 @@ file(
   CLIENT_SRCS
   ${PROTO_CPP_SRC}
   *.cpp
-  ${CMAKE_SOURCE_DIR}/common/host/socket/socket.cpp
-  ${CMAKE_SOURCE_DIR}/common/sgx/attestation/verifier.cpp
+  ${CMAKE_SOURCE_DIR}/src/common/host/socket/socket.cpp
+  ${CMAKE_SOURCE_DIR}/src/common/sgx/attestation/verifier.cpp
   ${PROTO_CPP_SRC})
 
 foreach (select_policy IN LISTS PSI_SELECT_POLICY)

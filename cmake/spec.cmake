@@ -1,4 +1,4 @@
-set(PROTO_SPEC_INC ${CMAKE_SOURCE_DIR}/common/proto)
+set(PROTO_SPEC_INC ${CMAKE_SOURCE_DIR}/src/common/proto)
 set(PROTO_SPEC_SRC ${PROTO_SPEC_INC}/msg.proto)
 
 set(PROTO_CPP_INC ${CMAKE_BINARY_DIR}/proto)

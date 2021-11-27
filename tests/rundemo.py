@@ -130,9 +130,9 @@ def test(client: Path, server: Path, enclave: Path, data_size: int):
 
 
 def main(args):
-    CLIENT_DIR: Path = args.build / "client"
-    SERVER_DIR: Path = args.build / "server/host"
-    ENCLAVE_DIR: Path = args.build / "server/enclave"
+    CLIENT_DIR: Path = args.build / "src/client"
+    SERVER_DIR: Path = args.build / "src/server/host"
+    ENCLAVE_DIR: Path = args.build / "src/server/enclave"
 
     test_suite = list(product(args.size, args.select, args.aggregate))
     total = len(test_suite)
