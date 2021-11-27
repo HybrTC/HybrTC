@@ -129,7 +129,7 @@ SocketConnection::SocketConnection(const char* host, uint16_t port)
         exit(EXIT_FAILURE);
     }
 
-    int retry = 3;
+    int retry = 10;
     int ret = 0;
 
     while ((ret = ::connect(sockfd, &addr.addr, sizeof(addr))) < 0)

@@ -13,18 +13,23 @@ from time import sleep
 SERVERS = [
     {
         "host": "127.0.0.1",
-        "port_c": 5000,
-        "port_p": 5001,
+        "port_c": 6000,
+        "port_p": 6001,
     },
     {
         "host": "127.0.0.1",
-        "port_c": 5010,
-        "port_p": 5011,
+        "port_c": 6010,
+        "port_p": 6011,
     },
     {
         "host": "127.0.0.1",
-        "port_c": 5020,
-        "port_p": 5021,
+        "port_c": 6020,
+        "port_p": 6021,
+    },
+    {
+        "host": "127.0.0.1",
+        "port_c": 6030,
+        "port_p": 6031,
     },
 ]
 
