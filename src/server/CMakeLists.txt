@@ -22,9 +22,9 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
     set(prvkey prvkey-${select_policy}-${aggregate_policy}.pem)
     set(pubkey pubkey-${select_policy}-${aggregate_policy}.pem)
 
-    if (EXISTS ${CMAKE_CURRENT_BINARY_DIR}/${target})
-      file(REMOVE ${CMAKE_CURRENT_BINARY_DIR}/${target})
-    endif ()
+    # if (EXISTS ${CMAKE_CURRENT_BINARY_DIR}/${target})
+    #   file(REMOVE ${CMAKE_CURRENT_BINARY_DIR}/${target})
+    # endif ()
 
     # Generate key
     add_custom_command(
@@ -43,6 +43,9 @@ foreach (select_policy IN LISTS PSI_SELECT_POLICY)
 
     add_custom_target(sign-${select_policy}-${aggregate_policy} ALL
                       DEPENDS ${target})
+
+    add_dependencies(server-${select_policy}-${aggregate_policy}
+                     sign-${select_policy}-${aggregate_policy})
 
   endforeach ()
 endforeach ()
