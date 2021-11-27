@@ -132,7 +132,7 @@ auto JoinHandler::match_filter(const std::string& input, std::string& output) ->
                 pair->set_key(key_bin.data(), key_bin.size());
 
                 auto enc = homo.encrypt(val, *rand_ctx).to_vector();
-                pair->set_value(enc.data(), enc.size());
+                pair->add_value(enc.data(), enc.size());
             }
         }
 
@@ -161,8 +161,14 @@ auto JoinHandler::match_filter(const std::string& input, std::string& output) ->
 
 void JoinHandler::build_result(const std::string& input)
 {
-    hybrtc::ComputeResponse peer;
-    peer.ParseFromString(input);
+    hybrtc::ComputeResponse response;
+    response.ParseFromString(input);
+
+    if (response.initiator_id() != id)
+    {
+        TRACE_ENCLAVE("response.initiator_id() != id");
+        abort();
+    }
 
     /*
      * build cuckoo hashing table
@@ -176,7 +182,7 @@ void JoinHandler::build_result(const std::string& input)
     /*
      * match cuckoo hashing table
      */
-    for (const auto& pair : peer.pairs())
+    for (const auto& pair : response.pairs())
     {
         const auto& key_bin = pair.key();
         const auto& val_bin = pair.value();
@@ -184,7 +190,8 @@ void JoinHandler::build_result(const std::string& input)
         auto query_result = hashing.lookup(*reinterpret_cast<const uint128_t*>(key_bin.data()));
         for (const auto& val : query_result)
         {
-            intersection.emplace_back(std::make_tuple(key_bin, val_bin, val));
+            intersection.emplace_back(
+                std::make_tuple(key_bin, std::vector<std::string>(val_bin.begin(), val_bin.end()), val));
         }
     }
 }
@@ -198,15 +205,21 @@ auto JoinHandler::get_result() -> std::string
     hybrtc::QueryResponse result;
 
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_JOIN_SUM
-    for (const auto& [key_bin, peer_bin, this_raw] : intersection)
+    for (const auto& [key_bin, peer_bins, this_raw] : intersection)
     {
-        mpi peer_val(u8p(peer_bin.data()), peer_bin.size());
-        mpi this_val(homo.encrypt(this_raw, *rand_ctx));
-        const auto sum = homo.add(peer_val, this_val).to_vector();
+        mpi sum(homo.encrypt(this_raw, *rand_ctx));
+
+        for (const auto& peer_bin : peer_bins)
+        {
+            mpi peer_val(u8p(peer_bin.data()), peer_bin.size());
+            sum = homo.add(sum, peer_val);
+        }
+
+        const auto sum_bin = sum.to_vector();
 
         auto* pair = result.add_pairs();
         pair->set_key(key_bin);
-        pair->set_value(sum.data(), sum.size());
+        pair->set_value(sum_bin.data(), sum_bin.size());
     }
 #else
     auto* pair = result.add_pairs();

@@ -28,7 +28,7 @@ class JoinHandler : public SelectHandler
     uint32_t id;
     uint32_t count;
 
-    using result_t = std::vector<std::tuple<std::string, std::string, u32>>;
+    using result_t = std::vector<std::tuple<std::string, std::vector<std::string>, u32>>;
     result_t intersection;
 
     std::vector<std::vector<std::pair<uint128_t, uint32_t>>> data;

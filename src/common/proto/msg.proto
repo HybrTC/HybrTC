@@ -22,11 +22,6 @@ message AttestationResponse {
     bytes evidence      = 49; // 31
 }
 
-message Pair {
-    bytes key = 1;
-    bytes value = 2;
-}
-
 message QueryRequest {
     uint32 server_id = 1;
     uint32 server_count = 2;
@@ -34,6 +29,10 @@ message QueryRequest {
 }
 
 message QueryResponse {
+    message Pair {
+        bytes key = 1;
+        bytes value = 2;
+    }
     repeated Pair pairs = 1;
 }
 
@@ -46,5 +45,9 @@ message ComputeRequest {
 message ComputeResponse {
     uint32 initiator_id = 1;
     uint32 sender_id = 2;
-    repeated Pair pairs = 10;
+    message MPair {
+        bytes key = 1;
+        repeated bytes value = 2;
+    }
+    repeated MPair pairs = 10;
 }
