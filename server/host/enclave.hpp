@@ -18,7 +18,7 @@ struct buffer
     buffer(const buffer&) = delete;
 };
 
-class SPIEnclave
+class PSIEnclave
 {
     oe_enclave_t* enclave_ptr = nullptr;
 
@@ -30,9 +30,9 @@ class SPIEnclave
     Timer timer;
 
   public:
-    SPIEnclave(const char* enclave_image_path, bool simulate);
+    PSIEnclave(const char* enclave_image_path, bool simulate);
 
-    ~SPIEnclave()
+    ~PSIEnclave()
     {
         if (enclave_ptr != nullptr)
         {
@@ -51,13 +51,18 @@ class SPIEnclave
 
     auto verifier_process_response(const v8& input) -> uint32_t;
 
+    // general
     void set_client_query(uint32_t sid, const v8& input, bool half, const v32& keys, const v32& values);
 
+    // active
     void build_bloom_filter(uint32_t sid, buffer& bloom_filter);
 
+    // passive
     void match_bloom_filter(uint32_t sid, const v8& input, buffer& output);
 
+    // active
     void aggregate(uint32_t sid, const v8& input);
 
+    // active
     void get_result(uint32_t sid, buffer& obuf);
 };

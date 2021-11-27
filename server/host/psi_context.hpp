@@ -18,7 +18,7 @@ constexpr size_t TEST_SIZE = (1 << 20);
 
 class PSIContext
 {
-    SPIEnclave enclave;
+    PSIEnclave enclave;
     v32 data_keys;
     v32 data_vals;
 

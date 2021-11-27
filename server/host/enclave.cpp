@@ -24,7 +24,7 @@
         SPDLOG_WARN("ECALL < {}", __FUNCTION__);     \
     }
 
-SPIEnclave::SPIEnclave(const char* enclave_image_path, bool simulate)
+PSIEnclave::PSIEnclave(const char* enclave_image_path, bool simulate)
 {
     uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     if (simulate)
@@ -38,7 +38,7 @@ SPIEnclave::SPIEnclave(const char* enclave_image_path, bool simulate)
     CHECK("oe_create_helloworld_enclave", result);
 }
 
-void SPIEnclave::verifier_generate_challenge(buffer& output)
+void PSIEnclave::verifier_generate_challenge(buffer& output)
 {
     ECALL_IN;
     oe_result_t result = ::verifier_generate_challenge(enclave(), &output.data, &output.size);
@@ -47,7 +47,7 @@ void SPIEnclave::verifier_generate_challenge(buffer& output)
     CHECK("verifier_generate_challenge", result);
 }
 
-auto SPIEnclave::attester_generate_response(const v8& input, buffer& output) -> uint32_t
+auto PSIEnclave::attester_generate_response(const v8& input, buffer& output) -> uint32_t
 {
     uint32_t sid;
 
@@ -60,7 +60,7 @@ auto SPIEnclave::attester_generate_response(const v8& input, buffer& output) -> 
     return sid;
 }
 
-auto SPIEnclave::verifier_process_response(const v8& input) -> uint32_t
+auto PSIEnclave::verifier_process_response(const v8& input) -> uint32_t
 {
     uint32_t sid;
 
@@ -72,7 +72,7 @@ auto SPIEnclave::verifier_process_response(const v8& input) -> uint32_t
     return sid;
 }
 
-void SPIEnclave::set_client_query(uint32_t sid, const v8& input, bool half, const v32& keys, const v32& values)
+void PSIEnclave::set_client_query(uint32_t sid, const v8& input, bool half, const v32& keys, const v32& values)
 {
     ECALL_IN;
     oe_result_t result =
@@ -82,7 +82,7 @@ void SPIEnclave::set_client_query(uint32_t sid, const v8& input, bool half, cons
     CHECK("set_client_query", result);
 }
 
-void SPIEnclave::build_bloom_filter(uint32_t sid, buffer& bloom_filter)
+void PSIEnclave::build_bloom_filter(uint32_t sid, buffer& bloom_filter)
 {
     ECALL_IN;
     oe_result_t result = ::build_bloom_filter(enclave(), sid, &bloom_filter.data, &bloom_filter.size);
@@ -91,7 +91,7 @@ void SPIEnclave::build_bloom_filter(uint32_t sid, buffer& bloom_filter)
     CHECK("build_bloom_filter", result);
 }
 
-void SPIEnclave::match_bloom_filter(uint32_t sid, const v8& input, buffer& output)
+void PSIEnclave::match_bloom_filter(uint32_t sid, const v8& input, buffer& output)
 {
     ECALL_IN;
     oe_result_t result = ::match_bloom_filter(enclave(), sid, input.data(), input.size(), &output.data, &output.size);
@@ -100,7 +100,7 @@ void SPIEnclave::match_bloom_filter(uint32_t sid, const v8& input, buffer& outpu
     CHECK("match_bloom_filter", result);
 }
 
-void SPIEnclave::aggregate(uint32_t sid, const v8& input)
+void PSIEnclave::aggregate(uint32_t sid, const v8& input)
 {
     ECALL_IN;
     oe_result_t result = ::aggregate(enclave(), sid, input.data(), input.size());
@@ -109,7 +109,7 @@ void SPIEnclave::aggregate(uint32_t sid, const v8& input)
     CHECK("aggregate", result);
 }
 
-void SPIEnclave::get_result(uint32_t sid, buffer& obuf)
+void PSIEnclave::get_result(uint32_t sid, buffer& obuf)
 {
     ECALL_IN;
     oe_result_t result = ::get_result(enclave(), sid, &obuf.data, &obuf.size);
