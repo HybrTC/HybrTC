@@ -139,26 +139,24 @@ auto JoinHandler::match_filter(const std::string& input, std::string& output) ->
         result.SerializeToString(&output);
         return Message::ComputeResponse;
     }
-    else
+
+    hybrtc::ComputeRequest result;
+    result.set_initiator_id(request.initiator_id());
+    result.set_sender_id(id);
+
+    HashSet new_filter(1 << FILTER_POWER_BITS);
+
+    for (const auto& [key, _] : data[slice_id])
     {
-        hybrtc::ComputeRequest result;
-        result.set_initiator_id(request.initiator_id());
-        result.set_sender_id(id);
-
-        HashSet new_filter(1 << FILTER_POWER_BITS);
-
-        for (const auto& [key, _] : data[slice_id])
+        if (bloom_filter.lookup(key))
         {
-            if (bloom_filter.lookup(key))
-            {
-                new_filter.insert(key);
-            }
+            new_filter.insert(key);
         }
-
-        result.set_bloom_filter(new_filter.data());
-        result.SerializeToString(&output);
-        return Message::ComputeRequest;
     }
+
+    result.set_bloom_filter(new_filter.data());
+    result.SerializeToString(&output);
+    return Message::ComputeRequest;
 }
 
 void JoinHandler::build_result(const std::string& input)
