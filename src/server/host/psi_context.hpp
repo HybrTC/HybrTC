@@ -34,8 +34,8 @@ class PSIContext
     } lock;
 #endif
 
-    unsigned server_id;
-    unsigned server_cnt;
+    unsigned id;
+    unsigned count;
     bool half;
 
   public:
@@ -45,7 +45,7 @@ class PSIContext
         size_t max_key,
         unsigned server_id,
         unsigned server_cnt)
-        : enclave(enclave_image_path, false), server_id(server_id), server_cnt(server_cnt), half(server_id == 0)
+        : enclave(enclave_image_path, false), id(server_id), count(server_cnt), half(server_id == 0)
     {
         /* generate random dataset */
         PRNG<uint32_t> prng;
@@ -71,6 +71,16 @@ class PSIContext
     /*
      * member accessor
      */
+
+    [[nodiscard]] auto server_count() const -> unsigned
+    {
+        return count;
+    }
+
+    [[nodiscard]] auto server_id() const -> unsigned
+    {
+        return id;
+    }
 
     void set_client_sid(uint32_t sid)
     {
