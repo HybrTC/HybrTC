@@ -22,19 +22,51 @@ void JoinHandler::load_data(const u32* data_key, const u32* data_val, size_t dat
 {
     SelectHandler::load_data(data_key, data_val, data_size);
 
-    if (split() == 2)
+    if (id == 0)
     {
-        size_t mid = local_data.size() / 2;
+        data.resize(count);
+        for (auto& slice : data)
+        {
+            slice.reserve(local_data.size() / count);
+        }
 
-        left_data.resize(local_data.size() - mid);
-        memcpy(u8p(&left_data[0]), u8p(&local_data[mid]), left_data.size() * sizeof(left_data[0]));
-
-        local_data.resize(mid);
+        unsigned slice_id = 0;
+        while (!local_data.empty())
+        {
+            auto [key, val] = local_data.back();
+            data[slice_id].emplace_back(prp(key), val);
+            local_data.pop_back();
+            slice_id = (slice_id + 1) % count;
+        }
     }
-    else if (split() != 0)
+    else
     {
-        // TODO:
-        TRACE_ENCLAVE("unimplemented split_shares = %u", split());
+        auto& slice = data.emplace_back();
+        slice.reserve(local_data.size());
+        while (!local_data.empty())
+        {
+            auto [key, val] = local_data.back();
+            slice.emplace_back(prp(key), val);
+            local_data.pop_back();
+        }
+    }
+
+#ifdef PSI_VERBOSE
+
+    for (const auto& slice : data)
+    {
+        TRACE_ENCLAVE("id = %u, slice size = %lu", id, slice.size());
+    }
+
+#endif
+
+    if (local_data.empty())
+    {
+        local_data.shrink_to_fit();
+    }
+    else
+    {
+        TRACE_ENCLAVE("Unexpected local_data not empty");
         abort();
     }
 }
@@ -43,9 +75,9 @@ auto JoinHandler::build_filter() -> std::string
 {
     HashSet bloom_filter(1 << FILTER_POWER_BITS);
 
-    for (auto& [k, _] : local_data)
+    for (const auto& [key, _] : data[0])
     {
-        bloom_filter.insert(prp(k));
+        bloom_filter.insert(key);
     }
 
     hybrtc::ComputeRequest request;
@@ -58,24 +90,30 @@ auto JoinHandler::build_filter() -> std::string
 
 auto JoinHandler::match_filter(const std::string& filter) -> std::string
 {
-    if (split() > 0 && split() != 2)
+    if (count > 2)
     {
         // TODO:
-        TRACE_ENCLAVE("unimplemented split_shares = %u", split());
+        TRACE_ENCLAVE("unimplemented server count = %u", count);
         abort();
     }
 
     hybrtc::ComputeRequest request;
     request.ParseFromString(filter);
+    assert(request.initiator_id() != id);
 
     HashSet bloom_filter(1 << FILTER_POWER_BITS, request.bloom_filter());
 
-    hybrtc::QueryResponse hits;
+    const auto slice_id = (id == 0) ? request.initiator_id() : 0;
 
-    const database_t& db = split() == 2 ? left_data : local_data;
-    for (const auto& [k, v] : db)
+#if PSI_VERBOSE
+    const auto& slice = data[slice_id];
+    TRACE_ENCLAVE("Server %u : slice id = %u", id, slice_id);
+    TRACE_ENCLAVE("Server %u : slice size = %lu", id, slice.size());
+#endif
+
+    hybrtc::QueryResponse hits;
+    for (const auto& [key, val] : data[slice_id])
     {
-        uint128_t key = prp(k);
         if (bloom_filter.lookup(key))
         {
             auto* pair = hits.add_pairs();
@@ -83,7 +121,7 @@ auto JoinHandler::match_filter(const std::string& filter) -> std::string
             const auto& key_bin = *reinterpret_cast<const PRP::binary*>(&key);
             pair->set_key(key_bin.data(), key_bin.size());
 
-            auto enc = homo.encrypt(v, *rand_ctx).to_vector();
+            auto enc = homo.encrypt(val, *rand_ctx).to_vector();
             pair->set_value(enc.data(), enc.size());
         }
     }
@@ -91,20 +129,18 @@ auto JoinHandler::match_filter(const std::string& filter) -> std::string
     return hits.SerializeAsString();
 }
 
-void JoinHandler::build_result(const v8& data)
+void JoinHandler::build_result(const v8& response)
 {
     hybrtc::QueryResponse peer;
-    peer.ParseFromArray(data.data(), static_cast<int>(data.size()));
+    peer.ParseFromArray(response.data(), static_cast<int>(response.size()));
 
     /*
      * build cuckoo hashing table
      */
-    PRP prp;
     HashTable hashing(1 << CH_LOG_LENGTH, 1 << CH_LOG_DEPTH);
-
-    for (auto& [k, v] : local_data)
+    for (const auto& [key, val] : data[0])
     {
-        hashing.insert(prp(k), v);
+        hashing.insert(key, val);
     }
 
     /*

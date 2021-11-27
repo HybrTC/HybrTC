@@ -27,15 +27,10 @@ class JoinHandler : public SelectHandler
     uint32_t id;
     uint32_t count;
 
-    database_t left_data;
-
     using result_t = std::vector<std::tuple<std::string, std::string, u32>>;
     result_t intersection;
 
-    [[nodiscard]] auto split() const -> unsigned
-    {
-        return id == 0 ? count : 0;
-    }
+    std::vector<std::vector<std::pair<uint128_t, uint32_t>>> data;
 
   public:
     explicit JoinHandler(sptr<mbedtls::ctr_drbg> rand_ctx);
@@ -61,7 +56,7 @@ class JoinHandler : public SelectHandler
 
     auto match_filter(const std::string& filter) -> std::string;
 
-    void build_result(const v8& data);
+    void build_result(const v8& response);
 
     auto get_result() -> std::string override;
 };

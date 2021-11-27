@@ -57,7 +57,7 @@ Socket::Socket(const Socket& other)
     sockfd = dup(other.sockfd);
 }
 
-SocketServer::SocketServer(uint16_t port) : Socket()
+SocketServer::SocketServer(uint16_t port)
 {
     // to avoid address already in used
     static const int opt = 1;
@@ -120,7 +120,7 @@ SocketServer::~SocketServer()
 
 // Client connect
 
-SocketConnection::SocketConnection(const char* host, uint16_t port) : Socket()
+SocketConnection::SocketConnection(const char* host, uint16_t port)
 {
     sockaddr_u addr{.in = {.sin_family = AF_INET, .sin_port = htons(port), .sin_addr = {0}, .sin_zero = {0}}};
     if (inet_pton(AF_INET, host, &addr.in.sin_addr) <= 0)
