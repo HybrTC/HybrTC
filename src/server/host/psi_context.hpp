@@ -34,8 +34,8 @@ class PSIContext
     } lock;
 #endif
 
-    unsigned id;
-    unsigned count;
+    unsigned id = -1;
+    unsigned count = -1;
 
   public:
     explicit PSIContext(
@@ -44,7 +44,7 @@ class PSIContext
         size_t max_key,
         unsigned server_id,
         unsigned server_cnt)
-        : enclave(enclave_image_path, false), id(server_id), count(server_cnt)
+        : enclave(enclave_image_path, false, server_id, server_cnt), id(server_id), count(server_cnt)
     {
         /* generate random dataset */
         PRNG<uint32_t> prng;
@@ -127,7 +127,7 @@ class PSIContext
     auto handle_query_request(uint32_t sid, const v8& payload) -> MessagePtr
     {
         assert(sid == csid);
-        enclave.set_client_query(sid, payload, id, count, data_keys, data_vals);
+        enclave.set_client_query(sid, payload, data_keys, data_vals);
 
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
         /* client sid and public key are set, ready for peer to use */

@@ -9,7 +9,8 @@
 #include "sgx/attestation.hpp"
 #include "sgx/session.hpp"
 
-EnclaveContext::EnclaveContext() : rand_ctx(std::make_shared<mbedtls::ctr_drbg>())
+EnclaveContext::EnclaveContext(unsigned server_id, unsigned server_count)
+    : rand_ctx(std::make_shared<mbedtls::ctr_drbg>()), id(server_id), count(server_count)
 {
     v8 custom;
     custom.resize(MBEDTLS_CTR_DRBG_KEYSIZE);
@@ -101,18 +102,23 @@ auto EnclaveContext::session(u32 session_id) -> PSI::Session&
 
 void EnclaveContext::verifier_generate_challenge(u8** obuf, size_t* olen)
 {
+    /* Assuming only one verifier session */
+
     /* initialize verifier context */
-    auto ctx = std::make_shared<VerifierContext>(rand_ctx);
+    verifier = std::make_shared<VerifierContext>(rand_ctx);
+    verifier->vid = id;
 
     /* set verifier id; generate and dump ephemeral public key */
-    ctx->vid = verifiers.size();
-    verifiers.push_back(ctx);
+    // ctx->vid = verifiers.size();
+    // verifiers.push_back(ctx);
+
+    TRACE_ENCLAVE("NEW VERIFIER@SERVER WITH ID %u", verifier->vid);
 
     /* generate output object */
     hybrtc::AttestationChallenge challenge;
-    challenge.set_verifier_id(ctx->vid);
-    challenge.set_verifier_pk(ctx->vpk);
-    challenge.set_format_settings(ctx->core.format_settings());
+    challenge.set_verifier_id(verifier->vid);
+    challenge.set_verifier_pk(verifier->vpk);
+    challenge.set_format_settings(verifier->core.format_settings());
 
     dump(challenge.SerializeAsString(), obuf, olen);
 }
@@ -162,10 +168,16 @@ auto EnclaveContext::verifier_process_response(const u8* ibuf, size_t ilen) -> u
     hybrtc::AttestationResponse input;
     input.ParseFromArray(ibuf, static_cast<int>(ilen));
 
-    auto ctx = verifiers[input.verifier_id()]; // load verifier context
-    ctx->aid = input.attester_id();            // set attester id
-    ctx->apk = input.attester_pk();            // set attester pubkey
-    const auto& evidence = input.evidence();   // load attestation evidence
+    if (input.verifier_id() != id)
+    {
+        TRACE_ENCLAVE("Verifier ID mismatch");
+        abort();
+    }
+
+    auto ctx = verifier;                     // load verifier context
+    ctx->aid = input.attester_id();          // set attester id
+    ctx->apk = input.attester_pk();          // set attester pubkey
+    const auto& evidence = input.evidence(); // load attestation evidence
 
     /* set vpk in ecdh context */
     ctx->ecdh.read_public(u8p(ctx->apk.data()), ctx->apk.size());
@@ -203,7 +215,7 @@ auto EnclaveContext::verifier_process_response(const u8* ibuf, size_t ilen) -> u
     /* build crypto context and free verifier context */
     auto [sid, session] = ctx->complete_attestation();
     new_session(sid, session, *ctx);
-    verifiers[ctx->vid] = nullptr;
+    verifier = nullptr;
 
     return sid;
 }

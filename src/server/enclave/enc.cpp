@@ -19,24 +19,21 @@ sptr<EnclaveContext> global;
 
 static struct
 {
-    std::mutex init;
     std::mutex attester;
     std::mutex verifier;
 } locks;
 
-static void init()
+void initialize(unsigned server_id, unsigned server_count)
 {
-    locks.init.lock();
+    TRACE_ENCLAVE("Initializing server %u/%u", server_id, server_count);
     if (global == nullptr)
     {
-        global = std::make_shared<EnclaveContext>();
+        global = std::make_shared<EnclaveContext>(server_id, server_count);
     }
-    locks.init.unlock();
 }
 
 void verifier_generate_challenge(u8** obuf, size_t* olen)
 {
-    init();
     locks.verifier.lock();
     global->verifier_generate_challenge(obuf, olen);
     locks.verifier.unlock();
@@ -44,7 +41,6 @@ void verifier_generate_challenge(u8** obuf, size_t* olen)
 
 auto attester_generate_response(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen) -> u32
 {
-    init();
     locks.attester.lock();
     auto sid = global->attester_generate_response(ibuf, ilen, obuf, olen);
     locks.attester.unlock();
@@ -60,16 +56,11 @@ auto verifier_process_response(const u8* ibuf, size_t ilen) -> u32
     return sid;
 }
 
-void set_client_query(
-    u32 sid,
-    const u8* ibuf,
-    size_t ilen,
-    uint32_t server_id,
-    uint32_t server_count,
-    const u32* data_key,
-    const u32* data_val,
-    size_t data_size)
+void set_client_query(u32 sid, const u8* ibuf, size_t ilen, const u32* data_key, const u32* data_val, size_t data_size)
 {
+    const uint32_t server_id = global->server_id();
+    const uint32_t server_count = global->server_count();
+
     handler = std::make_shared<decltype(handler)::element_type>(global->rand_ptr());
 
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT

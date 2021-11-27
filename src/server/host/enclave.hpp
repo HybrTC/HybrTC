@@ -29,8 +29,10 @@ class PSIEnclave
 
     Timer timer;
 
+    void initialize(unsigned server_id, unsigned server_count);
+
   public:
-    PSIEnclave(const char* enclave_image_path, bool simulate);
+    PSIEnclave(const char* enclave_image_path, bool simulate, unsigned server_id, unsigned server_count);
 
     ~PSIEnclave()
     {
@@ -52,13 +54,7 @@ class PSIEnclave
     auto verifier_process_response(const buffer& input) -> uint32_t;
 
     // general
-    void set_client_query(
-        uint32_t sid,
-        const v8& input,
-        uint32_t server_id,
-        uint32_t server_count,
-        const v32& keys,
-        const v32& values);
+    void set_client_query(uint32_t sid, const v8& input, const v32& keys, const v32& values);
 
     // active
     void build_bloom_filter(uint32_t sid, buffer& bloom_filter);

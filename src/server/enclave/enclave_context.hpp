@@ -9,16 +9,32 @@
 
 class EnclaveContext
 {
-    std::vector<sptr<VerifierContext>> verifiers;
+    // Assume only one verifier. It works for our project
+    // std::vector<sptr<VerifierContext>> verifiers;
+    sptr<VerifierContext> verifier;
+
     std::map<u32, sptr<PSI::Session>> sessions;
     sptr<mbedtls::ctr_drbg> rand_ctx;
 
     std::mutex session_lock;
 
+    unsigned id = -1;
+    unsigned count = -1;
+
     void new_session(u32 sid, sptr<PSI::Session> session, const AttestationContext& ctx);
 
   public:
-    EnclaveContext();
+    EnclaveContext(unsigned server_id, unsigned server_count);
+
+    [[nodiscard]] auto server_id() const -> unsigned
+    {
+        return id;
+    }
+
+    [[nodiscard]] auto server_count() const -> unsigned
+    {
+        return count;
+    }
 
     static void dump(const std::string& bytes, uint8_t** obuf, size_t* olen);
     static void dump(const v8& bytes, uint8_t** obuf, size_t* olen);

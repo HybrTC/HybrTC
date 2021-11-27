@@ -6,6 +6,8 @@ enclave {
 
     trusted {
 
+        public void initialize(unsigned server_id, unsigned server_count);
+
         public void verifier_generate_challenge(    [out] uint8_t** obuf,
                                                     [out] size_t* olen);
 
@@ -21,8 +23,6 @@ enclave {
         public void set_client_query(       uint32_t sid,
                                             [in, size=ilen] const uint8_t* ibuf,
                                             size_t ilen,
-                                            uint32_t server_id,
-                                            uint32_t server_count,
                                             [user_check] const uint32_t* data_key,
                                             [user_check] const uint32_t* data_val,
                                             size_t data_size);

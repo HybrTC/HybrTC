@@ -193,7 +193,8 @@ auto SocketConnection::recv(void* buffer, size_t size) -> size_t
         else if (len == 0)
         {
             // Peer has closed
-            break;
+            // FIXME: only for debug
+            // break;
         }
         else
         {
