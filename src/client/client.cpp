@@ -99,11 +99,11 @@ auto client(const std::string& host, uint16_t port, int id, const v8& pk) -> std
     timer(fmt::format("c/s{}: initiate attestation", id));
 
     {
-        {
-            auto payload = verifier_generate_challenge(vctx, id);
-            client.send(-1, Message::AttestationRequest, payload->SerializeAsString());
-        }
+        auto payload = verifier_generate_challenge(vctx, id);
+        client.send(-1, Message::AttestationRequest, payload->SerializeAsString());
+    }
 
+    {
         auto response = client.recv();
         if (response->message_type != Message::AttestationResponse)
         {

@@ -60,12 +60,12 @@ auto PSIEnclave::attester_generate_response(const v8& input, buffer& output) -> 
     return sid;
 }
 
-auto PSIEnclave::verifier_process_response(const v8& input) -> uint32_t
+auto PSIEnclave::verifier_process_response(const buffer& input) -> uint32_t
 {
     uint32_t sid;
 
     ECALL_IN;
-    oe_result_t result = ::verifier_process_response(enclave(), &sid, input.data(), input.size());
+    oe_result_t result = ::verifier_process_response(enclave(), &sid, input.data, input.size);
     ECALL_OUT;
 
     CHECK("verifier_process_response", result);

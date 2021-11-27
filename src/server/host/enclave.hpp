@@ -49,7 +49,7 @@ class PSIEnclave
 
     auto attester_generate_response(const v8& input, buffer& output) -> uint32_t;
 
-    auto verifier_process_response(const v8& input) -> uint32_t;
+    auto verifier_process_response(const buffer& input) -> uint32_t;
 
     // general
     void set_client_query(uint32_t sid, const v8& input, bool half, const v32& keys, const v32& values);

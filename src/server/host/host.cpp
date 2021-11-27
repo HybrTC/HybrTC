@@ -9,6 +9,7 @@
 
 #include <CLI/CLI.hpp>
 #include <nlohmann/json.hpp>
+#include <utility>
 
 #include "common/types.hpp"
 #include "host/TxSocket.hpp"
@@ -36,9 +37,31 @@ static auto attestation_servant(TxSocket& server, PSIContext& context) -> u32
     return response->session_id;
 }
 
-auto client_servant(int port, PSIContext* context)
+#if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
+static auto attestation_initiator(TxSocket& client, PSIContext& context) -> u32
 {
-    SPDLOG_INFO("starting {} at port {}", __FUNCTION__, port);
+    auto request = context.prepare_attestation_req();
+    assert(request->message_type == AttestationRequest);
+    client.send(*request);
+    SPDLOG_DEBUG("prepare_attestation_req: request sent");
+
+    auto response = client.recv();
+    SPDLOG_DEBUG("process_attestation_resp: response received");
+    assert(response.message_type == AttestationResponse);
+    auto sid = context.process_attestation_resp(response->payload, response->payload_len);
+
+    if (response->session_id != sid)
+    {
+        throw std::runtime_error("the sid received and generated don't match");
+    }
+
+    return sid;
+}
+#endif
+
+auto client_thread(int port, PSIContext* context)
+{
+    SPDLOG_INFO("starting {}: serving at port {}", __FUNCTION__, port);
 
     /* construct a response socket and bind to interface */
     auto server = TxSocket::listen(port);
@@ -73,22 +96,18 @@ auto client_servant(int port, PSIContext* context)
 }
 
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-auto peer_servant(int port, PSIContext* context)
+void peer_servant(TxSocket* server, PSIContext* context)
 {
-    SPDLOG_INFO("starting {} at port {}", __FUNCTION__, port);
-
-    /* construct a response socket and bind to interface */
-    auto server = TxSocket::listen(port);
-    server.accept();
+    server->accept();
 
     /* attestation */
-    auto sid = attestation_servant(server, *context);
+    auto sid = attestation_servant(*server, *context);
     context->set_peer_isid(sid);
     SPDLOG_DEBUG("server session from peer: sid={:08x}", sid);
 
     /* compute query */
     {
-        auto request = server.recv();
+        auto request = server->recv();
         SPDLOG_DEBUG("handle_compute_req: request received");
         if (request->message_type != Message::ComputeRequest)
         {
@@ -102,52 +121,29 @@ auto peer_servant(int port, PSIContext* context)
 
         auto response = context->handle_compute_req(sid, payload);
         assert(response->message_type == Message::ComputeResponse);
-        server.send(*response);
+        server->send(*response);
         SPDLOG_DEBUG("handle_compute_req: response sent");
     }
-
-    return server.statistics();
 }
 
-auto peer_client(const char* peer_host, std::uint16_t peer_port, PSIContext* context)
+auto peer_client(TxSocket* client, PSIContext* context)
 {
-    SPDLOG_INFO("starting {} to {}:{}", __FUNCTION__, peer_host, peer_port);
-
-    /* construct a request socket and connect to interface */
-    auto client = TxSocket::connect(peer_host, peer_port);
-
     /* attestation */
-    auto request = context->prepare_attestation_req();
-    assert(request->message_type == AttestationRequest);
-    SPDLOG_DEBUG("prepare_attestation_req: request sent");
-    client.send(*request);
-
-    auto response = client.recv();
-    SPDLOG_DEBUG("process_attestation_resp: response received");
-    assert(response.message_type == AttestationResponse);
-    v8 payload(response->payload, response->payload + response->payload_len);
-    auto sid = context->process_attestation_resp(payload);
-    if (response->session_id != sid)
-    {
-        throw std::runtime_error("the sid received and generated don't match");
-    }
-
+    auto sid = attestation_initiator(*client, *context);
     context->set_peer_osid(sid);
-    SPDLOG_DEBUG("server session to peer: sid={:08x}", sid);
+    SPDLOG_DEBUG("client session to peer: sid={:08x}", sid);
 
     /* build and send bloom filter */
     {
         auto request = context->prepare_compute_req();
         assert(request->message_type == ComputeRequest);
-        client.send(*request);
-        // auto payload = request["payload"].get<v8>();
-        // client.send(request["sid"].get<u32>(), request["type"].get<MessageType>(), payload.size(), payload.data());
+        client->send(*request);
         SPDLOG_DEBUG("prepare_compute_req: request sent");
     }
 
     /* get match result and aggregate */
     {
-        auto response = client.recv();
+        auto response = client->recv();
         SPDLOG_DEBUG("process_compute_resp: response received");
         assert(response.message_type == ComputeResponse);
         if (response->session_id != sid)
@@ -158,8 +154,30 @@ auto peer_client(const char* peer_host, std::uint16_t peer_port, PSIContext* con
         context->process_compute_resp(sid, payload);
     }
 
-    return client.statistics();
+    return client->statistics();
 }
+
+auto peer_thread(uint16_t port, const char* peer_host, uint16_t peer_port, PSIContext* context)
+{
+    SPDLOG_INFO("starting {}: serving at port {}", __FUNCTION__, port);
+    auto server = TxSocket::listen(port);
+
+    SPDLOG_INFO("starting {}: connect to {}:{}", __FUNCTION__, peer_host, peer_port);
+    auto client = TxSocket::connect(peer_host, peer_port);
+
+    /* serve for peer */
+    auto s_peer = std::async(std::launch::async, peer_servant, &server, context);
+
+    /* connect to next */
+    auto [c_peer_sent, c_peer_recv] = peer_client(&client, context);
+
+    /* collect statistics */
+    s_peer.get();
+    auto [s_peer_sent, s_peer_recv] = server.statistics();
+
+    return std::make_tuple(c_peer_sent, c_peer_recv, s_peer_sent, s_peer_recv);
+}
+
 #endif
 
 auto main(int argc, const char* argv[]) -> int
@@ -205,19 +223,15 @@ auto main(int argc, const char* argv[]) -> int
     timer("start");
 
     /* start server towards client */
-    auto s_client = std::async(std::launch::async, client_servant, client_port, &psi);
+    auto s_client = std::async(std::launch::async, client_thread, client_port, &psi);
 
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-    /* start server towards peer */
-    auto s_peer = std::async(std::launch::async, peer_servant, peers[server_id]["port"].get<uint16_t>(), &psi);
 
-    /* start client */
-    auto [c_peer_sent, c_peer_recv] =
-        peer_client(peers[peer_id]["host"].get<string>().c_str(), peers[peer_id]["port"].get<uint16_t>(), &psi);
-
-    /* finish everything */
-    auto [s_peer_sent, s_peer_recv] = s_peer.get();
-    SPDLOG_INFO("Server for peer closed");
+    auto [c_peer_sent, c_peer_recv, s_peer_sent, s_peer_recv] = peer_thread(
+        peers[server_id]["port"].get<uint16_t>(),
+        peers[peer_id]["host"].get<string>().c_str(),
+        peers[peer_id]["port"].get<uint16_t>(),
+        &psi);
 
 #endif
 

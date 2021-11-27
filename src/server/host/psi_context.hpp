@@ -115,9 +115,9 @@ class PSIContext
         return std::make_shared<Message>(sid, Message::AttestationResponse, response.size, response.data);
     }
 
-    auto process_attestation_resp(const v8& response) -> uint32_t
+    auto process_attestation_resp(uint8_t* data, size_t size) -> uint32_t
     {
-        auto sid = enclave.verifier_process_response(response);
+        auto sid = enclave.verifier_process_response({data, size});
         return sid;
     }
 
