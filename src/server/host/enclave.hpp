@@ -57,13 +57,13 @@ class PSIEnclave
     void set_client_query(const v8& input, const v32& keys, const v32& values);
 
     // active
-    void build_bloom_filter(buffer& bloom_filter);
+    void gen_compute_request(buffer& bloom_filter);
 
     // passive
-    void match_bloom_filter(const v8& input, buffer& output);
+    void pro_compute_request(const v8& input, buffer& output);
 
     // active
-    void aggregate(const v8& input);
+    void pro_compute_response(const v8& input);
 
     // active
     void get_result(buffer& obuf);

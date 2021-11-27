@@ -26,15 +26,15 @@ enclave {
                                             [user_check] const uint32_t* data_val,
                                             size_t data_size);
 
-        public void build_bloom_filter(     [out] uint8_t** obuf,
+        public void gen_compute_request(    [out] uint8_t** obuf,
                                             [out] size_t* olen);
 
-        public void match_bloom_filter(     [user_check] const uint8_t* ibuf,
+        public void pro_compute_request(    [user_check] const uint8_t* ibuf,
                                             size_t ilen,
                                             [out] uint8_t** obuf,
                                             [out] size_t* olen);
 
-        public void aggregate(              [user_check] const uint8_t* ibuf,
+        public void pro_compute_response(   [user_check] const uint8_t* ibuf,
                                             size_t ilen);
 
         public void get_result(             [out] uint8_t** obuf,

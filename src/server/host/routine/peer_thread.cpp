@@ -1,13 +1,20 @@
 #include "routine.h"
 
 #include <future>
+#include <mutex>
 
 #include "attestation.h"
 #include "host/TxSocket.hpp"
 
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
 
-static void peer_servant(TxSocket* server, PSIContext* context)
+static struct
+{
+    std::mutex prev;
+    std::mutex next;
+} lock;
+
+static void peer_servant(TxSocket* server, TxSocket* client, PSIContext* context)
 {
     server->accept();
 
@@ -16,33 +23,34 @@ static void peer_servant(TxSocket* server, PSIContext* context)
     context->set_previous_peer_sid(sid);
     SPDLOG_DEBUG("server session from peer: sid={:08x}", sid);
 
+    lock.prev.unlock();
+    lock.next.lock();
+
     /* compute query */
     {
         auto request = server->recv();
         SPDLOG_DEBUG("handle_compute_req: request received");
-        if (request->message_type != Message::ComputeRequest)
-        {
-            std::abort();
-        }
-        if (request->session_id != sid)
-        {
-            throw std::runtime_error("session id doesn't match");
-        }
-        v8 payload(request->payload, request->payload + request->payload_len);
+        assert(request->message_type == Message::ComputeRequest);
+        assert(request->session_id == sid);
 
+        v8 payload(request->payload, request->payload + request->payload_len);
         auto response = context->handle_compute_req(sid, payload);
+
         assert(response->message_type == Message::ComputeResponse);
         server->send(*response);
         SPDLOG_DEBUG("handle_compute_req: response sent");
     }
 }
 
-static auto peer_client(TxSocket* client, PSIContext* context)
+static auto peer_client(TxSocket* server, TxSocket* client, PSIContext* context)
 {
     /* attestation */
     auto sid = attestation_initiator(*client, *context);
     context->set_next_peer_sid(sid);
     SPDLOG_DEBUG("client session to peer: sid={:08x}", sid);
+
+    lock.next.unlock();
+    lock.prev.lock();
 
     /* build and send bloom filter */
     {
@@ -71,6 +79,9 @@ static auto peer_client(TxSocket* client, PSIContext* context)
 auto peer_thread(uint16_t port, const char* peer_host, uint16_t peer_port, PSIContext* context)
     -> std::tuple<size_t, size_t, size_t, size_t>
 {
+    lock.next.lock();
+    lock.prev.lock();
+
     SPDLOG_INFO("starting {}: serving at port {}", __FUNCTION__, port);
     auto server = TxSocket::listen(port);
 
@@ -78,10 +89,10 @@ auto peer_thread(uint16_t port, const char* peer_host, uint16_t peer_port, PSICo
     auto client = TxSocket::connect(peer_host, peer_port);
 
     /* serve for peer */
-    auto s_peer = std::async(std::launch::async, peer_servant, &server, context);
+    auto s_peer = std::async(std::launch::async, peer_servant, &server, &client, context);
 
     /* connect to next */
-    auto [c_peer_sent, c_peer_recv] = peer_client(&client, context);
+    auto [c_peer_sent, c_peer_recv] = peer_client(&server, &client, context);
 
     /* collect statistics */
     s_peer.get();

@@ -85,24 +85,24 @@ void PSIEnclave::set_client_query(const v8& input, const v32& keys, const v32& v
     ECALL_OUT;
 }
 
-void PSIEnclave::build_bloom_filter(buffer& bloom_filter)
+void PSIEnclave::gen_compute_request(buffer& bloom_filter)
 {
     ECALL_IN;
-    oe_result_t result = ::build_bloom_filter(enclave(), &bloom_filter.data, &bloom_filter.size);
+    oe_result_t result = ::gen_compute_request(enclave(), &bloom_filter.data, &bloom_filter.size);
     ECALL_OUT;
 }
 
-void PSIEnclave::match_bloom_filter(const v8& input, buffer& output)
+void PSIEnclave::pro_compute_request(const v8& input, buffer& output)
 {
     ECALL_IN;
-    oe_result_t result = ::match_bloom_filter(enclave(), input.data(), input.size(), &output.data, &output.size);
+    oe_result_t result = ::pro_compute_request(enclave(), input.data(), input.size(), &output.data, &output.size);
     ECALL_OUT;
 }
 
-void PSIEnclave::aggregate(const v8& input)
+void PSIEnclave::pro_compute_response(const v8& input)
 {
     ECALL_IN;
-    oe_result_t result = ::aggregate(enclave(), input.data(), input.size());
+    oe_result_t result = ::pro_compute_response(enclave(), input.data(), input.size());
     ECALL_OUT;
 }
 

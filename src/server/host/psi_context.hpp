@@ -163,7 +163,7 @@ class PSIContext
         lock.active.lock();
 
         buffer request;
-        enclave.build_bloom_filter(request);
+        enclave.gen_compute_request(request);
 
         return std::make_shared<Message>(next_sid, Message::ComputeRequest, request.size, request.data);
     }
@@ -172,7 +172,7 @@ class PSIContext
     {
         assert(sid == osid);
 
-        enclave.aggregate(payload);
+        enclave.pro_compute_response(payload);
 
         /*
          * result prepared, ready for client to take
@@ -195,7 +195,7 @@ class PSIContext
         assert(sid == isid);
 
         buffer response;
-        enclave.match_bloom_filter(payload, response);
+        enclave.pro_compute_request(payload, response);
 
         SPDLOG_DEBUG("Unlocking lock.passive");
         lock.passive.unlock();

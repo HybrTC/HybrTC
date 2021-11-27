@@ -111,7 +111,7 @@ void set_client_query(const u8* ibuf, size_t ilen, const u32* data_key, const u3
     handler->load_data(data_key, data_val, data_size);
 }
 
-void build_bloom_filter(u8** obuf, size_t* olen)
+void gen_compute_request(u8** obuf, size_t* olen)
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
     auto output = handler->build_filter();
@@ -125,7 +125,7 @@ void build_bloom_filter(u8** obuf, size_t* olen)
 #endif
 }
 
-void match_bloom_filter(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
+void pro_compute_request(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
     auto output = handler->match_filter(global->session(session_id.peer_prev).cipher().decrypt_str(ibuf, ilen));
@@ -142,7 +142,7 @@ void match_bloom_filter(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
 #endif
 }
 
-void aggregate(const u8* ibuf, size_t ilen)
+void pro_compute_response(const u8* ibuf, size_t ilen)
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
     handler->build_result(global->session(session_id.peer_next).cipher().decrypt(ibuf, ilen));
