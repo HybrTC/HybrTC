@@ -22,15 +22,15 @@ message AttestationResponse {
     bytes evidence      = 49; // 31
 }
 
-message QueryRequest {
-    bytes homo_pk = 1;
+message Pair {
+    bytes key = 1;
+    bytes value = 2;
 }
 
 message Pairs {
-    message Pair {
-        bytes key = 1;
-        bytes value = 2;
-    }
-
     repeated Pair pairs = 1;
+}
+
+message QueryRequest {
+    bytes homo_pk = 1;
 }
