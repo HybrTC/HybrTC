@@ -62,7 +62,7 @@ static auto peer_client(TxSocket* client, PSIContext* context)
             throw std::runtime_error("session id doesn't match");
         }
         v8 payload(response->payload, response->payload + response->payload_len);
-        context->process_compute_resp(sid, payload);
+        context->process_compute_resp(payload);
     }
 
     return client->statistics();

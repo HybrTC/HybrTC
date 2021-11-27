@@ -127,7 +127,7 @@ class PSIContext
     auto handle_query_request(uint32_t sid, const v8& payload) -> MessagePtr
     {
         assert(sid == csid);
-        enclave.set_client_query(sid, payload, data_keys, data_vals);
+        enclave.set_client_query(payload, data_keys, data_vals);
 
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
         /* client sid and public key are set, ready for peer to use */
@@ -142,7 +142,7 @@ class PSIContext
 #endif
 
         buffer output;
-        enclave.get_result(csid, output);
+        enclave.get_result(output);
 
         /* build and return query result */
         return std::make_shared<Message>(sid, Message::QueryResponse, output.size, output.data);
@@ -163,16 +163,16 @@ class PSIContext
         lock.active.lock();
 
         buffer request;
-        enclave.build_bloom_filter(next_sid, request);
+        enclave.build_bloom_filter(request);
 
         return std::make_shared<Message>(next_sid, Message::ComputeRequest, request.size, request.data);
     }
 
-    void process_compute_resp(uint32_t sid, const v8& payload)
+    void process_compute_resp(const v8& payload)
     {
         assert(sid == osid);
 
-        enclave.aggregate(sid, payload);
+        enclave.aggregate(payload);
 
         /*
          * result prepared, ready for client to take
@@ -195,7 +195,7 @@ class PSIContext
         assert(sid == isid);
 
         buffer response;
-        enclave.match_bloom_filter(sid, payload, response);
+        enclave.match_bloom_filter(payload, response);
 
         SPDLOG_DEBUG("Unlocking lock.passive");
         lock.passive.unlock();

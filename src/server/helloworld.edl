@@ -20,29 +20,24 @@ enclave {
                                                     size_t ilen);
 
 
-        public void set_client_query(       uint32_t sid,
-                                            [in, size=ilen] const uint8_t* ibuf,
+        public void set_client_query(       [in, size=ilen] const uint8_t* ibuf,
                                             size_t ilen,
                                             [user_check] const uint32_t* data_key,
                                             [user_check] const uint32_t* data_val,
                                             size_t data_size);
 
-        public void build_bloom_filter(     uint32_t sid,
-                                            [out] uint8_t** obuf,
+        public void build_bloom_filter(     [out] uint8_t** obuf,
                                             [out] size_t* olen);
 
-        public void match_bloom_filter(     uint32_t sid,
-                                            [user_check] const uint8_t* ibuf,
+        public void match_bloom_filter(     [user_check] const uint8_t* ibuf,
                                             size_t ilen,
                                             [out] uint8_t** obuf,
                                             [out] size_t* olen);
 
-        public void aggregate(              uint32_t sid,
-                                            [user_check] const uint8_t* ibuf,
+        public void aggregate(              [user_check] const uint8_t* ibuf,
                                             size_t ilen);
 
-        public void get_result(             uint32_t sid,
-                                            [out] uint8_t** obuf,
+        public void get_result(             [out] uint8_t** obuf,
                                             [out] size_t* olen);
     };
 

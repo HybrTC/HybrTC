@@ -77,38 +77,38 @@ auto PSIEnclave::verifier_process_response(const buffer& input) -> uint32_t
     return sid;
 }
 
-void PSIEnclave::set_client_query(uint32_t sid, const v8& input, const v32& keys, const v32& values)
+void PSIEnclave::set_client_query(const v8& input, const v32& keys, const v32& values)
 {
     ECALL_IN;
     oe_result_t result =
-        ::set_client_query(enclave(), sid, input.data(), input.size(), keys.data(), values.data(), keys.size());
+        ::set_client_query(enclave(), input.data(), input.size(), keys.data(), values.data(), keys.size());
     ECALL_OUT;
 }
 
-void PSIEnclave::build_bloom_filter(uint32_t sid, buffer& bloom_filter)
+void PSIEnclave::build_bloom_filter(buffer& bloom_filter)
 {
     ECALL_IN;
-    oe_result_t result = ::build_bloom_filter(enclave(), sid, &bloom_filter.data, &bloom_filter.size);
+    oe_result_t result = ::build_bloom_filter(enclave(), &bloom_filter.data, &bloom_filter.size);
     ECALL_OUT;
 }
 
-void PSIEnclave::match_bloom_filter(uint32_t sid, const v8& input, buffer& output)
+void PSIEnclave::match_bloom_filter(const v8& input, buffer& output)
 {
     ECALL_IN;
-    oe_result_t result = ::match_bloom_filter(enclave(), sid, input.data(), input.size(), &output.data, &output.size);
+    oe_result_t result = ::match_bloom_filter(enclave(), input.data(), input.size(), &output.data, &output.size);
     ECALL_OUT;
 }
 
-void PSIEnclave::aggregate(uint32_t sid, const v8& input)
+void PSIEnclave::aggregate(const v8& input)
 {
     ECALL_IN;
-    oe_result_t result = ::aggregate(enclave(), sid, input.data(), input.size());
+    oe_result_t result = ::aggregate(enclave(), input.data(), input.size());
     ECALL_OUT;
 }
 
-void PSIEnclave::get_result(uint32_t sid, buffer& obuf)
+void PSIEnclave::get_result(buffer& obuf)
 {
     ECALL_IN;
-    oe_result_t result = ::get_result(enclave(), sid, &obuf.data, &obuf.size);
+    oe_result_t result = ::get_result(enclave(), &obuf.data, &obuf.size);
     ECALL_OUT;
 }

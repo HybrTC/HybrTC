@@ -54,17 +54,17 @@ class PSIEnclave
     auto verifier_process_response(const buffer& input) -> uint32_t;
 
     // general
-    void set_client_query(uint32_t sid, const v8& input, const v32& keys, const v32& values);
+    void set_client_query(const v8& input, const v32& keys, const v32& values);
 
     // active
-    void build_bloom_filter(uint32_t sid, buffer& bloom_filter);
+    void build_bloom_filter(buffer& bloom_filter);
 
     // passive
-    void match_bloom_filter(uint32_t sid, const v8& input, buffer& output);
+    void match_bloom_filter(const v8& input, buffer& output);
 
     // active
-    void aggregate(uint32_t sid, const v8& input);
+    void aggregate(const v8& input);
 
     // active
-    void get_result(uint32_t sid, buffer& obuf);
+    void get_result(buffer& obuf);
 };

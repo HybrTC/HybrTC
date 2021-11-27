@@ -40,7 +40,7 @@ Timer timer;
 auto verifier_generate_challenge(VerifierContext& ctx, unsigned vid) -> std::shared_ptr<hybrtc::AttestationChallenge>
 {
     /* set verifier id; generate and dump ephemeral public key */
-    ctx.vid = 0xff00 | vid;
+    ctx.vid = (vid << 8) | 0xff;
 
     /* generate output object */
     auto challenge = std::make_shared<hybrtc::AttestationChallenge>();

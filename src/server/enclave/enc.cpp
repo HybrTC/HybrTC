@@ -23,6 +23,13 @@ static struct
     std::mutex verifier;
 } locks;
 
+static struct
+{
+    unsigned client = -1;
+    unsigned peer_prev = -1;
+    unsigned peer_next = -1;
+} session_id;
+
 void initialize(unsigned server_id, unsigned server_count)
 {
     TRACE_ENCLAVE("Initializing server %u/%u", server_id, server_count);
@@ -44,6 +51,14 @@ auto attester_generate_response(const u8* ibuf, size_t ilen, u8** obuf, size_t* 
     locks.attester.lock();
     auto sid = global->attester_generate_response(ibuf, ilen, obuf, olen);
     locks.attester.unlock();
+    if ((sid & 0x00ff0000) == 0x00ff0000)
+    {
+        session_id.client = sid;
+    }
+    else
+    {
+        session_id.peer_prev = sid;
+    }
     return sid;
 }
 
@@ -53,10 +68,11 @@ auto verifier_process_response(const u8* ibuf, size_t ilen) -> u32
     auto sid = global->verifier_process_response(ibuf, ilen);
     TRACE_ENCLAVE("sid generated: %08x", sid);
     locks.verifier.unlock();
+    session_id.peer_next = sid;
     return sid;
 }
 
-void set_client_query(u32 sid, const u8* ibuf, size_t ilen, const u32* data_key, const u32* data_val, size_t data_size)
+void set_client_query(const u8* ibuf, size_t ilen, const u32* data_key, const u32* data_val, size_t data_size)
 {
     const uint32_t server_id = global->server_id();
     const uint32_t server_count = global->server_count();
@@ -64,13 +80,12 @@ void set_client_query(u32 sid, const u8* ibuf, size_t ilen, const u32* data_key,
     handler = std::make_shared<decltype(handler)::element_type>(global->rand_ptr());
 
 #if PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_SELECT
-    (void)(sid);
     (void)(ibuf);
     (void)(ilen);
     (void)(half);
 #else
     hybrtc::QueryRequest request;
-    request.ParseFromString(global->session(sid).cipher().decrypt_str(ibuf, ilen));
+    request.ParseFromString(global->session(session_id.client).cipher().decrypt_str(ibuf, ilen));
 
     if (request.server_id() != server_id)
     {
@@ -96,13 +111,12 @@ void set_client_query(u32 sid, const u8* ibuf, size_t ilen, const u32* data_key,
     handler->load_data(data_key, data_val, data_size);
 }
 
-void build_bloom_filter(u32 sid, u8** obuf, size_t* olen)
+void build_bloom_filter(u8** obuf, size_t* olen)
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
     auto output = handler->build_filter();
-    global->dump_enc(sid, output, obuf, olen);
+    global->dump_enc(session_id.peer_next, output, obuf, olen);
 #else
-    (void)(sid);
     (void)(obuf);
     (void)(olen);
 
@@ -111,11 +125,11 @@ void build_bloom_filter(u32 sid, u8** obuf, size_t* olen)
 #endif
 }
 
-void match_bloom_filter(u32 sid, const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
+void match_bloom_filter(const u8* ibuf, size_t ilen, u8** obuf, size_t* olen)
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-    auto output = handler->match_filter(global->session(sid).cipher().decrypt_str(ibuf, ilen));
-    global->dump_enc(sid, output, obuf, olen);
+    auto output = handler->match_filter(global->session(session_id.peer_prev).cipher().decrypt_str(ibuf, ilen));
+    global->dump_enc(session_id.peer_prev, output, obuf, olen);
 #else
     (void)(sid);
     (void)(ibuf);
@@ -128,10 +142,10 @@ void match_bloom_filter(u32 sid, const u8* ibuf, size_t ilen, u8** obuf, size_t*
 #endif
 }
 
-void aggregate(u32 sid, const u8* ibuf, size_t ilen)
+void aggregate(const u8* ibuf, size_t ilen)
 {
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-    handler->build_result(global->session(sid).cipher().decrypt(ibuf, ilen));
+    handler->build_result(global->session(session_id.peer_next).cipher().decrypt(ibuf, ilen));
 #else
     (void)(sid);
     (void)(ibuf);
@@ -142,7 +156,7 @@ void aggregate(u32 sid, const u8* ibuf, size_t ilen)
 #endif
 }
 
-void get_result(u32 sid, u8** obuf, size_t* olen)
+void get_result(u8** obuf, size_t* olen)
 {
-    global->dump_enc(sid, handler->get_result(), obuf, olen);
+    global->dump_enc(session_id.client, handler->get_result(), obuf, olen);
 }
