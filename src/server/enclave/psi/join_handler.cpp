@@ -39,7 +39,7 @@ void JoinHandler::load_data(const u32* data_key, const u32* data_val, size_t dat
     }
 }
 
-auto JoinHandler::build_filter() -> const std::string&
+auto JoinHandler::build_filter() -> std::string
 {
     HashSet bloom_filter(1 << FILTER_POWER_BITS);
 
@@ -48,7 +48,12 @@ auto JoinHandler::build_filter() -> const std::string&
         bloom_filter.insert(prp(k));
     }
 
-    return bloom_filter.data();
+    hybrtc::ComputeRequest request;
+    request.set_initiator_id(id);
+    request.set_sender_id(id);
+    request.set_bloom_filter(bloom_filter.data());
+
+    return request.SerializeAsString();
 }
 
 auto JoinHandler::match_filter(const std::string& filter) -> std::string
@@ -60,7 +65,10 @@ auto JoinHandler::match_filter(const std::string& filter) -> std::string
         abort();
     }
 
-    HashSet bloom_filter(1 << FILTER_POWER_BITS, filter);
+    hybrtc::ComputeRequest request;
+    request.ParseFromString(filter);
+
+    HashSet bloom_filter(1 << FILTER_POWER_BITS, request.bloom_filter());
 
     hybrtc::Pairs hits;
 

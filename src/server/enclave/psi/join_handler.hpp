@@ -57,7 +57,7 @@ class JoinHandler : public SelectHandler
 
     void load_data(const u32* data_key, const u32* data_val, size_t data_size) override;
 
-    auto build_filter() -> const std::string&;
+    auto build_filter() -> std::string;
 
     auto match_filter(const std::string& filter) -> std::string;
 
