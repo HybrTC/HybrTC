@@ -22,19 +22,18 @@ class PSIContext
     v32 data_keys;
     v32 data_vals;
 
-    struct
-    {
-        uint32_t sid;
-        std::mutex lock_build;
-        std::mutex lock_match;
-    } client_ctx;
+    uint32_t csid;
+    uint32_t isid;
+    uint32_t osid;
 
+#if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
     struct
     {
-        uint32_t isid;
-        uint32_t osid;
-        std::mutex lock;
-    } peer_ctx;
+        std::mutex client;
+        std::mutex active;
+        std::mutex passive;
+    } lock;
+#endif
 
     bool half;
 
@@ -50,11 +49,12 @@ class PSIContext
             data_keys.push_back(prng() % max_key);
             data_vals.push_back(prng());
         }
-
+#if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
         /* initialize locks */
-        client_ctx.lock_build.lock();
-        client_ctx.lock_match.lock();
-        peer_ctx.lock.lock();
+        lock.active.lock();
+        lock.passive.lock();
+        lock.client.lock();
+#endif
     }
 
     auto get_timer() -> Timer&
@@ -68,17 +68,17 @@ class PSIContext
 
     void set_client_sid(uint32_t sid)
     {
-        client_ctx.sid = sid;
+        csid = sid;
     }
 
     void set_peer_isid(uint32_t sid)
     {
-        peer_ctx.isid = sid;
+        isid = sid;
     }
 
     void set_peer_osid(uint32_t sid)
     {
-        peer_ctx.osid = sid;
+        osid = sid;
     }
 
     /*
@@ -111,22 +111,23 @@ class PSIContext
 
     auto handle_query_request(uint32_t sid, const v8& payload) -> MessagePtr
     {
-        assert(sid == client_ctx.sid);
+        assert(sid == csid);
         enclave.set_client_query(sid, payload, half, data_keys, data_vals);
 
-        /* client sid and public key are set, ready for peer to use */
-        SPDLOG_DEBUG("Unlocking client_ctx.lock");
-        client_ctx.lock_build.unlock();
-        client_ctx.lock_match.unlock();
-
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
+        /* client sid and public key are set, ready for peer to use */
+        SPDLOG_DEBUG("Unlocking lock.active");
+        lock.active.unlock();
+        SPDLOG_DEBUG("Unlocking lock.passive");
+        lock.passive.unlock();
+
         /* waiting for peer to build the result */
-        SPDLOG_DEBUG("Locking peer_ctx.lock");
-        peer_ctx.lock.lock();
+        SPDLOG_DEBUG("Locking lock.client");
+        lock.client.lock();
 #endif
 
         buffer output;
-        enclave.get_result(client_ctx.sid, output);
+        enclave.get_result(csid, output);
 
         /* build and return query result */
         return std::make_shared<Message>(sid, QueryResponse, output.size, output.data);
@@ -137,43 +138,54 @@ class PSIContext
      */
 
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
+    /*
+     * active
+     */
     auto prepare_compute_req() -> MessagePtr
     {
         /* wait for client public key to be set */
-        SPDLOG_DEBUG("Locking client_ctx.lock_build");
-        client_ctx.lock_build.lock();
+        SPDLOG_DEBUG("Locking lock.active");
+        lock.active.lock();
 
         buffer request;
-        enclave.build_bloom_filter(peer_ctx.osid, request);
+        enclave.build_bloom_filter(osid, request);
 
-        return std::make_shared<Message>(peer_ctx.osid, ComputeRequest, request.size, request.data);
-    }
-
-    auto handle_compute_req(uint32_t sid, const v8& payload) -> MessagePtr
-    {
-        /* wait for client public key to be set */
-        SPDLOG_DEBUG("Locking client_ctx.lock_match");
-        client_ctx.lock_match.lock();
-
-        assert(sid == peer_ctx.isid);
-
-        buffer response;
-        enclave.match_bloom_filter(sid, payload, response);
-
-        return std::make_shared<Message>(sid, ComputeResponse, response.size, response.data);
+        return std::make_shared<Message>(osid, ComputeRequest, request.size, request.data);
     }
 
     void process_compute_resp(uint32_t sid, const v8& payload)
     {
-        assert(sid == peer_ctx.osid);
+        assert(sid == osid);
 
         enclave.aggregate(sid, payload);
 
         /*
          * result prepared, ready for client to take
          */
-        SPDLOG_DEBUG("Unlocking peer_ctx.lock");
-        peer_ctx.lock.unlock();
+        SPDLOG_DEBUG("Unlocking lock.client");
+        lock.active.unlock();
+        SPDLOG_DEBUG("Unlocking lock.client");
+        lock.client.unlock();
+    }
+
+    /*
+     * passive
+     */
+    auto handle_compute_req(uint32_t sid, const v8& payload) -> MessagePtr
+    {
+        /* wait for client public key to be set */
+        SPDLOG_DEBUG("Locking lock.passive");
+        lock.passive.lock();
+
+        assert(sid == isid);
+
+        buffer response;
+        enclave.match_bloom_filter(sid, payload, response);
+
+        SPDLOG_DEBUG("Unlocking lock.passive");
+        lock.passive.unlock();
+
+        return std::make_shared<Message>(sid, ComputeResponse, response.size, response.data);
     }
 #endif
 };
