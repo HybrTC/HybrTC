@@ -34,3 +34,7 @@ message Pairs {
 message QueryRequest {
     bytes homo_pk = 1;
 }
+
+message QueryResponse {
+    repeated Pair pairs = 1;
+}

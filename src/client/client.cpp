@@ -147,20 +147,20 @@ auto client(const std::string& host, uint16_t port, int id, const std::string& p
 
 void output_result(PSI::Paillier& homo_crypto, const v8& buf)
 {
-    hybrtc::Pairs pairs;
-    pairs.ParseFromArray(buf.data(), static_cast<int>(buf.size()));
+    hybrtc::QueryResponse result;
+    result.ParseFromArray(buf.data(), static_cast<int>(buf.size()));
 
     if (PSI_AGGREGATE_POLICY == PSI_AGGREAGATE_JOIN_COUNT)
     {
         (void)(homo_crypto);
 
-        auto bin = pairs.pairs(0).key();
+        auto bin = result.pairs(0).key();
         size_t count = *reinterpret_cast<const size_t*>(bin.data());
         SPDLOG_INFO("{}", count);
     }
     else
     {
-        for (const auto& pair : pairs.pairs())
+        for (const auto& pair : result.pairs())
         {
             const auto& key_bin = pair.key();
             const auto& val_bin = pair.value();
