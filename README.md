@@ -43,6 +43,6 @@ set(PSI_AGGREGATE_POLICY ${PSI_AGGREAGATE_SELECT} ${PSI_AGGREAGATE_JOIN_COUNT}
 
 - clang-format-10
 - clang-tidy-10
-- clangd-12
-- cmake 3.18.4
+- clangd-13
+- cmake 3.22.0
 - cmake-format
