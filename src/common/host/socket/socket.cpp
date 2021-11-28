@@ -202,6 +202,7 @@ auto SocketConnection::recv(void* buffer, size_t size) -> size_t
         }
     }
 
+    bytes_received += received;
     return received;
 }
 

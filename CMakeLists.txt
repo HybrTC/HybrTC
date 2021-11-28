@@ -14,8 +14,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_compile_options(-Og -g -Wall -Wextra)
-# add_compile_options(-O3)
+# add_compile_options(-Og -g -Wall -Wextra)
+add_compile_options(-O3)
 
 # Currently the `OpenEnclave` package depends on `project()`.
 find_package(OpenEnclave CONFIG REQUIRED)
@@ -51,7 +51,7 @@ set(PSI_AGGREAGATE_JOIN_SUM 0x11)
 
 # options
 
-# set(PSI_DATA_SET_SIZE_LOG 10;12;14;16;18;20)
+set(PSI_DATA_SET_SIZE_LOG 10;12;14;16;18;20)
 
 set(PSI_SELECT_POLICY ${PSI_SELECT_ALL_PASSTHROUGH} ${PSI_SELECT_ALL_OBLIVIOUS}
                       ${PSI_SELECT_ODD_OBLIVIOUS})
@@ -59,10 +59,13 @@ set(PSI_SELECT_POLICY ${PSI_SELECT_ALL_PASSTHROUGH} ${PSI_SELECT_ALL_OBLIVIOUS}
 set(PSI_AGGREGATE_POLICY ${PSI_AGGREAGATE_SELECT} ${PSI_AGGREAGATE_JOIN_COUNT}
                          ${PSI_AGGREAGATE_JOIN_SUM})
 
+set(PSI_SERVER_NUMBER 2;3;4;5)
+
 set(PSI_VERBOSE "" OFF)
-set(PSI_DATA_SET_SIZE_LOG 12)
+# set(PSI_DATA_SET_SIZE_LOG 12)
 # set(PSI_SELECT_POLICY ${PSI_SELECT_ODD_OBLIVIOUS})
 # set(PSI_AGGREGATE_POLICY ${PSI_AGGREAGATE_JOIN_COUNT})
+# set(PSI_SERVER_NUMBER 5)
 
 if (${PSI_VERBOSE})
   add_compile_definitions(PSI_VERBOSE=1)
@@ -99,5 +102,6 @@ add_custom_target(
   DEPENDS ${targets}
   COMMAND
     python3.8 ${CMAKE_SOURCE_DIR}/tests/rundemo.py --binary-dir
-    ${CMAKE_BINARY_DIR} --select-policy ${PSI_SELECT_POLICY} --aggregate-policy
-    ${PSI_AGGREGATE_POLICY} --data-size ${PSI_DATA_SET_SIZE_LOG} --repeat 1)
+    ${CMAKE_BINARY_DIR} --select ${PSI_SELECT_POLICY} --aggregate
+    ${PSI_AGGREGATE_POLICY} --size ${PSI_DATA_SET_SIZE_LOG} --servers
+    ${PSI_SERVER_NUMBER} --repeat 1)

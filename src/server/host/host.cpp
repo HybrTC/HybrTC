@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -57,8 +58,17 @@ auto main(int argc, const char* argv[]) -> int
     spdlog::set_pattern(fmt::format("%^[%Y-%m-%d %H:%M:%S.%e] [%L] [s{}] [%t] %s:%# -%$ %v", server_id));
 
     /* initialize PSI context */
-    PSIContext psi(
-        enclave_image_path.c_str(), (1 << log_data_size), (1 << (log_data_size * 4 / 3)), server_id, peers.size());
+
+    const size_t data_size = 1 << log_data_size;
+    const double log_max_key = static_cast<double>(log_data_size - 6) / static_cast<double>(peers.size());
+    const size_t max_key = 1 << (log_data_size + static_cast<size_t>(log_max_key));
+    SPDLOG_DEBUG("Expected Intersection Size = {}", data_size * std::pow((double)data_size / max_key, peers.size()));
+    SPDLOG_DEBUG(
+        "Hit Rate = {}, Expected Intersection Size = {}",
+        (double)data_size / max_key,
+        data_size * std::pow((double)data_size / max_key, peers.size()));
+
+    PSIContext psi(enclave_image_path.c_str(), data_size, max_key, server_id, peers.size());
 
     Timer timer;
     timer("start");

@@ -262,6 +262,7 @@ auto main(int argc, const char* argv[]) -> int
          {"PSI_MELBOURNE_P", PSI_MELBOURNE_P},
          {"PSI_SELECT_POLICY", PSI_SELECT_POLICY},
          {"PSI_AGGREGATE_POLICY", PSI_AGGREGATE_POLICY},
+         {"PSI_SERVER_NUMBER", servers.size()},
          {"comm", comm},
          {"time", timer.to_json()}});
 

@@ -13,39 +13,25 @@ from time import sleep
 SERVERS = [
     {
         "host": "127.0.0.1",
-        "port_c": 6000,
-        "port_p": 6001,
-    },
-    {
-        "host": "127.0.0.1",
-        "port_c": 6010,
-        "port_p": 6011,
-    },
-    {
-        "host": "127.0.0.1",
-        "port_c": 6020,
-        "port_p": 6021,
-    },
-    {
-        "host": "127.0.0.1",
-        "port_c": 6030,
-        "port_p": 6031,
-    },
+        "port_c": 5000 + i,
+        "port_p": 6000 + i,
+    }
+    for i in range(10)
 ]
 
 
-CLIENT_TOPO = json.dumps([{"host": s["host"], "port": s["port_c"]} for s in SERVERS])
-SERVER_TOPO = json.dumps([{"host": s["host"], "port": s["port_p"]} for s in SERVERS])
+CLIENT_TOPO = [{"host": s["host"], "port": s["port_c"]} for s in SERVERS]
+SERVER_TOPO = [{"host": s["host"], "port": s["port_p"]} for s in SERVERS]
 
 
 def prefix(pid):
     return f"[{datetime.now().isoformat()}] [{pid}]"
 
 
-def run_client(client_path, test_id):
+def run_client(client_path, test_id, topo):
     cmd = [
         str(client_path),
-        f"--topo={CLIENT_TOPO}",
+        f"--topo={topo}",
         f"--test-id={test_id}",
     ]
 
@@ -57,7 +43,7 @@ def run_client(client_path, test_id):
     os.execv(cmd[0], cmd)
 
 
-def run_server(server_path, test_id, server_id, data_size, enclave_path):
+def run_server(server_path, test_id, server_id, data_size, enclave_path, topo):
 
     client_port = SERVERS[server_id]["port_c"]
 
@@ -67,7 +53,7 @@ def run_server(server_path, test_id, server_id, data_size, enclave_path):
         f"--server-id={server_id}",
         f"--data-size={data_size}",
         f"--listen={client_port}",
-        f"--peers={SERVER_TOPO}",
+        f"--peers={topo}",
         f"--test-id={test_id}",
     ]
 
@@ -79,15 +65,22 @@ def run_server(server_path, test_id, server_id, data_size, enclave_path):
     os.execv(cmd[0], cmd)
 
 
-def test(client: Path, server: Path, enclave: Path, data_size: int):
+def test(client: Path, server: Path, enclave: Path, servers: int, data_size: int):
     test_id = datetime.now().strftime("%Y%m%dT%H%M%S")
 
     procs = {}
-    for server_id in range(len(SERVERS)):
+    for server_id in range(servers):
         procs[
-            run_server(server, test_id, server_id, data_size, enclave)
+            run_server(
+                server,
+                test_id,
+                server_id,
+                data_size,
+                enclave,
+                json.dumps(SERVER_TOPO[:servers]),
+            )
         ] = "Server{}".format(server_id)
-    procs[run_client(client, test_id)] = "Client"
+    procs[run_client(client, test_id, json.dumps(CLIENT_TOPO[:servers]))] = "Client"
 
     while len(procs) > 0:
         (pid, status) = os.wait()
@@ -129,9 +122,7 @@ def test(client: Path, server: Path, enclave: Path, data_size: int):
 
         break
 
-    output_file = [
-        f"{test_id}-server{server_id}.json" for server_id in range(len(SERVERS))
-    ]
+    output_file = [f"{test_id}-server{server_id}.json" for server_id in range(servers)]
     output_file.append(f"{test_id}-client.json")
 
     if not all(map(Path.exists, map(Path, output_file))):
@@ -143,12 +134,12 @@ def main(args):
     SERVER_DIR: Path = args.build / "src/server/host"
     ENCLAVE_DIR: Path = args.build / "src/server/enclave"
 
-    test_suite = list(product(args.size, args.select, args.aggregate))
+    test_suite = list(product(args.size, args.select, args.aggregate, args.servers))
     total = len(test_suite)
     repeat = args.repeat
 
     for i in range(repeat):
-        for idx, (size, select, aggregate) in enumerate(test_suite):
+        for idx, (size, select, aggregate, servers) in enumerate(test_suite):
             if aggregate == "0x00" and size == 20:
                 continue
 
@@ -162,10 +153,10 @@ def main(args):
 
             print("************************************************************")
             print(
-                f"*    {i}/{repeat} # {idx}/{total} # size={size} select={select} aggregate={aggregate}"
+                f"*    {i}/{repeat} # {idx}/{total} # servers={servers} size={size} select={select} aggregate={aggregate}"
             )
             print("************************************************************")
-            test(client, server, enclave, size)
+            test(client, server, enclave, servers, size)
 
 
 if __name__ == "__main__":
@@ -173,11 +164,12 @@ if __name__ == "__main__":
 
     parser.add_argument("--binary-dir", dest="build", type=Path, required=True)
     parser.add_argument("--repeat", dest="repeat", type=int, default=1)
-    parser.add_argument("--select-policy", dest="select", nargs="+", required=True)
+    parser.add_argument("--select", dest="select", nargs="+", required=True)
+    parser.add_argument("--aggregate", dest="aggregate", nargs="+", required=True)
+    parser.add_argument("--size", dest="size", type=int, default=[10], nargs="+")
     parser.add_argument(
-        "--aggregate-policy", dest="aggregate", nargs="+", required=True
+        "--servers", dest="servers", type=int, default=[2], nargs="+", required=True
     )
-    parser.add_argument("--data-size", dest="size", type=int, default=[10], nargs="+")
 
     args = parser.parse_args()
 
