@@ -4,14 +4,16 @@ Mail us at hybrtc@googlegroups.com if you have any query.
 
 ## Development Dependencies
 
-- [Operating System] Ubuntu 18.04.5 LTS
-- [Compiler] clang-8
-- [Compiler] clang++-8
+- [Operating System] Ubuntu 20.04.3 LTS
+- [Compiler] clang-10
+- [Compiler] clang++-10
 - [SDK] [Open Enclave SDK](https://github.com/openenclave/openenclave)
-    - v0.15.0
+    - v0.17.2
     - lvi-mitigation disabled
 - [Library] [Mbed TLS](https://github.com/ARMmbed/mbedtls)
-    - v2.25.0
+    - v2.27.0
+- [Library] [Protocol Buffers](https://github.com/protocolbuffers/protobuf)
+    - v3.18.1
 
 ## Build and Run
 
