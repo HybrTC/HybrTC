@@ -3,8 +3,9 @@ from functools import reduce
 from glob import glob
 from itertools import groupby
 from pathlib import Path
-
+from itertools import chain
 import pandas as pd
+from uuid import uuid1
 
 
 def load_json(fn):
@@ -13,88 +14,6 @@ def load_json(fn):
 
 def pprint(obj):
     return json.dumps(obj, indent=True)
-
-
-SEL = {
-    0x00: "PASSTHROUGH",
-    0x10: "OBLIVIOUS_ALL",
-    0x11: "OBLIVIOUS_ODD",
-}
-
-AGG = {
-    0x00: "SELECT_ONLY",
-    0x10: "JOIN_COUNT",
-    0x11: "JOIN_SUM",
-}
-
-LABELS = [
-    "initiate attestation",
-    "initiate query",
-    "result received",
-]
-
-
-def process_client(fn):
-    data = load_json(fn)
-    timer = dict((t["name"], t["clock"]) for t in data.get("time"))
-    return {
-        "PSI_PAILLIER_PK_LEN": data.get("PSI_PAILLIER_PK_LEN"),
-        "PSI_MELBOURNE_P": data.get("PSI_MELBOURNE_P"),
-        "PSI_SELECT_POLICY": SEL[data.get("PSI_SELECT_POLICY")],
-        "PSI_AGGREGATE_POLICY": AGG[data.get("PSI_AGGREGATE_POLICY")],
-        "c:c/s0:sent": data.get("c/s0:sent"),
-        "c:c/s0:recv": data.get("c/s0:recv"),
-        "c:c/s1:sent": data.get("c/s1:sent"),
-        "c:c/s1:recv": data.get("c/s1:recv"),
-        "c:duration": timer["done"] - timer["start"],
-        "c:s0:attest": timer[f"c/s0: {LABELS[1]}"] - timer[f"c/s0: {LABELS[0]}"],
-        "c:s0:query": timer[f"c/s0: {LABELS[2]}"] - timer[f"c/s0: {LABELS[1]}"],
-        "c:s1:attest": timer[f"c/s1: {LABELS[1]}"] - timer[f"c/s1: {LABELS[0]}"],
-        "c:s1:query": timer[f"c/s1: {LABELS[2]}"] - timer[f"c/s1: {LABELS[1]}"],
-    }
-
-
-def process_server(fn, sid):
-    def calc_duration(timer):
-        return timer["done"] - timer["start"]
-
-    data = load_json(fn)
-    ret = {
-        f"s{sid}:PSI_DATA_SET_SIZE_LOG": data.get("PSI_DATA_SET_SIZE_LOG"),
-        f"s{sid}:c/p:sent": data.get("c/p:sent"),
-        f"s{sid}:c/p:recv": data.get("c/p:recv"),
-        f"s{sid}:s/p:sent": data.get("s/p:sent"),
-        f"s{sid}:s/p:recv": data.get("s/p:recv"),
-        f"s{sid}:s/c:sent": data.get("s/c:sent"),
-        f"s{sid}:s/c:recv": data.get("s/c:recv"),
-    }
-
-    for _, v in groupby(
-        sorted(data.get("enclave_timer"), key=lambda item: item["thread"]),
-        lambda item: item["thread"],
-    ):
-        thread_timer = dict(
-            (
-                k,
-                calc_duration(dict((item["name"].split(":")[1], item["clock"]) for item in v)),
-            )
-            for k, v in groupby(v, lambda item: item["name"].split(":")[0])
-        )
-
-        prefix = f"s{sid}"
-        if "aggregate" in thread_timer:
-            prefix = f"s{sid}:a"
-
-        if "get_result" in thread_timer:
-            prefix = f"s{sid}:c"
-
-        if "match_bloom_filter" in thread_timer:
-            prefix = f"s{sid}:p"
-
-        thread_timer = dict((f"{prefix}:{k}", v) for k, v in thread_timer.items())
-        ret.update(thread_timer)
-
-    return ret
 
 
 ATTRIBUTES = ["PSI_SELECT_POLICY", "PSI_AGGREGATE_POLICY", "SIZE"]
@@ -170,34 +89,91 @@ def drop_outliner(data, groupby, features, threshold):
     return data.loc[list(valid_records)]
 
 
+SEL = {
+    0x00: "PASSTHROUGH",
+    0x10: "OBLIVIOUS_ALL",
+    0x11: "OBLIVIOUS_ODD",
+}
+
+AGG = {
+    0x00: "SELECT_ONLY",
+    0x10: "JOIN_COUNT",
+    0x11: "JOIN_SUM",
+}
+
+
+def process_client(fn):
+    data = load_json(fn)
+
+    meta = {
+        "PSI_SERVER_NUMBER": data.get("PSI_SERVER_NUMBER"),
+        "PSI_PAILLIER_PK_LEN": data.get("PSI_PAILLIER_PK_LEN"),
+        "PSI_MELBOURNE_P": data.get("PSI_MELBOURNE_P"),
+        "PSI_SELECT_POLICY": SEL[data.get("PSI_SELECT_POLICY")],
+        "PSI_AGGREGATE_POLICY": AGG[data.get("PSI_AGGREGATE_POLICY")],
+    }
+
+    comm = [
+        {
+            "reporter": "c",
+            "session": key,
+            "sent": val["sent"],
+            "recv": val["recv"],
+        }
+        for key, val in data.get("comm").items()
+    ]
+
+    time = [{"reporter": "c", **t} for t in data.get("time")]
+
+    return meta, comm, time
+
+
+def process_server(fn):
+    reporter = f's{fn.rstrip(".json")[-1]}'
+    data = load_json(fn)
+
+    meta = {
+        "PSI_DATA_SET_SIZE_LOG": data.get("PSI_DATA_SET_SIZE_LOG"),
+    }
+
+    comm = [
+        {
+            "reporter": reporter,
+            "session": "c" if key == "client" else key,
+            "sent": val.get("sent"),
+            "recv": val.get("recv"),
+        }
+        for key, val in data.get("comm").items()
+    ]
+
+    time = [
+        {"reporter": reporter, **t}
+        for t in chain(data.get("time_host"), data.get("time_enclave"))
+    ]
+
+    return meta, comm, time
+
+
 if __name__ == "__main__":
     import sys
 
     data_files = sorted(glob(f"{sys.argv[1]}/2021*.json"))
-    data_files = [(k, tuple(v)) for k, v in groupby(data_files, lambda fn: fn.split("-")[0])]
 
-    df = pd.DataFrame(
-        [
-            {
-                **process_client(c),
-                **process_server(s0, 0),
-                **process_server(s1, 1),
-            }
-            for test, (c, s0, s1) in data_files
-        ]
-    )
+    pool = []
 
-    data = df.copy()
+    for test_id, reports in groupby(data_files, lambda fn: Path(fn).name.split("-")[0]):
 
-    data["SIZE"] = data["s0:PSI_DATA_SET_SIZE_LOG"]
-    data = data.fillna(0)
-    data = drop_outliner(data, ATTRIBUTES, FEATURES_COMM + FEATURES_TIME, 3)
+        meta, comm, time = process_client(next(reports))
+        for s in reports:
+            m, c, t = process_server(s)
+            meta.update(m)
+            comm.extend(c)
+            time.extend(t)
 
-    df_comm = data[ATTRIBUTES + FEATURES_COMM].copy()
-    stat_comm = df_comm.groupby(ATTRIBUTES).mean()
+        pool.append({"test_id": test_id, "meta": meta, "comm": comm, "time": time})
 
-    df_time = data[ATTRIBUTES + FEATURES_TIME].copy()
-    stat_time = df_time.groupby(ATTRIBUTES).mean()
+    fn = f"{uuid1()}.json"
+    with open(fn, "w") as f:
+        json.dump(pool, f)
 
-    print(stat_comm)
-    print(stat_time / 1000000)
+    print("result written to", str(Path(fn).absolute()))
