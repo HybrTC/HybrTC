@@ -193,7 +193,7 @@ void output_result(PSI::Paillier& homo_crypto, const v8& buf)
 
 auto main(int argc, const char* argv[]) -> int
 {
-    sleep(1);
+    // sleep(4);
 
     /* pasrse command line argument */
 
@@ -253,7 +253,7 @@ auto main(int argc, const char* argv[]) -> int
 #if PSI_VERBOSE
         output_result(homo_crypto, std::get<0>(r));
 #endif
-        comm[fmt::format("c/s{}", i)] = {{"sent", std::get<1>(r)}, {"recv", std::get<2>(r)}};
+        comm[fmt::format("s{}", i)] = {{"sent", std::get<1>(r)}, {"recv", std::get<2>(r)}};
     }
 
     /* prepare statistics */

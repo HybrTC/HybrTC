@@ -93,15 +93,12 @@ auto main(int argc, const char* argv[]) -> int
 
     timer("done");
 
-    auto comm = json::array({
+    auto comm = json::object();
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-        {"c/p:sent", c_peer_sent}, {"c/p:recv", c_peer_recv}, {"s/p:sent", s_peer_sent}, {"s/p:recv", s_peer_recv},
+    comm["nextp"] = {{"sent", c_peer_sent}, {"recv", c_peer_recv}};
+    comm["prevp"] = {{"sent", s_peer_sent}, {"recv", s_peer_recv}};
 #endif
-            {"s/c:sent", s_client_sent},
-        {
-            "s/c:recv", s_client_recv
-        }
-    });
+    comm["client"] = {{"sent", s_client_sent}, {"recv", s_client_recv}};
 
     json output = json::object(
         {{"PSI_DATA_SET_SIZE_LOG", log_data_size},
