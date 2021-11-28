@@ -93,16 +93,21 @@ auto main(int argc, const char* argv[]) -> int
 
     timer("done");
 
-    json output = json::object({
-        {"PSI_DATA_SET_SIZE_LOG", log_data_size},
+    auto comm = json::array({
 #if PSI_AGGREGATE_POLICY != PSI_AGGREAGATE_SELECT
-            {"c/p:sent", c_peer_sent}, {"c/p:recv", c_peer_recv}, {"s/p:sent", s_peer_sent}, {"s/p:recv", s_peer_recv},
+        {"c/p:sent", c_peer_sent}, {"c/p:recv", c_peer_recv}, {"s/p:sent", s_peer_sent}, {"s/p:recv", s_peer_recv},
 #endif
-            {"s/c:sent", s_client_sent}, {"s/c:recv", s_client_recv}, {"host_timer", timer.to_json()},
+            {"s/c:sent", s_client_sent},
         {
-            "enclave_timer", psi.get_timer().to_json()
+            "s/c:recv", s_client_recv
         }
     });
+
+    json output = json::object(
+        {{"PSI_DATA_SET_SIZE_LOG", log_data_size},
+         {"comm", comm},
+         {"time_host", timer.to_json()},
+         {"time_enclave", psi.get_timer().to_json()}});
 
     {
         auto fn = fmt::format("{}-server{}.json", test_id, int(server_id));
