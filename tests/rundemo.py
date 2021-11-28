@@ -134,12 +134,12 @@ def main(args):
     SERVER_DIR: Path = args.build / "src/server/host"
     ENCLAVE_DIR: Path = args.build / "src/server/enclave"
 
-    test_suite = list(product(args.size, args.servers, args.select, args.aggregate))
+    test_suite = list(product(args.servers, args.size, args.select, args.aggregate))
     total = len(test_suite)
     repeat = args.repeat
 
     for i in range(repeat):
-        for idx, (size, servers, select, aggregate) in enumerate(test_suite):
+        for idx, (servers, size, select, aggregate) in enumerate(test_suite):
             if aggregate == "0x00" and size == 20:
                 continue
 
