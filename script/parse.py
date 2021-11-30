@@ -1,11 +1,11 @@
 import json
 from functools import reduce
 from glob import glob
-from itertools import groupby
+from itertools import chain, groupby
 from pathlib import Path
-from itertools import chain
-import pandas as pd
 from uuid import uuid1
+
+import pandas as pd
 
 
 def load_json(fn):

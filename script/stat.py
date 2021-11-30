@@ -1,10 +1,10 @@
-import pandas as pd
-import sys
+import json
 import re
+import sys
 from itertools import groupby
 from pathlib import Path
-import json
 
+import pandas as pd
 
 DIR = Path(sys.argv[1])
 assert DIR.exists() and DIR.is_dir()
