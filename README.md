@@ -1,5 +1,7 @@
 # HybrTC
 
+(NDSS'22) Hybrid Trust Multi-party Computation with Trusted Execution Environment
+
 Mail us at hybrtc@googlegroups.com if you have any query.
 
 ## Development Dependencies
